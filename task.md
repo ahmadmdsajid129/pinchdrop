@@ -23,7 +23,7 @@
 | **S0** | **Genesis** | Skeleton, documentation, asset pipeline, PDF overview | 1–2 days | 🟢 Done |
 | **S1** | **Gesture Lab** | Standalone webcam page + One-Euro filter + HUD + Replay | 1–2 wks | 🟢 Done |
 | **S2** | **Gesture Core** | Pure TS deterministic FSM + replay test harness + metrics | 2 wks | 🟢 Done |
-| **S3** | **Air Workspace UI** | Tauri 2 shell + oversized cards + zones + pointer ring | 3 wks | ⚪ Pending |
+| **S3** | **Air Workspace UI** | Tauri 2 shell + oversized cards + zones + pointer ring | 3 wks | 🟢 Done |
 | **S4** | **File Ops & Safety** | Rust allow-list, trash crate integration, undo journal | 2 wks | ⚪ Pending |
 | **S5** | **LAN Transfer Engine** | Axum HTTP/WS server, TLS 1.3, pairing, 5GB soak test | 2–3 wks | ⚪ Pending |
 | **S6** | **Android App v0** | Compose app, QR pairing, MediaStore download | 3 wks | ⚪ Pending |
@@ -67,12 +67,13 @@
 - [x] `T-2.4` Create automated replay test harness with landmark session fixtures.
 - [x] `T-2.5` Verify false-trigger rate metrics (0 false triggers measured in 300-frame resting/typing fixtures).
 
-### Stage 3: Air Workspace UI (⚪ Pending)
-- [ ] `T-3.1` Scaffold Tauri 2 desktop application in `apps/desktop`.
-- [ ] `T-3.2` Implement aurora glass workspace grid with 96+ px file cards.
-- [ ] `T-3.3` Implement screen edge zones (Phone, Inbox, Rename, Trash).
-- [ ] `T-3.4` Implement Pointer Ring with hold-fill animation and ghost hand overlay.
-- [ ] `T-3.5` Wire mouse-driven simulation before connecting camera feed.
+### Stage 3: Air Workspace UI (🟢 Done)
+- [x] `T-3.1` Scaffold Tauri 2 desktop application structure in `apps/desktop` and `apps/desktop/src-tauri`.
+- [x] `T-3.2` Implement aurora glass workspace grid with 96+ px interactive file cards.
+- [x] `T-3.3` Implement 4 screen edge zones (Phone Zone, Inbox Zone, Rename Zone, Trash Zone).
+- [x] `T-3.4` Implement dynamic Pointer Ring with hold-fill animation and interactive card snapping.
+- [x] `T-3.5` Implement 8-second visual Undo Toast with radial countdown ring and Recycle Bin restore.
+- [x] `T-3.6` Wire mouse fallback alongside `@pinchdrop/gesture-core` state machine and simulate Phone Grab (ARMED).
 
 ---
 

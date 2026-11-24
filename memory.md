@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 2 (Gesture Core)** — Completed. Pure TypeScript deterministic gesture FSM, One-Euro adaptive filter, G1–G6 pose classifiers with scale-invariant pinch ratio, and automated landmark replay test harness in `@pinchdrop/gesture-core`.
+- **Current Stage:** **Stage 3 (Air Workspace UI)** — Completed. Full Tauri 2 desktop shell scaffold in `apps/desktop`, fluid 60 fps aurora glass UI with oversized 96+ px cards, 4 screen edge zones, dynamic Pointer Ring with hold progress, 8-second visual Undo toast, and seamless mouse fallback with gesture FSM integration.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 3 (Air Workspace UI)** — Desktop shell scaffold with Tauri 2 (Rust) + React 18, oversized file cards (96+ px), edge action zones (Phone, Inbox, Rename, Trash), and Pointer Ring.
+- **Next Stage:** **Stage 4 (File Ops & Safety)** — Rust systems backend implementation for allow-list validation, atomic copy/move operations, OS Recycle Bin integration via `trash` crate, and persistent SQLite undo journal.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest unit tests across 3 suites), `tools/gesture-lab` (production bundle built)
+  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (testbed built), `apps/desktop` (production bundle built)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---

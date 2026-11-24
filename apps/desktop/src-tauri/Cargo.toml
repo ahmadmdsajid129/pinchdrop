@@ -1,0 +1,27 @@
+[package]
+name = "pinchdrop-desktop"
+version = "0.1.0"
+description = "PinchDrop Desktop Native Shell & Systems Core"
+authors = ["PinchDrop Contributors"]
+edition = "2021"
+
+[lib]
+name = "pinchdrop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0.0", features = ["tray-icon"] }
+tauri-plugin-shell = "2.0.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.41", features = ["full"] }
+trash = "5.2.0"
+blake3 = "1.5.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+

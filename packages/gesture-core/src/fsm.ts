@@ -249,3 +249,4 @@ export class GestureStateMachine {
     this.classifier.reset();
   }
 }
+
