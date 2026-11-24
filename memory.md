@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 3 (Air Workspace UI)** — Completed. Full Tauri 2 desktop shell scaffold in `apps/desktop`, fluid 60 fps aurora glass UI with oversized 96+ px cards, 4 screen edge zones, dynamic Pointer Ring with hold progress, 8-second visual Undo toast, and seamless mouse fallback with gesture FSM integration.
+- **Current Stage:** **Stage 4 (File Ops & Safety)** — Completed. Allow-list boundary validation engine, OS Recycle Bin deletion via `trash` crate, persistent Undo Journal, safe Tauri IPC commands, and `useFileOps` hook connecting the desktop UI.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 4 (File Ops & Safety)** — Rust systems backend implementation for allow-list validation, atomic copy/move operations, OS Recycle Bin integration via `trash` crate, and persistent SQLite undo journal.
+- **Next Stage:** **Stage 5 (LAN Transfer Engine & Pairing)** — Axum HTTP/WS local server, TLS 1.3 encryption, mDNS peer discovery, QR pairing handshakes, and chunked transfer engine.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (testbed built), `apps/desktop` (production bundle built)
+  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (testbed built), `apps/desktop` (production bundle built + Rust core safe file ops)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
