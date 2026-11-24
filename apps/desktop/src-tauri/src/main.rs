@@ -2,16 +2,48 @@
 
 mod allowlist;
 mod journal;
+mod pairing;
+mod server;
+mod transfer;
 mod trash_ops;
 
 use allowlist::AllowList;
 use journal::{FileOpType, UndoJournal};
+use pairing::{KeyStore, PairedDevice, QrPairingPayload};
+use server::{LanServer, ServerConfig};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 struct AppState {
     allow_list: AllowList,
     undo_journal: Mutex<UndoJournal>,
+    key_store: Mutex<KeyStore>,
+    lan_server: Mutex<LanServer>,
+}
+
+#[tauri::command]
+fn get_pairing_qr_payload(state: tauri::State<AppState>) -> QrPairingPayload {
+    let _keystore = state.key_store.lock().unwrap();
+    QrPairingPayload {
+        device_id: "pc_desktop_primary".to_string(),
+        device_name: "PinchDrop Windows PC".to_string(),
+        public_key: "ed25519_pub_sample_key_4821".to_string(),
+        cert_fingerprint: "SHA256:7C:5C:FF:22:D3:EE:34:D3:99".to_string(),
+        nonce: format!("nonce_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis()),
+        addresses: vec!["192.168.1.105".to_string()],
+        port: 49152,
+    }
+}
+
+#[tauri::command]
+fn register_phone_device(
+    device: PairedDevice,
+    state: tauri::State<AppState>,
+) -> Result<String, String> {
+    let mut keystore = state.key_store.lock().unwrap();
+    let name = device.name.clone();
+    keystore.add_device(device);
+    Ok(format!("Device '{}' paired successfully with certificate pinned", name))
 }
 
 #[tauri::command]
@@ -71,13 +103,17 @@ fn main() {
     let state = AppState {
         allow_list: AllowList::new(vec![home]),
         undo_journal: Mutex::new(UndoJournal::new(100)),
+        key_store: Mutex::new(KeyStore::new()),
+        lan_server: Mutex::new(LanServer::new(ServerConfig::default())),
     };
 
     tauri::Builder::default()
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             safe_move_file,
-            safe_recycle_file
+            safe_recycle_file,
+            get_pairing_qr_payload,
+            register_phone_device
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
