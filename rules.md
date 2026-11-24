@@ -56,9 +56,10 @@
 
 ## 4. Git & Branching Workflow
 
-- Branch naming: `stage-<n>-<slug>` (e.g. `stage-1-gesture-lab`).
+- **Granular Commit Policy:** Create a dedicated Git commit **immediately after creating or editing each individual file**. Never batch multiple unrelated files into a single commit.
+- Branch naming: `stage-<n>-<slug>` (e.g. `stage-1-gesture-lab`) or directly on `main` as instructed.
 - Commit style: **Conventional Commits** (`docs:`, `chore:`, `feat:`, `fix:`, `refactor:`, `test:`).
-- One commit per logical milestone. Do not push to remote unless explicitly requested.
+- Push all accumulated commits at the end of the stage milestone.
 
 ---
 
