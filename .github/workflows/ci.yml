@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Validate documentation links
+        run: pnpm docs:check
+
+  desktop-build-stub:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Desktop CI Stub (Stage 3+)
+        run: echo "Desktop Tauri build pipeline scheduled for Stage 3"
+
+  android-build-stub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Android CI Stub (Stage 6+)
+        run: echo "Android Kotlin build pipeline scheduled for Stage 6"

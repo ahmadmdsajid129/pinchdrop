@@ -1,0 +1,21 @@
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#7C5CFF','primaryTextColor':'#fff','lineColor':'#22D3EE','secondaryColor':'#141B34','tertiaryColor':'#1C2547','fontFamily':'Inter'}}}%%
+sequenceDiagram
+    autonumber
+    actor User
+    participant Phone as Android App
+    participant PC_UI as PC UI (WebView2)
+    participant PC_Rust as PC Rust Core
+
+    User->>Phone: Share -> PinchDrop (Google Photos)
+    Phone->>PC_Rust: hold.set (Thumbnail + Metadata only)
+    PC_Rust->>PC_UI: armed.state (30s countdown chip)
+    Note over PC_UI: PC enters ARMED state
+    User->>PC_UI: Air Pinch anywhere (G2)
+    PC_UI->>PC_UI: Thumbnail attaches to pointer
+    User->>PC_UI: Carry & Release over Folder Zone (G3)
+    PC_UI->>PC_Rust: trigger_pull(itemId, targetFolder)
+    PC_Rust->>Phone: pull(itemId, targetFolder)
+    Phone->>PC_Rust: HTTP Stream (Chunked + BLAKE3 hash)
+    PC_Rust->>PC_Rust: Verify Hash & Write to Allow-list Folder
+    PC_Rust->>PC_UI: pull.complete -> Show Undo Toast (5-8s)
+    PC_Rust->>Phone: hold.clear (Mark Delivered)

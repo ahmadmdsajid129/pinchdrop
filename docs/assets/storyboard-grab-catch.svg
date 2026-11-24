@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 320" width="100%" height="320">
+  <rect width="1000" height="320" rx="16" fill="#0B1020" stroke="#1C2547" stroke-width="2"/>
+  <text x="500" y="34" font-family="'Poppins', sans-serif" font-weight="700" font-size="18" fill="#E8ECFF" text-anchor="middle">Grab → Catch Interaction Storyboard</text>
+  
+  <!-- Panel 1: Phone Grab -->
+  <g transform="translate(25, 55)">
+    <rect width="225" height="235" rx="12" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+    <text x="112" y="28" font-family="'Poppins', sans-serif" font-size="13" font-weight="600" fill="#7C5CFF" text-anchor="middle">1. GRAB (Phone)</text>
+    <rect x="40" y="45" width="145" height="110" rx="8" fill="#1C2547" stroke="#22D3EE" stroke-width="1"/>
+    <text x="112" y="95" font-family="'Inter', sans-serif" font-size="11" fill="#E8ECFF" text-anchor="middle">Share → PinchDrop</text>
+    <text x="112" y="115" font-family="'Inter', sans-serif" font-size="9" fill="#8B94B8" text-anchor="middle">Google Photos / Files</text>
+    <text x="112" y="180" font-family="'Inter', sans-serif" font-size="11" fill="#34D399" text-anchor="middle" font-weight="600">Held ✓ — Catch on PC</text>
+    <text x="112" y="205" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Thumbnail sent via LAN</text>
+  </g>
+
+  <!-- Panel 2: PC Armed -->
+  <g transform="translate(265, 55)">
+    <rect width="225" height="235" rx="12" fill="#141B34" stroke="#7C5CFF" stroke-width="2"/>
+    <text x="112" y="28" font-family="'Poppins', sans-serif" font-size="13" font-weight="600" fill="#22D3EE" text-anchor="middle">2. ARMED (PC)</text>
+    <rect x="25" y="45" width="175" height="110" rx="8" fill="#1C2547" stroke="#7C5CFF" stroke-width="1.5"/>
+    <circle cx="112" cy="85" r="24" fill="#141B34" stroke="#FBBF24" stroke-width="2"/>
+    <text x="112" y="90" font-family="'JetBrains Mono', monospace" font-size="11" fill="#FBBF24" text-anchor="middle">30s</text>
+    <text x="112" y="132" font-family="'Inter', sans-serif" font-size="11" fill="#E8ECFF" text-anchor="middle">📷 1 Photo Ready</text>
+    <text x="112" y="180" font-family="'Inter', sans-serif" font-size="11" fill="#22D3EE" text-anchor="middle" font-weight="600">Quick Catch Active</text>
+    <text x="112" y="205" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Uncaught falls to Stage Tray</text>
+  </g>
+
+  <!-- Panel 3: Pinch Anywhere -->
+  <g transform="translate(505, 55)">
+    <rect width="225" height="235" rx="12" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+    <text x="112" y="28" font-family="'Poppins', sans-serif" font-size="13" font-weight="600" fill="#34D399" text-anchor="middle">3. CATCH (Air Pinch)</text>
+    <rect x="25" y="45" width="175" height="110" rx="8" fill="#1C2547" stroke="#34D399" stroke-width="1"/>
+    <circle cx="112" cy="85" r="26" fill="#141B34" stroke="#34D399" stroke-width="2"/>
+    <text x="112" y="92" font-family="'Inter', sans-serif" font-size="20" text-anchor="middle">🤏</text>
+    <text x="112" y="132" font-family="'Inter', sans-serif" font-size="11" fill="#34D399" text-anchor="middle">Item Attaches to Hand</text>
+    <text x="112" y="180" font-family="'Inter', sans-serif" font-size="11" fill="#E8ECFF" text-anchor="middle" font-weight="600">Pinch Anywhere in Box</text>
+    <text x="112" y="205" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Zero phone touch needed</text>
+  </g>
+
+  <!-- Panel 4: Drop over Zone -->
+  <g transform="translate(745, 55)">
+    <rect width="225" height="235" rx="12" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+    <text x="112" y="28" font-family="'Poppins', sans-serif" font-size="13" font-weight="600" fill="#FBBF24" text-anchor="middle">4. DROP (Zone Save)</text>
+    <rect x="25" y="45" width="175" height="110" rx="8" fill="#1C2547" stroke="#FBBF24" stroke-width="1.5"/>
+    <text x="112" y="80" font-family="'Inter', sans-serif" font-size="12" fill="#E8ECFF" text-anchor="middle">📁 Projects / Inbox</text>
+    <text x="112" y="105" font-family="'Inter', sans-serif" font-size="11" fill="#34D399" text-anchor="middle">Open Hand → Saved</text>
+    <text x="112" y="132" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">BLAKE3 chunk verified</text>
+    <text x="112" y="180" font-family="'Inter', sans-serif" font-size="11" fill="#34D399" text-anchor="middle" font-weight="600">Saved + Undo Toast (8s)</text>
+    <text x="112" y="205" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Non-destructive &amp; Safe</text>
+  </g>
+</svg>

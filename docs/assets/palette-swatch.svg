@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 220" width="100%" height="220">
+  <rect width="960" height="220" rx="12" fill="#0B1020" stroke="#1C2547" stroke-width="2"/>
+  <text x="24" y="36" font-family="'Poppins', sans-serif" font-weight="600" font-size="18" fill="#E8ECFF">PinchDrop Design Tokens · Aurora Glass Palette</text>
+  <g transform="translate(24, 56)">
+    <g transform="translate(0, 0)">
+        <rect width="80" height="80" rx="12" fill="#0B1020" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--bg</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#0B1020</text>
+      </g>
+    <g transform="translate(90, 0)">
+        <rect width="80" height="80" rx="12" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--surface</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#141B34</text>
+      </g>
+    <g transform="translate(180, 0)">
+        <rect width="80" height="80" rx="12" fill="#1C2547" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--surface2</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#1C2547</text>
+      </g>
+    <g transform="translate(270, 0)">
+        <rect width="80" height="80" rx="12" fill="#7C5CFF" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--primary</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#7C5CFF</text>
+      </g>
+    <g transform="translate(360, 0)">
+        <rect width="80" height="80" rx="12" fill="#22D3EE" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--accent</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#22D3EE</text>
+      </g>
+    <g transform="translate(450, 0)">
+        <rect width="80" height="80" rx="12" fill="#34D399" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--success</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#34D399</text>
+      </g>
+    <g transform="translate(540, 0)">
+        <rect width="80" height="80" rx="12" fill="#FBBF24" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--warn</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#FBBF24</text>
+      </g>
+    <g transform="translate(630, 0)">
+        <rect width="80" height="80" rx="12" fill="#FB7185" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--danger</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#FB7185</text>
+      </g>
+    <g transform="translate(720, 0)">
+        <rect width="80" height="80" rx="12" fill="#E8ECFF" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--text</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#E8ECFF</text>
+      </g>
+    <g transform="translate(810, 0)">
+        <rect width="80" height="80" rx="12" fill="#8B94B8" stroke="#1C2547" stroke-width="1.5"/>
+        <text x="40" y="104" font-family="'Inter', sans-serif" font-size="11" font-weight="600" fill="#E8ECFF" text-anchor="middle">--muted</text>
+        <text x="40" y="122" font-family="'JetBrains Mono', monospace" font-size="10" fill="#8B94B8" text-anchor="middle">#8B94B8</text>
+      </g>
+  </g>
+</svg>

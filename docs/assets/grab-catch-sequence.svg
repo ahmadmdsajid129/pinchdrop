@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" width="100%" height="320">
+  <rect width="960" height="320" rx="16" fill="#0B1020" stroke="#1C2547" stroke-width="2"/>
+  <text x="480" y="32" font-family="'Poppins', sans-serif" font-weight="700" font-size="18" fill="#E8ECFF" text-anchor="middle">Grab → Catch Protocol Sequence</text>
+
+  <!-- Lifelines -->
+  <g transform="translate(80, 50)">
+    <text x="60" y="20" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#7C5CFF" text-anchor="middle">User</text>
+    <line x1="60" y1="30" x2="60" y2="240" stroke="#1C2547" stroke-width="2"/>
+
+    <text x="280" y="20" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#22D3EE" text-anchor="middle">Android App</text>
+    <line x1="280" y1="30" x2="280" y2="240" stroke="#1C2547" stroke-width="2"/>
+
+    <text x="520" y="20" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#34D399" text-anchor="middle">PC UI (WebView2)</text>
+    <line x1="520" y1="30" x2="520" y2="240" stroke="#1C2547" stroke-width="2"/>
+
+    <text x="740" y="20" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#FBBF24" text-anchor="middle">PC Rust Core</text>
+    <line x1="740" y1="30" x2="740" y2="240" stroke="#1C2547" stroke-width="2"/>
+
+    <!-- Messages -->
+    <path d="M60,60 L280,60" stroke="#22D3EE" stroke-width="2"/>
+    <text x="170" y="55" font-family="'Inter', sans-serif" font-size="10" fill="#E8ECFF" text-anchor="middle">1. Share → PinchDrop</text>
+
+    <path d="M280,90 L740,90" stroke="#7C5CFF" stroke-width="2"/>
+    <text x="510" y="85" font-family="'Inter', sans-serif" font-size="10" fill="#7C5CFF" text-anchor="middle">2. hold.set (thumbnail + metadata)</text>
+
+    <path d="M740,115 L520,115" stroke="#FBBF24" stroke-width="2"/>
+    <text x="630" y="110" font-family="'Inter', sans-serif" font-size="10" fill="#FBBF24" text-anchor="middle">3. armed.state (30s chip)</text>
+
+    <path d="M60,145 L520,145" stroke="#34D399" stroke-width="2"/>
+    <text x="290" y="140" font-family="'Inter', sans-serif" font-size="10" fill="#34D399" text-anchor="middle">4. Air Pinch (G2) &amp; Drop (G3)</text>
+
+    <path d="M520,175 L740,175" stroke="#22D3EE" stroke-width="2"/>
+    <text x="630" y="170" font-family="'Inter', sans-serif" font-size="10" fill="#22D3EE" text-anchor="middle">5. trigger_pull(targetFolder)</text>
+
+    <path d="M740,205 L280,205" stroke="#7C5CFF" stroke-width="2"/>
+    <text x="510" y="200" font-family="'Inter', sans-serif" font-size="10" fill="#7C5CFF" text-anchor="middle">6. pull() &amp; HTTP Stream (BLAKE3 hash)</text>
+
+    <path d="M740,230 L520,230" stroke="#34D399" stroke-width="2"/>
+    <text x="630" y="225" font-family="'Inter', sans-serif" font-size="10" fill="#34D399" text-anchor="middle">7. pull.complete -&gt; Undo Toast (8s)</text>
+  </g>
+</svg>

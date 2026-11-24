@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 240" width="100%" height="240">
+  <rect width="960" height="240" rx="12" fill="#0B1020" stroke="#1C2547" stroke-width="2"/>
+  <text x="24" y="34" font-family="'Poppins', sans-serif" font-weight="600" font-size="18" fill="#22D3EE">Canonical Gesture Language (G1–G6)</text>
+  <g transform="translate(30, 56)">
+    <!-- G1 Point / Hover -->
+    <g transform="translate(0, 0)">
+      <rect width="136" height="150" rx="10" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+      <circle cx="68" cy="50" r="28" fill="#1C2547" />
+      <path d="M68,30 L68,60 M68,30 L60,40 M68,30 L76,40" stroke="#7C5CFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <text x="68" y="102" font-family="'Inter', sans-serif" font-size="13" font-weight="600" fill="#E8ECFF" text-anchor="middle">G1 Point/Hover</text>
+      <text x="68" y="122" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Index cursor</text>
+    </g>
+    <!-- G2 Pinch-Grab -->
+    <g transform="translate(152, 0)">
+      <rect width="136" height="150" rx="10" fill="#141B34" stroke="#7C5CFF" stroke-width="2"/>
+      <circle cx="68" cy="50" r="28" fill="#1C2547" />
+      <path d="M52,50 C58,40 78,40 84,50" stroke="#22D3EE" stroke-width="3" fill="none"/>
+      <circle cx="56" cy="50" r="4" fill="#22D3EE"/>
+      <circle cx="80" cy="50" r="4" fill="#7C5CFF"/>
+      <text x="68" y="102" font-family="'Inter', sans-serif" font-size="13" font-weight="600" fill="#E8ECFF" text-anchor="middle">G2 Pinch-Grab</text>
+      <text x="68" y="122" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Thumb+Index pick</text>
+    </g>
+    <!-- G3 Release-Drop -->
+    <g transform="translate(304, 0)">
+      <rect width="136" height="150" rx="10" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+      <circle cx="68" cy="50" r="28" fill="#1C2547" />
+      <path d="M50,42 L56,58 M62,34 L65,58 M74,34 L71,58 M86,42 L80,58" stroke="#34D399" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="68" y="102" font-family="'Inter', sans-serif" font-size="13" font-weight="600" fill="#E8ECFF" text-anchor="middle">G3 Release-Drop</text>
+      <text x="68" y="122" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Open fingers drop</text>
+    </g>
+    <!-- G4 Peace-Hold -->
+    <g transform="translate(456, 0)">
+      <rect width="136" height="150" rx="10" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+      <circle cx="68" cy="50" r="28" fill="#1C2547" />
+      <path d="M60,65 L60,35 M76,65 L76,35" stroke="#FBBF24" stroke-width="3" stroke-linecap="round"/>
+      <text x="68" y="102" font-family="'Inter', sans-serif" font-size="13" font-weight="600" fill="#E8ECFF" text-anchor="middle">G4 Peace-Hold</text>
+      <text x="68" y="122" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Rename (600ms)</text>
+    </g>
+    <!-- G5 Fist-Hold -->
+    <g transform="translate(608, 0)">
+      <rect width="136" height="150" rx="10" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+      <circle cx="68" cy="50" r="28" fill="#1C2547" />
+      <rect x="52" y="38" width="32" height="26" rx="6" fill="#FB7185" opacity="0.8"/>
+      <text x="68" y="102" font-family="'Inter', sans-serif" font-size="13" font-weight="600" fill="#E8ECFF" text-anchor="middle">G5 Fist-Hold</text>
+      <text x="68" y="122" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Lock/Sleep (800ms)</text>
+    </g>
+    <!-- G6 Wave-Summon -->
+    <g transform="translate(760, 0)">
+      <rect width="136" height="150" rx="10" fill="#141B34" stroke="#1C2547" stroke-width="1.5"/>
+      <circle cx="68" cy="50" r="28" fill="#1C2547" />
+      <path d="M50,50 C58,36 68,64 76,50 M58,58 C64,48 72,66 82,56" stroke="#22D3EE" stroke-width="2.5" fill="none"/>
+      <text x="68" y="102" font-family="'Inter', sans-serif" font-size="13" font-weight="600" fill="#E8ECFF" text-anchor="middle">G6 Wave-Summon</text>
+      <text x="68" y="122" font-family="'Inter', sans-serif" font-size="10" fill="#8B94B8" text-anchor="middle">Show/Hide UI (x2)</text>
+    </g>
+  </g>
+</svg>

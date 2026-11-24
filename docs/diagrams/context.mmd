@@ -1,0 +1,26 @@
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#7C5CFF','primaryTextColor':'#fff','lineColor':'#22D3EE','secondaryColor':'#141B34','tertiaryColor':'#1C2547','fontFamily':'Inter'}}}%%
+flowchart LR
+    subgraph PC["Windows PC (Tauri 2)"]
+        UI["WebView2 UI (React + TS)"]
+        Vision["MediaPipe HandLandmarker"]
+        Core["gesture-core (FSM + Filter)"]
+        Rust["Rust Core (Axum + Tokio)"]
+        FileOps["Safe File Ops (trash crate)"]
+        UI --> Vision --> Core --> UI
+        UI <--> Rust
+        Rust --> FileOps
+    end
+
+    subgraph Phone["Android Phone (Kotlin + Compose)"]
+        AndroidUI["Compose UI"]
+        ShareTarget["Share Sheet Target"]
+        Tiles["Quick Settings Tiles"]
+        Tray["Stage Tray & Sync"]
+        Worker["WorkManager Transfer"]
+        AndroidUI --> Tray
+        ShareTarget --> Tray
+        Tiles --> Tray
+        Tray --> Worker
+    end
+
+    Rust <--"TLS 1.3 / WebSocket (Control) & HTTP (Chunked Range)"--> Worker

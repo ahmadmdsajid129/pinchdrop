@@ -1,0 +1,21 @@
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#7C5CFF','primaryTextColor':'#fff','lineColor':'#22D3EE','secondaryColor':'#141B34','tertiaryColor':'#1C2547','fontFamily':'Inter'}}}%%
+stateDiagram-v2
+    [*] --> IDLE
+    LOCKED --> IDLE: Fist-Hold 800ms
+    IDLE --> LOCKED: Fist-Hold 800ms
+    IDLE --> HOVER: Hand detected & smoothed
+    HOVER --> IDLE: Hand lost
+    HOVER --> GRABBING: Pinch ratio <= 0.30 (120ms)
+    GRABBING --> HOVER: Release over canvas
+    GRABBING --> DROP: Release over Target Zone
+    DROP --> HOVER: Op complete (Undo Toast 8s)
+    GRABBING --> ARM_DELETE: Over Trash Zone (600ms hold)
+    ARM_DELETE --> DROP_TRASH: Release over Trash
+    DROP_TRASH --> HOVER: Recycled (+ Undo Toast)
+    HOVER --> RENAME_ARMED: Peace-Hold 600ms
+    RENAME_ARMED --> RENAMING: Virtual Keyboard / On-screen
+    RENAMING --> HOVER: Enter / Dismiss
+    IDLE --> ARMED: Phone Grabbed Item (30s)
+    HOVER --> ARMED: Phone Grabbed Item (30s)
+    ARMED --> GRABBING: Pinch anywhere
+    ARMED --> IDLE: 30s Timeout (Item -> Stage Tray)

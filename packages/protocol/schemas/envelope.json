@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MessageEnvelope",
+  "type": "object",
+  "required": ["v", "id", "type", "ts", "payload"],
+  "properties": {
+    "v": { "type": "integer", "enum": [1] },
+    "id": { "type": "string" },
+    "type": { "type": "string" },
+    "ts": { "type": "integer" },
+    "payload": { "type": "object" }
+  }
+}

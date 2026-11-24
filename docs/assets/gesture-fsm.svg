@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="100%" height="300">
+  <rect width="960" height="300" rx="16" fill="#0B1020" stroke="#1C2547" stroke-width="2"/>
+  <text x="480" y="30" font-family="'Poppins', sans-serif" font-weight="700" font-size="18" fill="#E8ECFF" text-anchor="middle">Gesture Finite State Machine (with ARMED State)</text>
+
+  <!-- States -->
+  <g transform="translate(40, 60)">
+    <!-- LOCKED -->
+    <rect x="0" y="80" width="100" height="45" rx="8" fill="#141B34" stroke="#FB7185" stroke-width="1.5"/>
+    <text x="50" y="108" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#FB7185" text-anchor="middle">LOCKED</text>
+
+    <!-- IDLE -->
+    <rect x="150" y="80" width="110" height="45" rx="8" fill="#141B34" stroke="#8B94B8" stroke-width="1.5"/>
+    <text x="205" y="108" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#E8ECFF" text-anchor="middle">IDLE</text>
+
+    <!-- HOVER -->
+    <rect x="310" y="80" width="110" height="45" rx="8" fill="#141B34" stroke="#7C5CFF" stroke-width="1.5"/>
+    <text x="365" y="108" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#7C5CFF" text-anchor="middle">HOVER</text>
+
+    <!-- GRABBING -->
+    <rect x="470" y="80" width="120" height="45" rx="8" fill="#141B34" stroke="#22D3EE" stroke-width="2"/>
+    <text x="530" y="108" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#22D3EE" text-anchor="middle">GRABBING</text>
+
+    <!-- DROP / DROP_TRASH -->
+    <rect x="640" y="40" width="130" height="45" rx="8" fill="#141B34" stroke="#34D399" stroke-width="1.5"/>
+    <text x="705" y="68" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#34D399" text-anchor="middle">DROP (Zone)</text>
+
+    <rect x="640" y="120" width="130" height="45" rx="8" fill="#141B34" stroke="#FB7185" stroke-width="1.5"/>
+    <text x="705" y="148" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#FB7185" text-anchor="middle">ARM_DELETE</text>
+
+    <!-- ARMED (Phone Grabbed) -->
+    <rect x="230" y="190" width="200" height="45" rx="8" fill="#141B34" stroke="#FBBF24" stroke-width="2"/>
+    <text x="330" y="218" font-family="'Inter', sans-serif" font-size="12" font-weight="600" fill="#FBBF24" text-anchor="middle">ARMED (Phone 30s)</text>
+
+    <!-- Connectors -->
+    <path d="M100,102 L150,102" stroke="#8B94B8" stroke-width="2" marker-end="url(#arr)"/>
+    <path d="M260,102 L310,102" stroke="#7C5CFF" stroke-width="2"/>
+    <path d="M420,102 L470,102" stroke="#22D3EE" stroke-width="2"/>
+    <path d="M590,95 L640,65" stroke="#34D399" stroke-width="2"/>
+    <path d="M590,110 L640,140" stroke="#FB7185" stroke-width="2"/>
+    <path d="M205,125 L205,212 L230,212" stroke="#FBBF24" stroke-width="2" stroke-dasharray="4,4"/>
+    <path d="M430,212 L530,212 L530,125" stroke="#22D3EE" stroke-width="2" stroke-dasharray="4,4"/>
+  </g>
+</svg>

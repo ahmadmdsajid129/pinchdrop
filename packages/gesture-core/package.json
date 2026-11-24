@@ -1,0 +1,16 @@
+{
+  "name": "@pinchdrop/gesture-core",
+  "version": "0.1.0",
+  "description": "Pure deterministic gesture smoothing, landmark classification, and finite state machine for PinchDrop",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}
