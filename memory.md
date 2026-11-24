@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 5 (LAN Server, Pairing & Transfer Engine)** — Completed. Ed25519 pairing payload generator, pinned certificate KeyStore, BLAKE3 chunked transfer engine, LanServer configuration, mDNS discovery stub, and `usePairing` desktop hook.
+- **Current Stage:** **Stage 6 (Android Companion App v0)** — Completed. Kotlin + Jetpack Compose companion app scaffold, Gradle build setup (BOM 2024.10.01), Android 15 `dataSync` compliant `FileDownloadWorker` via WorkManager, `PairingManager` with certificate pinning, and aurora glass Material3 home screen.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 6 (Android App v0)** — Kotlin + Jetpack Compose companion app scaffold, QR camera scanner via ML Kit, local pairing handshake, and WorkManager download engine.
+- **Next Stage:** **Stage 7 (Grab Sources, Stage Tray & Quick Catch)** — End-to-end integration: Android Share Sheet target (`ACTION_SEND`), Quick Settings tiles, in-app capture, PC ARMED 30s Quick Catch, and Stage Tray sync.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops & LAN pairing engine)
+  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (testbed built), `apps/desktop` (production bundle built + Rust core safe file ops & LAN server), `apps/android` (Kotlin/Compose companion app)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
