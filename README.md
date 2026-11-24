@@ -123,7 +123,7 @@ PinchDrop is styled in a futuristic, calm, dark-first **aurora glass** theme:
 | **S1** | **Gesture Lab (MediaPipe + One-Euro + HUD)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S2** | **Gesture Core (Deterministic FSM + Replay)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S3** | **Air Workspace UI (Tauri 2 + React + Cards)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
-| **S4** | **File Ops & Safety Engine (Rust + Trash + Undo)** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
+| **S4** | **File Ops & Safety Engine (Rust + Trash + Undo)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S5** | **LAN Server & Pairing (TLS 1.3 + mDNS)** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
 | **S6** | **Android App v0 (Compose + MediaStore)** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
 | **S7** | **Grab → Catch & Stage Tray (End-to-End)** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
