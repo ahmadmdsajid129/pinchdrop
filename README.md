@@ -15,9 +15,9 @@
 
 ## 🟣 Product Overview
 
-File transfer between phone and PC is already commoditised (Google Quick Share for Windows, Microsoft Phone Link, LocalSend). **Our value is the interaction model**: a purpose-built spatial workspace with oversized targets, forgiving gestures, safe undoable operations, and a phone Stage Tray. It feels like moving physical objects across your desk.
+File transfer between phone and PC is already commoditised by tools like Google Quick Share for Windows, Microsoft Phone Link, and LocalSend. **Our value is the physical interaction model**: a purpose-built spatial workspace with oversized targets, forgiving gestures, safe undoable operations, and a phone Stage Tray. It feels like moving physical objects across your desk.
 
-- **Local-first & Private:** Zero cloud servers, no user accounts required. Camera frames are processed strictly in volatile memory and never recorded or transmitted.
+- **Local-first & Private:** Zero cloud servers, no user accounts required. Camera frames are processed strictly in volatile GPU memory and never recorded or transmitted.
 - **Tagline (working):** *"Move things with your hands."*
 - **The Core Grab → Catch Model:** The webcam sees your hands and your PC screen. By bridging via a one-tap phone Share Sheet (or Quick Settings tile), you trigger **Quick Catch (30 s)** on the PC, pinch anywhere in mid-air to grab the item's floating card, and drop it directly onto any folder or action zone.
 
@@ -25,7 +25,97 @@ File transfer between phone and PC is already commoditised (Google Quick Share f
 
 ---
 
-## 🚀 Stage Progress
+## ✋ How It Works (The Core Interaction)
+
+### 1. Grab on Phone (One Tap)
+In Google Photos, Files, Chrome, or any Android app, tap **Share → PinchDrop** (or tap the Quick Settings tile *"Grab latest photo"*). The phone immediately holds the item and sends a lightweight thumbnail and metadata over local Wi-Fi.
+
+### 2. Armed on PC (Automatic)
+The paired Windows PC instantly displays a floating pointer chip (e.g. `📷 1 Photo Ready`) and enters the **ARMED state for 30 seconds**.
+
+### 3. Catch in Mid-Air (Gesture)
+**Pinch anywhere** in front of your laptop webcam. The item's thumbnail snaps to your hand cursor in the spatial workspace.
+
+### 4. Drop on Zone or Folder
+Move your hand over any folder, the PC desktop, or an edge zone (e.g. *Open in Browser*, *Copy to Clipboard*, or *Send to Phone*) and **open your hand**. The file streams directly over encrypted local LAN and settles in place with an **8-second visual Undo toast**.
+
+![](docs/assets/storyboard-grab-catch.svg)
+
+---
+
+## 📋 Canonical Sharing Matrix
+
+| Content | 📱→💻 Grab Source (Phone) | 📱→💻 Land Target (PC) | 💻→📱 Pinch Source (PC) | 💻→📱 Land Target (Phone) |
+|---|---|---|---|---|
+| **Photos** | Share → PinchDrop (Google Photos etc.) · tile "Grab latest photo" · Peek | Folder · Open in default app · PC clipboard (paste anywhere) · Inbox (Throw) | Image files | Gallery (MediaStore Pictures) |
+| **Videos / movies** | Share → PinchDrop · Peek | Folder · Open · Inbox | Video files (multi-GB OK) | Movies folder (MediaStore) |
+| **Screenshots** | Tile "Grab latest screenshot" · Share | Folder · PC clipboard | Region/screen capture card (v1.1) | Gallery |
+| **Documents, PDFs, any file** | Share → PinchDrop (from Files, Drive, WhatsApp…) | Folder · Open · Inbox | Any file | Downloads (MediaStore/SAF) · **Open on phone** zone launches it |
+| **Folders** | Pick folder in app (v1.1) | Folder | Folder (sent as a stream/zip) | Downloads/PinchDrop |
+| **Links / URLs** | Share → PinchDrop (from Chrome, YouTube, Maps…) | **Open in PC browser** zone · Clipboard · Notes file | Link card (from clipboard/browser extension, v1.1) | **Open on phone** zone (opens in phone browser) |
+| **Text / notes / snippets** | Share → PinchDrop · tile "Grab clipboard" | Clipboard · `.txt` in folder | Text card / selection | Phone clipboard · note file |
+| **Scanned document** | In-app ML Kit scanner → PDF straight to PC | Folder · Open | — | — |
+| **Camera capture / voice memo** | In-app capture straight to PC tray | Folder · Open | — | — |
+| **Many items at once** | Multi-select share (`ACTION_SEND_MULTIPLE`) | Two-hand pinch = take all | Lasso (two-hand, v1.1) | Same zones |
+
+---
+
+## ✋ Canonical Gesture Language (G1–G6)
+
+![](docs/assets/gesture-icons.svg)
+
+| ID | Gesture | Hand Pose | Meaning | Safety Guard |
+|---|---|---|---|---|
+| **G1** | **Point / Hover** | Open hand, index leading | Moves smoothed cursor over cards | Active only in interaction box (central 65% of camera frame) |
+| **G2** | **Pinch-Grab** | Thumb tip(4)–Index tip(8) close | Picks up item or catches ARMED item | Scale-invariant ratio `≤ 0.30` + 120 ms dwell |
+| **G3** | **Release-Drop** | Fingers open | Drops item into folder or zone | Debounce; exit ratio `≥ 0.45` |
+| **G3b** | **Throw (Flick)** | Pinch-hold, flick toward edge | Instantly sends to default Phone/Inbox | Velocity `≥ 0.6` screen-widths/s + 8s Undo Toast |
+| **G4** | **Peace-Hold** | Index + Middle extended (600ms) | Triggers Rename virtual keyboard | Radial countdown ring; cancel by dropping hand |
+| **G5** | **Fist-Hold (Lock)**| Closed fist held for 800ms | Puts tracking to sleep (0% camera CPU) | Distinct from pinch; repeat 800ms to wake |
+| **G6** | **Wave-Summon** | Open palm side-to-side (2x in 1s) | Shows or hides the Air Workspace | Frequency filter prevents false triggers |
+
+---
+
+## 🛠️ Architecture & Technology Stack
+
+![](docs/assets/context.svg)
+
+![](docs/assets/tech-stack.svg)
+
+| Layer | Technology | Role & Purpose |
+|---|---|---|
+| **Desktop Shell** | **Tauri 2 (Rust)** | Lightweight native Windows container (<60 MB installer, native WebView2 host). |
+| **Desktop UI** | **React 18 + TypeScript + Vite** | Fluid 60 fps aurora glass UI with **Tailwind CSS**, **Framer Motion**, and **Zustand**. |
+| **Computer Vision** | **@mediapipe/tasks-vision** | In-memory HandLandmarker (GPU delegate, VIDEO mode, locally vendored, zero CDN). |
+| **Gesture Core** | **Pure TypeScript Package** | Deterministic One-Euro filter, landmark classifiers, and XState state machine. |
+| **Rust Systems Core** | **Tokio, Axum, Rustls** | Local TLS 1.3 server, mDNS discovery, and high-performance chunked file streaming. |
+| **File Safety** | **`trash` crate + Allow-List** | Deletions route strictly to OS Recycle Bin; allow-list prevents path traversal. |
+| **Cryptographic Hash**| **BLAKE3** | Multi-threaded cryptographic chunk hashing for resumable transfers. |
+| **Android App** | **Kotlin + Jetpack Compose** | Material 3 mobile companion, Share Target, Quick Settings tiles, and WorkManager. |
+
+---
+
+## 🎨 Design System: Aurora Glass
+
+![](docs/assets/palette-swatch.svg)
+
+PinchDrop is styled in a futuristic, calm, dark-first **aurora glass** theme:
+- Deep space background (`--bg: #0B1020`) with semi-transparent frosted cards (`--surface: #141B34`).
+- Vibrant aurora accents: Purple (`--primary: #7C5CFF`) and Cyan (`--accent: #22D3EE`).
+- Large, forgiving targets: minimum interactive target dimension is **96 px** with magnetic attraction within 48 px.
+
+---
+
+## 🔒 Security & Privacy Guarantees
+
+1. **Zero Camera Recording:** Video frames are processed strictly in volatile GPU memory and immediately discarded. No video, images, or landmark coordinates are ever written to disk or sent across the network.
+2. **Peer-to-Peer Encryption:** PC and phone pair via mutual QR code scanning, pinning self-signed Ed25519 certificates over local **TLS 1.3**.
+3. **Safe File Operations:** Permanent file deletion via gesture is prohibited. All deletions route through the Windows Recycle Bin backed by an **8-second visual Undo toast** and persistent undo journal.
+4. **Allow-List Protection:** The app only touches directories explicitly approved by the user, blocking path traversal (`..`) attempts.
+
+---
+
+## 🚀 Development Roadmap (S0–S13)
 
 | Stage | Focus Area | Status | Progress |
 |---|---|---|---|
@@ -41,28 +131,7 @@ File transfer between phone and PC is already commoditised (Google Quick Share f
 
 ---
 
-## 🛠️ Technology Stack
-
-![](docs/assets/tech-stack.svg)
-
-- **Desktop Shell:** Tauri 2 (Rust) + WebView2
-- **Desktop UI:** React 18, TypeScript, Vite, Tailwind CSS, Motion (Framer Motion), Zustand, XState
-- **Computer Vision:** `@mediapipe/tasks-vision` HandLandmarker (GPU delegate, VIDEO mode, locally vendored)
-- **Gesture Core:** Pure deterministic TypeScript package (`@pinchdrop/gesture-core`), One-Euro smoothing filter
-- **Rust Core:** `tokio`, `axum`, `rustls`, `tokio-tungstenite`, `mdns-sd`, `trash`, `blake3`, `rusqlite`
-- **Android App:** Kotlin, Jetpack Compose (Material 3), Coroutines/Flow, Hilt, Room, DataStore, Ktor Client (OkHttp engine), WorkManager
-
----
-
-## 🚫 What PinchDrop is NOT
-
-- **NOT a generic webcam mouse emulator:** We do not attempt fine-grained 1-pixel Windows desktop cursor control. Small Explorer targets cause extreme hand strain. We provide a tailored spatial workspace with 96+ px interactive targets.
-- **NOT a cloud storage service:** No servers, no accounts, no subscriptions required for file transfer. Transfers run strictly over peer-to-peer encrypted local Wi-Fi.
-- **NOT an AI camera spy:** Hand landmarks are extracted in memory. Raw video frames are discarded instantly and never touch a hard drive or network interface.
-
----
-
-## 🧭 Repository Map & Documentation Index
+## 🧭 Repository Documentation Index
 
 | Document | Primary Focus & Ownership |
 |---|---|
@@ -77,17 +146,18 @@ File transfer between phone and PC is already commoditised (Google Quick Share f
 | [docs/protocol.md](docs/protocol.md) | WebSocket protocol envelopes, HTTP Range chunking, and resume algorithms. |
 | [docs/security-privacy.md](docs/security-privacy.md) | Threat model, zero-storage camera privacy guarantee, and mutual TLS pairing. |
 | [docs/monetization.md](docs/monetization.md) | Free core tier, Pro feature hypotheses, unit economics, and launch plan. |
+| [docs/services.md](docs/services.md) | Guide to external credentials, Windows code signing, Play Store, and secrets. |
 | [docs/PinchDrop_Overview.pdf](docs/PinchDrop_Overview.pdf) | Offline-generated comprehensive PDF executive overview. |
 
 ---
 
-## ⚡ Quick-Start (Stage 0 Workspace)
+## ⚡ Developer Quick-Start
 
 ```bash
 # Verify workspace dependencies and link packages
 pnpm install
 
-# Run gesture-core smoke test
+# Run gesture-core unit and smoke tests
 pnpm test
 
 # Generate offline documentation assets and diagrams

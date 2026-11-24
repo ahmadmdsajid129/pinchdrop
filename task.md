@@ -49,6 +49,8 @@
 - [x] `T-0.7` Canonical ADRs (`docs/adr/0001` through `0007`).
 - [x] `T-0.8` Internal markdown reference validator (`tools/check-links.mjs`).
 - [x] `T-0.9` Initial `@pinchdrop/gesture-core` package with passing smoke test.
+- [x] `T-0.10` External services & developer credentials documentation (`docs/services.md`).
+- [x] `T-0.11` Stage 0 fixes and verification report (`docs/reports/stage-0-fixes.md`).
 
 ### Stage 1: Gesture Lab (⚪ Pending)
 - [ ] `T-1.1` Scaffold standalone Vite + React page in `tools/gesture-lab`.
