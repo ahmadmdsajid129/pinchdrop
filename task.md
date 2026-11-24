@@ -25,7 +25,7 @@
 | **S2** | **Gesture Core** | Pure TS deterministic FSM + replay test harness + metrics | 2 wks | 🟢 Done |
 | **S3** | **Air Workspace UI** | Tauri 2 shell + oversized cards + zones + pointer ring | 3 wks | 🟢 Done |
 | **S4** | **File Ops & Safety** | Rust allow-list, trash crate integration, undo journal | 2 wks | 🟢 Done |
-| **S5** | **LAN Transfer Engine** | Axum HTTP/WS server, TLS 1.3, pairing, 5GB soak test | 2–3 wks | ⚪ Pending |
+| **S5** | **LAN Transfer Engine** | Axum HTTP/WS server, TLS 1.3, pairing, 5GB soak test | 2–3 wks | 🟢 Done |
 | **S6** | **Android App v0** | Compose app, QR pairing, MediaStore download | 3 wks | ⚪ Pending |
 | **S7** | **Grab → Catch & Stage Tray** | Share target, tiles, in-app capture, Peek, ARMED state | 3 wks | ⚪ Pending |
 | **S8** | **Air Clipboard** | Bi-directional clipboard, Open on device, Throw gesture | 1 wk | ⚪ Pending |
