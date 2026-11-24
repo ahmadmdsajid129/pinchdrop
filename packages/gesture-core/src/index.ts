@@ -3,6 +3,8 @@
  * Single Source of Truth for Gesture Constants and Types
  */
 
+export * from './filter.js';
+
 export const GESTURE_CONFIG = {
   VERSION: '0.1.0',
   APP_NAME: 'PinchDrop',
@@ -39,4 +41,32 @@ export type GestureState =
 
 export function getGestureConfig() {
   return GESTURE_CONFIG;
+}
+
+/**
+ * Calculates scale-invariant pinch ratio
+ * ratio = dist(ThumbTip_4, IndexTip_8) / dist(Wrist_0, MiddleMCP_9)
+ */
+export function calculatePinchRatio(landmarks: { x: number; y: number; z: number }[]): number {
+  if (landmarks.length < 21) return 1.0;
+
+  const thumbTip = landmarks[4];
+  const indexTip = landmarks[8];
+  const wrist = landmarks[0];
+  const middleMcp = landmarks[9];
+
+  const pinchDist = Math.hypot(
+    thumbTip.x - indexTip.x,
+    thumbTip.y - indexTip.y,
+    thumbTip.z - indexTip.z
+  );
+
+  const palmScale = Math.hypot(
+    wrist.x - middleMcp.x,
+    wrist.y - middleMcp.y,
+    wrist.z - middleMcp.z
+  );
+
+  if (palmScale === 0) return 1.0;
+  return pinchDist / palmScale;
 }

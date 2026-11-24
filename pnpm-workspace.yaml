@@ -1,5 +1,6 @@
 packages:
   - 'packages/*'
   - 'apps/*'
+  - 'tools/gesture-lab'
 allowBuilds:
   esbuild: true

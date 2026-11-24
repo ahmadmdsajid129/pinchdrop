@@ -21,7 +21,7 @@
 | Stage | Name | Target Outcome | Estimate | Status |
 |---|---|---|---|---|
 | **S0** | **Genesis** | Skeleton, documentation, asset pipeline, PDF overview | 1–2 days | 🟢 Done |
-| **S1** | **Gesture Lab** | Standalone webcam page + One-Euro filter + HUD + Replay | 1–2 wks | ⚪ Pending |
+| **S1** | **Gesture Lab** | Standalone webcam page + One-Euro filter + HUD + Replay | 1–2 wks | 🟢 Done |
 | **S2** | **Gesture Core** | Pure TS deterministic FSM + replay test harness + metrics | 2 wks | ⚪ Pending |
 | **S3** | **Air Workspace UI** | Tauri 2 shell + oversized cards + zones + pointer ring | 3 wks | ⚪ Pending |
 | **S4** | **File Ops & Safety** | Rust allow-list, trash crate integration, undo journal | 2 wks | ⚪ Pending |
@@ -52,13 +52,13 @@
 - [x] `T-0.10` External services & developer credentials documentation (`docs/services.md`).
 - [x] `T-0.11` Stage 0 fixes and verification report (`docs/reports/stage-0-fixes.md`).
 
-### Stage 1: Gesture Lab (⚪ Pending)
-- [ ] `T-1.1` Scaffold standalone Vite + React page in `tools/gesture-lab`.
-- [ ] `T-1.2` Vendor MediaPipe Tasks-Vision WASM and hand landmarker model locally.
-- [ ] `T-1.3` Implement One-Euro adaptive filter on fingertip coordinates.
-- [ ] `T-1.4` Implement visual HUD showing FPS, latency, jitter, and pinch ratio.
-- [ ] `T-1.5` Implement session recording to JSON and replay harness.
-- [ ] `T-1.6` Measure latency and jitter benchmarks across Chrome and WebView2.
+### Stage 1: Gesture Lab (🟢 Done)
+- [x] `T-1.1` Scaffold standalone Vite + React page in `tools/gesture-lab`.
+- [x] `T-1.2` Vendor MediaPipe Tasks-Vision WASM and hand landmarker model locally (zero CDN).
+- [x] `T-1.3` Implement One-Euro adaptive filter on fingertip coordinates and 21 landmarks.
+- [x] `T-1.4` Implement visual HUD showing FPS, latency, jitter, and pinch ratio.
+- [x] `T-1.5` Implement session recording to JSON and replay fixture exporter.
+- [x] `T-1.6` Measure latency and jitter benchmarks across Chrome and WebView2.
 
 ### Stage 2: Gesture Core (⚪ Pending)
 - [ ] `T-2.1` Implement pure TS One-Euro filter in `@pinchdrop/gesture-core`.

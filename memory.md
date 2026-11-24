@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 0 (Genesis)** — Completed. Repository skeleton, monorepo configuration, documentation suite, offline asset pipeline, and PDF overview generated.
+- **Current Stage:** **Stage 1 (Gesture Lab)** — Completed. Standalone webcam testbed with MediaPipe Tasks-Vision, local WASM & `hand_landmarker.task` models, One-Euro adaptive filter smoothing, live Performance HUD, and JSON fixture session exporter.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 1 (Gesture Lab)** — Standalone webcam testbed with MediaPipe Tasks-Vision, One-Euro smoothing filter, performance HUD, and landmark recording/replay.
+- **Next Stage:** **Stage 2 (Gesture Core)** — Pure TypeScript deterministic FSM implementation in `@pinchdrop/gesture-core`, automated replay test harness with recorded landmark sessions, and false-trigger metrics.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (TypeScript smoke test passing)
+  - Workspace packages: `@pinchdrop/gesture-core` (4 passing vitest unit tests), `tools/gesture-lab` (Vite + React testbed built)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
