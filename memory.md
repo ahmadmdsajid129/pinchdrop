@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 4 (File Ops & Safety)** — Completed. Allow-list boundary validation engine, OS Recycle Bin deletion via `trash` crate, persistent Undo Journal, safe Tauri IPC commands, and `useFileOps` hook connecting the desktop UI.
+- **Current Stage:** **Stage 5 (LAN Server, Pairing & Transfer Engine)** — Completed. Ed25519 pairing payload generator, pinned certificate KeyStore, BLAKE3 chunked transfer engine, LanServer configuration, mDNS discovery stub, and `usePairing` desktop hook.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 5 (LAN Transfer Engine & Pairing)** — Axum HTTP/WS local server, TLS 1.3 encryption, mDNS peer discovery, QR pairing handshakes, and chunked transfer engine.
+- **Next Stage:** **Stage 6 (Android App v0)** — Kotlin + Jetpack Compose companion app scaffold, QR camera scanner via ML Kit, local pairing handshake, and WorkManager download engine.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (testbed built), `apps/desktop` (production bundle built + Rust core safe file ops)
+  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops & LAN pairing engine)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
