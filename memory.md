@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 1 (Gesture Lab)** — Completed. Standalone webcam testbed with MediaPipe Tasks-Vision, local WASM & `hand_landmarker.task` models, One-Euro adaptive filter smoothing, live Performance HUD, and JSON fixture session exporter.
+- **Current Stage:** **Stage 2 (Gesture Core)** — Completed. Pure TypeScript deterministic gesture FSM, One-Euro adaptive filter, G1–G6 pose classifiers with scale-invariant pinch ratio, and automated landmark replay test harness in `@pinchdrop/gesture-core`.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 2 (Gesture Core)** — Pure TypeScript deterministic FSM implementation in `@pinchdrop/gesture-core`, automated replay test harness with recorded landmark sessions, and false-trigger metrics.
+- **Next Stage:** **Stage 3 (Air Workspace UI)** — Desktop shell scaffold with Tauri 2 (Rust) + React 18, oversized file cards (96+ px), edge action zones (Phone, Inbox, Rename, Trash), and Pointer Ring.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (4 passing vitest unit tests), `tools/gesture-lab` (Vite + React testbed built)
+  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest unit tests across 3 suites), `tools/gesture-lab` (production bundle built)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
