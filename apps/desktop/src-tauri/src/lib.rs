@@ -437,6 +437,89 @@ fn hold_state(app: AppHandle) -> Option<grab::HoldView> {
     app.try_state::<grab::Grab>().and_then(|g| g.hold_view())
 }
 
+// ---------- v2 · the phone's notifications, messages and contacts (in memory only)
+
+fn link_or_err(app: &AppHandle) -> Result<Arc<link::Link>, String> {
+    link_of(app).ok_or_else(|| "The connection service didn't start".to_string())
+}
+
+#[tauri::command]
+fn phone_notifications(app: AppHandle) -> Vec<link::phone_data::NotifView> {
+    link_of(&app).map(|l| l.notifications()).unwrap_or_default()
+}
+
+#[tauri::command]
+async fn notif_dismiss(app: AppHandle, key: String) -> Result<(), String> {
+    link_or_err(&app)?.notif_dismiss(&key).await
+}
+
+#[tauri::command]
+async fn notif_reply(app: AppHandle, key: String, text: String) -> Result<(), String> {
+    link_or_err(&app)?
+        .phone_request(
+            "notif.reply",
+            serde_json::json!({ "key": key, "text": text }),
+            "notification access",
+        )
+        .await
+        .map(|_| ())
+}
+
+#[tauri::command]
+async fn sms_threads(app: AppHandle) -> Result<serde_json::Value, String> {
+    link_or_err(&app)?
+        .phone_request(
+            "sms.threads",
+            serde_json::json!({ "limit": 80 }),
+            "messages",
+        )
+        .await
+}
+
+#[tauri::command]
+async fn sms_thread(app: AppHandle, thread_id: i64) -> Result<serde_json::Value, String> {
+    link_or_err(&app)?
+        .phone_request(
+            "sms.thread",
+            serde_json::json!({ "threadId": thread_id, "limit": 200 }),
+            "messages",
+        )
+        .await
+}
+
+#[tauri::command]
+async fn sms_send(app: AppHandle, address: String, text: String) -> Result<(), String> {
+    if address.trim().is_empty() || text.trim().is_empty() {
+        return Err("Type a message first.".into());
+    }
+    link_or_err(&app)?
+        .phone_request(
+            "sms.send",
+            serde_json::json!({ "address": address, "text": text }),
+            "messages",
+        )
+        .await
+        .map(|_| ())
+}
+
+#[tauri::command]
+async fn contacts_list(app: AppHandle) -> Result<serde_json::Value, String> {
+    link_or_err(&app)?
+        .phone_request("contacts.list", serde_json::json!({}), "contacts")
+        .await
+}
+
+#[tauri::command]
+async fn phone_dial(app: AppHandle, number: String) -> Result<serde_json::Value, String> {
+    link_or_err(&app)?
+        .phone_request(
+            "call.dial",
+            serde_json::json!({ "number": number }),
+            "calls",
+        )
+        .await
+}
+
 /// v2 · Lift: what the phone has in the air, if anything.
 #[tauri::command]
 fn lift_state(app: AppHandle) -> Option<link::lift::LiftView> {
@@ -836,6 +919,14 @@ pub fn run() {
             lift_state,
             lift_catch,
             lift_dismiss,
+            phone_notifications,
+            notif_dismiss,
+            notif_reply,
+            sms_threads,
+            sms_thread,
+            sms_send,
+            contacts_list,
+            phone_dial,
             hold_send_now,
             gesture_session_start,
             gesture_session_stop,
