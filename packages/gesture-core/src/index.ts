@@ -7,6 +7,7 @@ export * from './filter.js';
 export * from './classifier.js';
 export * from './fsm.js';
 export * from './replay.js';
+export * from './throw.js';
 
 export const GESTURE_CONFIG = {
   VERSION: '0.1.0',
