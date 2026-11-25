@@ -5,15 +5,18 @@ import { PointerRing } from './components/PointerRing';
 import { UndoToast } from './components/UndoToast';
 import { GestureGym } from './components/GestureGym';
 import { PrivacyDashboard } from './components/PrivacyDashboard';
+import { ProModal } from './components/ProModal';
 import { soundEngine } from './utils/audio';
 import { useMotionPreference } from './hooks/useMotionPreference';
-import { Smartphone, ShieldCheck, Folder, Globe, Award, Volume2, VolumeX, Sparkles } from 'lucide-react';
+import { useLicense } from './hooks/useLicense';
+import { Smartphone, ShieldCheck, Folder, Globe, Award, Volume2, VolumeX, Sparkles, Crown } from 'lucide-react';
 import { GestureStateMachine, ThrowDetector } from '@pinchdrop/gesture-core';
 
 export default function App() {
   const fsmRef = useRef<GestureStateMachine>(new GestureStateMachine());
   const throwDetectorRef = useRef<ThrowDetector>(new ThrowDetector(0.60));
   const { reducedMotion, toggleReducedMotion } = useMotionPreference();
+  const { isPro, tier } = useLicense();
   const [isMuted, setIsMuted] = useState(soundEngine.isMuted());
 
   // Workspace Files (including URLs and text notes)
@@ -30,9 +33,10 @@ export default function App() {
   const [grabbedCardId, setGrabbedCardId] = useState<string | null>(null);
   const [activeZone, setActiveZone] = useState<ZoneType | null>(null);
 
-  // Modals state (Stage 9)
+  // Modals state
   const [isGymOpen, setIsGymOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isProModalOpen, setIsProModalOpen] = useState(false);
   const [cameraActive, setCameraActive] = useState(true);
 
   // Undo Toast state
@@ -197,7 +201,7 @@ export default function App() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#34D399] animate-pulse" />
             <span className="text-sm font-semibold text-[#22D3EE]">PinchDrop Air Workspace</span>
           </div>
-          <span className="text-xs text-[#8B94B8]">Stage 10 · 60fps Springs &amp; Spatial Audio</span>
+          <span className="text-xs text-[#8B94B8]">Stage 12 · Pro Tier &amp; Cryptographic Licensing</span>
         </div>
 
         {/* Center Breadcrumb */}
@@ -208,6 +212,19 @@ export default function App() {
 
         {/* Controls */}
         <div className="flex items-center space-x-2.5">
+          {/* Pro Upgrade / Tier Badge */}
+          <button
+            onClick={() => setIsProModalOpen(true)}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+              isPro
+                ? 'bg-[#FBBF24]/20 text-[#FBBF24] border-[#FBBF24]/40 hover:bg-[#FBBF24]/30'
+                : 'bg-[#7C5CFF]/20 text-[#A78BFA] border-[#7C5CFF]/40 hover:bg-[#7C5CFF]/30'
+            }`}
+          >
+            <Crown className="w-3.5 h-3.5" />
+            <span>{isPro ? (tier === 'pro_lifetime' ? 'PRO LIFETIME' : 'PRO ACTIVE') : 'Upgrade Pro'}</span>
+          </button>
+
           {/* Reduced Motion Toggle */}
           <button
             onClick={() => {
@@ -372,6 +389,9 @@ export default function App() {
         cameraActive={cameraActive}
         onToggleCamera={() => setCameraActive(!cameraActive)}
       />
+
+      {/* Stage 12 Pro Tier Modal */}
+      <ProModal isOpen={isProModalOpen} onClose={() => setIsProModalOpen(false)} />
     </div>
   );
 }
