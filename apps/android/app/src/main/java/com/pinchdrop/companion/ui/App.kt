@@ -49,6 +49,7 @@ import com.pinchdrop.companion.data.PcStatus
 import com.pinchdrop.companion.ui.screens.ArrivedScreen
 import com.pinchdrop.companion.ui.screens.CatchScreen
 import com.pinchdrop.companion.ui.screens.HomeScreen
+import com.pinchdrop.companion.ui.screens.LiftScreen
 import com.pinchdrop.companion.ui.screens.PairScreen
 import com.pinchdrop.companion.ui.screens.PermissionsScreen
 import com.pinchdrop.companion.ui.screens.ProfileScreen
@@ -67,6 +68,8 @@ enum class Route(val tab: Boolean = false) {
     PAIR, PROFILE, PERMISSIONS_CHECK,
     CATCH_DEMO, RECEIVING_DEMO, ARRIVED_DEMO,
     RECEIVING, ARRIVED, CATCH,
+    /** v2: Share → PinchDrop, pinch to lift it to the PC. */
+    LIFT,
 }
 
 /** Where the system back gesture goes from each screen (null = leave the app). */
@@ -74,7 +77,7 @@ private fun backOf(r: Route): Route? = when (r) {
     Route.WELCOME, Route.HOME -> null
     Route.PERMISSIONS -> Route.WELCOME
     Route.ONBOARD_PAIR -> Route.PERMISSIONS
-    Route.RECEIVED, Route.SETTINGS, Route.RECEIVING, Route.CATCH -> Route.HOME
+    Route.RECEIVED, Route.SETTINGS, Route.RECEIVING, Route.CATCH, Route.LIFT -> Route.HOME
     Route.ARRIVED -> Route.RECEIVED
     Route.PAIR, Route.PROFILE, Route.PERMISSIONS_CHECK, Route.CATCH_DEMO, Route.RECEIVING_DEMO, Route.ARRIVED_DEMO -> Route.SETTINGS
 }
@@ -147,6 +150,7 @@ fun PinchDropApp(
                 // The receive sheet shows over the current screen; just make sure it isn't hidden.
                 Notifications.ROUTE_RECEIVING -> if (settings.onboarded) { hiddenTransfer = null; if (!route.tab) route = Route.HOME }
                 Notifications.ROUTE_RECEIVED -> if (settings.onboarded) route = Route.RECEIVED
+                Notifications.ROUTE_LIFT -> route = if (settings.onboarded) Route.LIFT else Route.WELCOME
                 Notifications.ROUTE_CATCH -> if (settings.onboarded) route = if (Receiver.hold.value != null) Route.CATCH else Route.HOME
                 Notifications.ROUTE_CATCH_DEMO -> { demoReturn = if (route.tab) route else Route.HOME; route = Route.CATCH_DEMO }
                 Notifications.ROUTE_RECEIVING_DEMO -> { demoReturn = if (route.tab) route else Route.HOME; route = Route.RECEIVING_DEMO }
@@ -243,6 +247,17 @@ fun PinchDropApp(
                                     pcName = h.pcName, hold = h, settings = settings,
                                     onAccept = { Receiver.catchHold(); go(Route.HOME) },
                                     onDecline = { Receiver.dismissHold(); go(Route.HOME) },
+                                )
+                            }
+                            Route.LIFT -> {
+                                val activity = androidx.compose.ui.platform.LocalContext.current as? com.pinchdrop.companion.MainActivity
+                                LiftScreen(
+                                    settings = settings,
+                                    pcName = pc.name.ifEmpty { null },
+                                    onClose = {
+                                        // Opened from another app's Share: go back there. Otherwise, home.
+                                        if (activity?.openedForShare == true) activity.finish() else go(Route.HOME)
+                                    },
                                 )
                             }
                             Route.RECEIVING -> LiveReceivingScreen(onHide = { go(Route.HOME) }, onCancel = { Receiver.cancelCurrent(); go(Route.HOME) })
