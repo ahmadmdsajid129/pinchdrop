@@ -111,18 +111,20 @@ Pairing, live battery and sending were confirmed working on a POCO F7 + HP lapto
 ## 🚀 v2 backlog (agreed 2026-11-25, not started)
 Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](docs/v2-plan.md).
 
+Also built in v2.0: the new gestures (palm hold, swipe, ✌️ reply, 👍 take it, fist, wave closes the Island, throw / point at a device chip, two-hand screenshot frame), clipboard both ways (Settings → Your phone, off by default) and find my phone.
+
 | # | Feature | Notes |
 |---|---|---|
 | 1 | Phone → PC with gestures — 🟢 **built (v2.0), founder check open** | Share → PinchDrop → pinch at the phone → open hand at the laptop webcam (or Take it) → saved in Downloads\PinchDrop and opened; links open in the browser, notes go to the clipboard. LINK-v1 §6.5. Not yet: drop onto a pointed-at Explorer folder |
 | 2 | Phone notifications on the PC — 🟢 **built (v2.0), founder check open** | Island banner with Reply / Dismiss; Notifications screen. Needs “Notification access” on the phone (Permissions screen). In memory only |
 | 3 | SMS read + reply from the PC — 🟢 **built (v2.0), founder check open** | Messages screen: conversations, bubbles, reply with Enter, new message. SMS only (not MMS/RCS chats). Works for the direct APK; Play Store would restrict it |
 | 4 | Contacts on the PC — 🟢 **built (v2.0), founder check open** | Contacts screen: search, Text (opens Messages), Call (the phone dials; or a tap-to-call notification if Android blocks it) |
-| 5 | Calls: caller on the Island, open palm = answer, swipe = reject | Answering on the phone first; call audio through the PC (Bluetooth hands-free) is a later, bigger project |
-| 6 | Fast mode for big files | Parallel streams, Wi-Fi Direct, no compression of media |
-| 7 | Proximity-sensor catch | Hover over the phone's top to catch without the camera or opening the app |
-| 8 | Several phones / tablets at once | Whichever device you open your hand over catches it; Island shows all devices |
-| 9 | Laptop ↔ laptop / desktop | Two PCs on one desk pair like a phone; catch with the other PC's webcam |
-| 10 | Pill: unread-message badge + ringing-call icon with caller name | 💬 count beside the battery until read; click → Messages view in the app. 📞 shakes while ringing, missed call leaves a red dot. See [docs/v2-plan.md](docs/v2-plan.md#14-messages-and-calls-on-the-pill) |
+| 5 | Calls — 🟢 **built (v2.0), founder check open** | Pill shows a vibrating 📞 with the caller's name; Island call card with Answer / Reject / Silence; while it rings the webcam takes open palm = answer, swipe = reject, fist = silence (Settings → Your phone). Call audio stays on the phone |
+| 6 | Fast mode for big files — 🟢 **built (v2.0)** | 2 MiB chunks, 6 in flight when both sides support it (LINK-v1 §6.7). Not done: Wi-Fi Direct |
+| 7 | Proximity-sensor catch — 🟢 **built (v2.0)** | Hover a hand over the top of the phone while something is in the air; works with the screen off (phone Settings toggle) |
+| 8 | Several phones / tablets — 🟢 **built (v2.0)** | Holds offered to all; first to catch wins. While carrying, device chips appear: point and hold, drop on, or throw at one. Send screen picks a device |
+| 9 | Laptop ↔ laptop — ⚪ **next** | Needs the PC to act as a receiver for another PC (second connection engine + pairing on both PCs) and a second laptop to test |
+| 10 | Pill: unread-message badge + ringing-call icon — 🟢 **built (v2.0)** | 💬 count beside the battery (click → Messages); 📞 shakes with the caller's name; missed call shows a red icon until clicked |
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 
