@@ -5,10 +5,11 @@ import { api, inTauri, onEvent, usePhone, useReducedMotion, useSettings, useThem
 import { SendingIsland } from './SendingIsland';
 import { HoldIsland } from './HoldIsland';
 import { LiftIsland } from './LiftIsland';
+import { NotifIsland } from './NotifIsland';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
 import { sound } from '../shared/sound';
-import type { HoldView, LiftView, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
+import type { HoldView, LiftView, NotifView, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
 
 /** Transparent margin around the pill so its shadow isn't clipped. */
 const PAD = 8;
@@ -51,6 +52,11 @@ export function Pill() {
   const [lift, setLift] = useState<LiftView | null>(null);
   const liftRef = useRef<LiftView | null>(null);
   liftRef.current = lift;
+  /** v2: a phone notification dropping down from the Island. */
+  const [banner, setBanner] = useState<NotifView | null>(null);
+  const [replying, setReplying] = useState(false);
+  /** The banner opened the Island (so closing the banner closes it again). */
+  const bannerOpened = useRef(false);
 
   // ---- a send in progress shows live on the Island, then "Delivered" for a moment
   const realTransfers = useTransfers();
@@ -185,6 +191,8 @@ export function Pill() {
   const collapse = useCallback(() => {
     if (holdRef.current || liftRef.current) return; // countdowns stay visible while something is in the air
     if (sessionRef.current) void api.gestureSessionStop(); // closing the Island switches the camera off
+    setBanner(null);
+    bannerOpened.current = false;
     setExpanded((was) => {
       if (was && settings?.gestures.sounds) sound.close();
       return false;
@@ -223,6 +231,10 @@ export function Pill() {
         setSession(d.session as SessionView | null);
       } else if (d.type === 'hold') setHold(d.hold as HoldView | null);
       else if (d.type === 'lift') setLift(d.lift as LiftView | null);
+      else if (d.type === 'notif') {
+        setBanner(d.notif as NotifView | null);
+        if (d.notif) setExpanded(true);
+      }
       else if (d.type === 'transfer') setDemoTransfer(d.transfer as TransferView | null);
     };
     window.addEventListener('pd-demo', on);
@@ -246,6 +258,16 @@ export function Pill() {
         setLift(l);
         if (l) setExpanded(true);
       }),
+      onEvent<NotifView>('phone-notif', (n) => {
+        // Something more important is on the Island: the notification waits in the app's list.
+        if (holdRef.current || liftRef.current) return;
+        setBanner((cur) => {
+          if (!cur) bannerOpened.current = !expandedRef.current;
+          return n;
+        });
+        setExpanded(true);
+      }),
+      onEvent<string>('phone-notif-removed', (key) => setBanner((cur) => (cur?.key === key ? null : cur))),
       onEvent<null>('island-open', () => {
         // Opened by Rust for a hold: just show it.
         setExpanded(true);
@@ -267,13 +289,26 @@ export function Pill() {
   const collapseRef = useRef(collapse);
   collapseRef.current = collapse;
 
+  // ---- a notification banner closes by itself after a few seconds (not while hovered or replying)
+  const closeBanner = useCallback(() => {
+    setBanner(null);
+    setReplying(false);
+    if (bannerOpened.current && !holdRef.current && !liftRef.current && !sessionRef.current) setExpanded(false);
+    bannerOpened.current = false;
+  }, []);
+  useEffect(() => {
+    if (!banner || hovered || replying) return;
+    const t = window.setTimeout(closeBanner, 6500);
+    return () => clearTimeout(t);
+  }, [banner, hovered, replying, closeBanner]);
+
   // ---- auto-close after N seconds when the pointer isn't on the Island
   useEffect(() => {
     const secs = settings?.pill.islandAutoCloseSecs ?? 4;
-    if (!expanded || hovered || secs === 0 || hold || lift || session?.active || liveTransfer) return;
+    if (!expanded || hovered || secs === 0 || hold || lift || banner || session?.active || liveTransfer) return;
     const t = window.setTimeout(collapse, secs * 1000);
     return () => clearTimeout(t);
-  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, lift, session?.active, liveTransfer]);
+  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, lift, banner, session?.active, liveTransfer]);
 
   // ---- close on Escape and when the pill window loses focus (click elsewhere)
   useEffect(() => {
@@ -431,6 +466,8 @@ export function Pill() {
                 <HoldIsland hold={hold} width={ISLAND_W} />
               ) : lift ? (
                 <LiftIsland lift={lift} width={ISLAND_W} cameraOn={!!settings.gestures.enabled} />
+              ) : banner ? (
+                <NotifIsland n={banner} width={ISLAND_W} onClose={closeBanner} onReplying={setReplying} />
               ) : liveTransfer ? (
                 <SendingIsland t={liveTransfer} width={ISLAND_W} reduced={reduced} />
               ) : (
