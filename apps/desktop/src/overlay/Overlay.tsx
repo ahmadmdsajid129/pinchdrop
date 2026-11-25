@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useVelocity } from 'framer-motion';
 import { Hand } from 'lucide-react';
 import { ItemPreview } from '../shared/ItemPreview';
-import type { ItemPreviewData, LiftView } from '../shared/types';
+import type { DeviceView, ItemPreviewData, LiftView } from '../shared/types';
+import { Smartphone } from 'lucide-react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
   PoseMachine,
@@ -69,7 +70,20 @@ const FOLLOW_TAU_S = 0.028;
 /** Never extrapolate further ahead than this past the last camera frame. */
 const MAX_GLIDE_S = 0.045;
 
-type Card = { items: Grabbed; phase: 'held' | 'flying' | 'dropped' };
+type Card = { items: Grabbed; phase: 'held' | 'flying' | 'dropped'; to?: { x: number; y: number } };
+
+/** v2 · Where the device chips sit along the top of the screen while you carry something. */
+const CHIP_W = 168;
+const CHIP_H = 52;
+const CHIP_GAP = 18;
+const CHIP_Y = 26;
+function chipRects(n: number, screenW: number) {
+  const total = n * CHIP_W + (n - 1) * CHIP_GAP;
+  const x0 = (screenW - total) / 2;
+  return Array.from({ length: n }, (_, i) => ({ x: x0 + i * (CHIP_W + CHIP_GAP), y: CHIP_Y, w: CHIP_W, h: CHIP_H }));
+}
+/** Pointing under a chip for this long picks it. */
+const DWELL_MS = 400;
 
 /** Older Rust builds (or text) without a preview: a plain tile from what we know. */
 function fallbackPreview(g: Grabbed): ItemPreviewData {
@@ -244,6 +258,7 @@ export function Overlay() {
       } else if (d.type === 'card') setCard(d.card as Card | null);
       else if (d.type === 'sendfx') setFx(d.fx as SendFxEvent);
       else if (d.type === 'lift') setLift(d.lift as LiftView | null);
+      else if (d.type === 'devices') setDevices(d.devices as DeviceView[]);
     };
     window.addEventListener('pd-demo', on);
     return () => window.removeEventListener('pd-demo', on);
@@ -257,6 +272,20 @@ export function Overlay() {
   }, []);
 
   const armed = !!arm?.armed;
+
+  // v2 · Several phones / tablets: chips to aim at while carrying.
+  const [devices, setDevices] = useState<DeviceView[]>([]);
+  const devicesRef = useRef<DeviceView[]>([]);
+  devicesRef.current = devices;
+  const [chipHover, setChipHover] = useState<{ i: number; picked: boolean } | null>(null);
+  const chipHoverRef = useRef<{ i: number; since: number; picked: boolean } | null>(null);
+  useEffect(() => {
+    if (!inTauri) return;
+    const keep = (l: DeviceView[]) => setDevices(l.filter((d) => d.connected));
+    void invoke<DeviceView[]>('list_devices').then(keep);
+    const off = onEvent<DeviceView[]>('devices-changed', keep);
+    return () => void off.then((u) => u());
+  }, []);
   const catching = armed && arm?.mode === 'catch';
   /** v2: the phone is ringing; only palm / swipe / fist mean anything. */
   const attention = armed && arm?.mode === 'attention';
@@ -354,6 +383,38 @@ export function Overlay() {
     async function onRelease() {
       const c = cardRef.current;
       if (!c) return;
+      const devs = devicesRef.current;
+      if (devs.length > 1) {
+        const rects = chipRects(devs.length, window.innerWidth);
+        let i = chipHoverRef.current?.i ?? -1;
+        const k = track.current;
+        // A throw: a fast flick upward, aimed at a chip (where would it reach the top?).
+        if (i < 0 && k.vy < -1400) {
+          const reach = k.x + (k.vx * (CHIP_Y + CHIP_H / 2 - k.y)) / k.vy;
+          let best = -1;
+          let bestD = 160;
+          rects.forEach((r, j) => {
+            const d = Math.abs(r.x + r.w / 2 - reach);
+            if (d < bestD) {
+              best = j;
+              bestD = d;
+            }
+          });
+          i = best;
+        }
+        chipHoverRef.current = null;
+        setChipHover(null);
+        if (i >= 0) {
+          const r = rects[i];
+          setCard({ ...c, phase: 'flying', to: { x: r.x + 10, y: r.y } });
+          if (arm?.sounds) sound.close();
+          activity();
+          const ok = await invoke('send_to_device', { items: c.items, deviceId: devs[i].id }).then(() => true, () => false);
+          flash(ok ? `Sending to ${devs[i].name}` : `Couldn’t send to ${devs[i].name}`);
+          window.setTimeout(() => setCard(null), 700);
+          return;
+        }
+      }
       setCard({ ...c, phase: 'flying' });
       if (arm?.sounds) sound.close();
       activity();
@@ -543,6 +604,30 @@ export function Overlay() {
           feed(p.x * window.innerWidth, p.y * window.innerHeight, now, !handRef.current);
         }
         setHandIfChanged(tracked ? { pinched: machine.holding || machine.state === 'PINCHING' } : null);
+        // v2: carrying with several devices: point under a chip to aim at it.
+        if (machine.holding && devicesRef.current.length > 1) {
+          const rects = chipRects(devicesRef.current.length, window.innerWidth);
+          const hxp = track.current.x;
+          const hyp = track.current.y;
+          const i = hyp < CHIP_Y + CHIP_H + 110 ? rects.findIndex((r) => hxp >= r.x - 20 && hxp <= r.x + r.w + 20) : -1;
+          const cur = chipHoverRef.current;
+          if (i < 0) {
+            if (cur) {
+              chipHoverRef.current = null;
+              setChipHover(null);
+            }
+          } else if (!cur || cur.i !== i) {
+            chipHoverRef.current = { i, since: now, picked: false };
+            setChipHover({ i, picked: false });
+          } else if (!cur.picked && now - cur.since >= DWELL_MS) {
+            cur.picked = true;
+            setChipHover({ i, picked: true });
+            if (arm?.sounds) sound.pop();
+          }
+        } else if (chipHoverRef.current) {
+          chipHoverRef.current = null;
+          setChipHover(null);
+        }
         // Holding something counts as activity, so the camera never switches off mid-move.
         if (machine.holding && now - lastActivity > 3000) {
           lastActivity = now;
@@ -570,7 +655,7 @@ export function Overlay() {
     };
   }, [armed, arm?.cameraId, arm?.sensitivity, arm?.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const cardTarget = { x: W / 2 - 110, y: 8 };
+  const cardTarget = { x: window.innerWidth / 2 - 60, y: 8 };
 
   return (
     <div className="fixed inset-0 pointer-events-none select-none overflow-hidden">
@@ -579,6 +664,31 @@ export function Overlay() {
       {/* Never shown: the camera feeds MediaPipe directly. */}
       <video ref={videoRef} className="hidden" muted playsInline />
 
+
+      {/* v2 · device chips while carrying (several phones / tablets) */}
+      <AnimatePresence>
+        {card?.phase === 'held' && devices.length > 1 &&
+          chipRects(devices.length, window.innerWidth).map((r, i) => {
+            const hot = chipHover?.i === i;
+            const picked = hot && chipHover?.picked;
+            return (
+              <motion.div
+                key={devices[i].id}
+                className={`absolute flex items-center gap-2.5 px-4 rounded-full text-[14px] font-semibold shadow-[0_10px_30px_rgba(0,0,0,0.25)] ${
+                  picked ? 'bg-[#007AFF] text-white' : hot ? 'bg-white text-[#1D1D1F] ring-2 ring-[#007AFF]' : 'bg-white/90 text-[#1D1D1F]'
+                }`}
+                style={{ left: r.x, top: r.y, width: r.w, height: r.h }}
+                initial={{ opacity: 0, y: -30, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: hot ? 1.08 : 1 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 28, delay: i * 0.04 }}
+              >
+                <Smartphone size={18} />
+                <span className="truncate">{devices[i].name}</span>
+              </motion.div>
+            );
+          })}
+      </AnimatePresence>
 
       {/* v2 · what the phone lifted, floating in, waiting for an open hand */}
       <AnimatePresence>
@@ -647,8 +757,8 @@ export function Overlay() {
               card.phase === 'flying'
                 ? {
                     // Keyframes start where the hand left the card, so it never jumps.
-                    x: [cardX.get(), cardTarget.x],
-                    y: [cardY.get(), cardTarget.y],
+                    x: [cardX.get(), card.to?.x ?? cardTarget.x],
+                    y: [cardY.get(), card.to?.y ?? cardTarget.y],
                     scale: 0.2,
                     rotate: 0,
                     opacity: 0,
