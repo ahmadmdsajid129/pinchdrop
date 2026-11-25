@@ -1,6 +1,7 @@
 package com.pinchdrop.companion
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,15 +21,35 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pinchdrop.companion.ui.*
+import com.pinchdrop.companion.vision.PhoneCameraCatchSensor
 
 class MainActivity : ComponentActivity() {
+    private var dropSensor: PhoneCameraCatchSensor? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        dropSensor = PhoneCameraCatchSensor(this) { _ ->
+            runOnUiThread {
+                Toast.makeText(
+                    this,
+                    "👋 Hand Drop Detected! Receiving 'CPP' folder from PC...",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+        dropSensor?.startListening()
+
         setContent {
             MaterialTheme(colorScheme = PinchDropColorScheme) {
                 CompanionHomeScreen()
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        dropSensor?.stopListening()
     }
 }
 
@@ -64,6 +86,31 @@ fun CompanionHomeScreen() {
                     fontSize = 12.sp,
                     color = if (isConnected) SuccessGreen else DangerRed,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        // Quick Grab Actions Card
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Surface2Dark, RoundedCornerShape(16.dp))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "HAND DROP RECEIVER", fontSize = 11.sp, color = MutedSlate)
+                    Text(text = "● Sensor Armed", fontSize = 11.sp, color = SuccessGreen)
+                }
+                Text(
+                    text = "Hover open hand above phone camera to drop and catch incoming PC folder ('CPP').",
+                    fontSize = 12.sp,
+                    color = TextLight
                 )
             }
         }
