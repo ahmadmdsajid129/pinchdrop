@@ -32,6 +32,8 @@ pub struct AppState {
     config_dir: PathBuf,
     /// "Hide pill for 1 hour" deadline.
     hidden_until: Mutex<Option<Instant>>,
+    /// Shown on purpose (shortcut, camera session, hold) even over a full-screen app, until then.
+    shown_until: Mutex<Option<Instant>>,
     tray_show_pill: Mutex<Option<CheckMenuItem<Wry>>>,
 }
 
@@ -140,7 +142,14 @@ fn refresh_pill_visibility(app: &AppHandle) {
         .and_then(|g| *g)
         .map(|until| Instant::now() < until)
         .unwrap_or(false);
-    let fullscreen = s.pill.hide_in_fullscreen && pill::fullscreen_app_active();
+    let forced = state
+        .shown_until
+        .lock()
+        .ok()
+        .and_then(|g| *g)
+        .map(|until| Instant::now() < until)
+        .unwrap_or(false);
+    let fullscreen = s.pill.hide_in_fullscreen && !forced && pill::fullscreen_app_active();
     let want = s.pill.visible && !snoozed && !fullscreen;
     let is = win.is_visible().unwrap_or(false);
     if want && !is {
@@ -149,6 +158,20 @@ fn refresh_pill_visibility(app: &AppHandle) {
     } else if !want && is {
         let _ = win.hide();
     }
+}
+
+/// Keeps the pill/Island on screen for `secs` even while a full-screen app would hide it
+/// (the user pressed the shortcut, or the camera / a hold is in use).
+pub(crate) fn force_show_pill(app: &AppHandle, secs: u64) {
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(mut g) = state.shown_until.lock() {
+            let until = Instant::now() + Duration::from_secs(secs);
+            if g.map(|cur| cur < until).unwrap_or(true) {
+                *g = Some(until);
+            }
+        }
+    }
+    refresh_pill_visibility(app);
 }
 
 fn place_pill_initially(app: &AppHandle) {
@@ -649,6 +672,7 @@ pub fn run() {
                 settings_path,
                 config_dir,
                 hidden_until: Mutex::new(None),
+                shown_until: Mutex::new(None),
                 tray_show_pill: Mutex::new(None),
             });
 

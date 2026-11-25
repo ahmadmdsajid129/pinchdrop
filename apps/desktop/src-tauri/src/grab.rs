@@ -249,6 +249,10 @@ impl Grab {
         let now = Instant::now();
 
         let session_on = self.session_tick(app);
+        // While the camera or a hold is in use, the Island stays visible over full-screen apps.
+        if session_on || holding {
+            crate::force_show_pill(app, 3);
+        }
         if (!g.enabled || holding) && session_on {
             // Gestures switched off or something is held: no camera.
             self.session_stop(app, if holding { "holding" } else { "disabled" });
@@ -580,6 +584,8 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
                     let mut msg = MSG::default();
                     while PeekMessageW(&mut msg, None, WM_HOTKEY, WM_HOTKEY, PM_REMOVE).as_bool() {
                         if msg.message == WM_HOTKEY && msg.wParam.0 as i32 == ID {
+                            // Bring the pill up even over a full-screen app, then open/close the Island.
+                            crate::force_show_pill(&app, 60);
                             let _ = app.emit_to("pill", "island-toggle", ());
                         }
                     }
