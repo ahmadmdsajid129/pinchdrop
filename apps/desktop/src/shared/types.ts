@@ -47,6 +47,22 @@ export interface Settings {
   crashReports: boolean;
   profile: { pcName: string; avatarColor: string };
   demoPhone: boolean;
+  /** v2 · calls and clipboard. */
+  phone: PhoneSettings;
+}
+
+export interface PhoneSettings {
+  clipboardSync: boolean;
+  callGestures: boolean;
+}
+
+/** v2 · Live phone status for the pill (mirrors link::phone_live::PhoneLive). */
+export interface PhoneLive {
+  unread: number;
+  call: 'ringing' | 'active' | 'idle';
+  callerName: string | null;
+  callerNumber: string | null;
+  missed: string | null;
 }
 
 export interface PhoneStatus {
@@ -259,4 +275,5 @@ export const DEFAULT_SETTINGS: Settings = {
   crashReports: false,
   profile: { pcName: 'My PC', avatarColor: '#22D3EE' },
   demoPhone: false,
+  phone: { clipboardSync: false, callGestures: true },
 };
