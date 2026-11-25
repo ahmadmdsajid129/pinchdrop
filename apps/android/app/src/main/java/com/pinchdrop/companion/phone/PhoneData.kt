@@ -31,7 +31,20 @@ object PhoneData {
     @Volatile private var send: (String) -> Boolean = { false }
     @Volatile private var connected = false
 
-    val requestTypes = setOf("sms.threads", "sms.thread", "sms.send", "contacts.list", "call.dial", "notif.dismiss", "notif.reply")
+    val requestTypes = setOf(
+        "sms.threads", "sms.thread", "sms.send", "contacts.list", "call.dial", "notif.dismiss", "notif.reply",
+        "call.answer", "call.reject", "call.silence", "phone.ring", "phone.ring.stop",
+    )
+    /** Messages from the PC that need no reply. */
+    val eventTypes = setOf("clip.set", "clip.config")
+
+    fun onEvent(type: String, p: JSONObject) {
+        if (!::app.isInitialized) return
+        when (type) {
+            "clip.config" -> ClipSync.onConfig(p.optBoolean("enabled"))
+            "clip.set" -> ClipSync.setFromPc(app, p.optString("text").take(100_000))
+        }
+    }
 
     fun init(context: Context) {
         if (!::app.isInitialized) app = context.applicationContext
@@ -43,9 +56,13 @@ object PhoneData {
         Names.clear()
         NotifyListener.resetIcons()
         sync()
+        UnreadWatcher.start(app)
+        if (Calls.state != "idle") push("call.state", Calls.payload(app))
     }
 
     fun onDisconnected() {
+        UnreadWatcher.stop()
+        ClipSync.onConfig(false)
         connected = false
         send = { false }
     }
@@ -76,6 +93,11 @@ object PhoneData {
                     "sms.send" -> { SmsStore.send(app, p.optString("address"), p.optString("text").take(2000)); JSONObject() }
                     "contacts.list" -> JSONObject().put("contacts", ContactsStore.list(app))
                     "call.dial" -> JSONObject().put("how", dial(p.optString("number")))
+                    "call.answer" -> { Calls.answer(app); JSONObject() }
+                    "call.reject" -> { Calls.reject(app); JSONObject() }
+                    "call.silence" -> { Calls.silence(app); JSONObject() }
+                    "phone.ring" -> { FindPhone.ring(app); JSONObject() }
+                    "phone.ring.stop" -> { FindPhone.stop(app); JSONObject() }
                     "notif.dismiss" -> { if (!NotifyListener.dismiss(p.optString("key"))) throw NoPermission(); JSONObject() }
                     "notif.reply" -> {
                         if (NotifyListener.instance == null) throw NoPermission()
