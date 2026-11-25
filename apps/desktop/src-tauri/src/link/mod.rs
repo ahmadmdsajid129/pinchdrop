@@ -409,8 +409,8 @@ impl Link {
                 (Some(dev), "status") => self.on_status(&dev, conn_id, &env.payload),
                 // Served in order, one at a time, so chunks reach the phone in the order it asked.
                 (Some(dev), "chunk.req") => self.serve_chunk(&dev, &tx, &env.payload).await,
-                (Some(_), "hold.catch") => {
-                    // The phone caught a held item (P6): send it for real.
+                (Some(dev), "hold.catch") => {
+                    // A phone caught a held item (P6): send it to that phone (v2: the first of several wins).
                     let hold_id = env
                         .payload
                         .get("holdId")
@@ -420,7 +420,7 @@ impl Link {
                     let app = self.app.clone();
                     tauri::async_runtime::spawn(async move {
                         if let Some(g) = app.try_state::<crate::grab::Grab>() {
-                            let _ = g.hold_deliver(&app, Some(&hold_id)).await;
+                            let _ = g.hold_deliver(&app, Some(&hold_id), Some(dev)).await;
                         }
                     });
                 }
@@ -1108,13 +1108,59 @@ impl Link {
         is_folder: bool,
         secs: u64,
     ) -> Option<String> {
-        let (device_id, name) = self.target_device()?;
-        let tx = self.session_tx(&device_id)?;
-        let _ = tx.send(Out::Text(message(
+        // v2: every connected phone / tablet gets the offer; whichever catches first gets it.
+        let ids: Vec<String> = self.sessions.lock().ok()?.keys().cloned().collect();
+        if ids.is_empty() {
+            return None;
+        }
+        let msg = message(
             "hold.offer",
             json!({ "holdId": hold_id, "label": label, "fileCount": file_count, "totalBytes": total_bytes, "isFolder": is_folder, "expiresInSecs": secs }),
-        )));
-        Some(name)
+        );
+        let mut names = Vec::new();
+        for id in &ids {
+            if let Some(tx) = self.session_tx(id) {
+                let _ = tx.send(Out::Text(msg.clone()));
+                names.push(self.device_name(id));
+            }
+        }
+        Some(match names.len() {
+            0 => return None,
+            1 => names.remove(0),
+            _ => format!(
+                "{} or {}",
+                names[..names.len() - 1].join(", "),
+                names[names.len() - 1]
+            ),
+        })
+    }
+
+    fn device_name(&self, id: &str) -> String {
+        self.devices
+            .lock()
+            .ok()
+            .and_then(|d| d.get(id).map(|x| x.name.clone()))
+            .unwrap_or_else(|| "phone".into())
+    }
+
+    /// A connected device by id (for "send to this one").
+    fn connected_device(&self, id: &str) -> Option<(String, String)> {
+        self.session_tx(id)?;
+        Some((id.to_string(), self.device_name(id)))
+    }
+
+    /// Tells every other device that a hold was caught elsewhere.
+    pub fn hold_cancel_except(&self, hold_id: &str, except: &str, reason: &str) {
+        if let Ok(s) = self.sessions.lock() {
+            for (id, sess) in s.iter() {
+                if id != except {
+                    let _ = sess.tx.send(Out::Text(message(
+                        "hold.cancel",
+                        json!({ "holdId": hold_id, "reason": reason }),
+                    )));
+                }
+            }
+        }
     }
 
     /// Tells connected phones a hold ended without being caught.
@@ -1136,6 +1182,7 @@ impl Link {
         texts: Vec<String>,
         hold_id: Option<String>,
         open_on_arrival: bool,
+        device: Option<String>,
     ) -> Result<String, String> {
         self.send_inner(
             paths,
@@ -1143,6 +1190,7 @@ impl Link {
             "auto".into(),
             hold_id,
             open_on_arrival.then_some(true),
+            device,
         )
         .await
     }
@@ -1153,8 +1201,10 @@ impl Link {
         paths: Vec<String>,
         texts: Vec<String>,
         destination: String,
+        device: Option<String>,
     ) -> Result<String, String> {
-        self.send_inner(paths, texts, destination, None, None).await
+        self.send_inner(paths, texts, destination, None, None, device)
+            .await
     }
 
     async fn send_inner(
@@ -1164,6 +1214,7 @@ impl Link {
         destination: String,
         hold_id: Option<String>,
         open_first: Option<bool>,
+        device: Option<String>,
     ) -> Result<String, String> {
         // Long texts travel as .txt files (exact text and line breaks); links and short notes as text.
         let outbox = crate::outbox_dir(&self.app);
@@ -1179,8 +1230,11 @@ impl Link {
             }
         }
         let texts = short;
-        let (device_id, device_name) = self
-            .target_device()
+        // v2: a chosen device if it's connected, else the most recently connected one.
+        let (device_id, device_name) = device
+            .as_deref()
+            .and_then(|d| self.connected_device(d))
+            .or_else(|| self.target_device())
             .ok_or("Your phone isn't connected right now.")?;
         let texts: Vec<String> = texts
             .into_iter()
