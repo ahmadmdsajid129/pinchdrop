@@ -14,16 +14,19 @@ export function SendingIsland({ t, width, reduced }: { t: TransferView; width: n
   const waiting = t.state === 'offered';
   const frac = t.totalBytes > 0 ? Math.min(1, t.bytesDone / t.totalBytes) : done ? 1 : 0;
   const pct = Math.round(frac * 100);
+  const incoming = t.direction === 'in';
 
   let line: string;
-  if (done) line = `Delivered to ${t.deviceName}${t.moved ? ' · PC copy in the Recycle Bin' : ''}`;
+  if (done && incoming) line = `Saved in Downloads\\PinchDrop · opened`;
+  else if (done) line = `Delivered to ${t.deviceName}${t.moved ? ' · PC copy in the Recycle Bin' : ''}`;
   else if (failed) line = t.error ?? (t.state === 'declined' ? `${t.deviceName} declined` : 'Stopped');
   else if (paused) line = `Paused at ${pct}% — resumes when ${t.deviceName} is back`;
   else if (waiting) line = `Waiting for ${t.deviceName} to accept…`;
+  else if (incoming) line = `From ${t.deviceName} · ${formatBytes(t.bytesDone)} of ${formatBytes(t.totalBytes)}`;
   else line = `${t.filesDone} of ${t.fileCount} files · ${formatBytes(t.bytesDone)} of ${formatBytes(t.totalBytes)}`;
 
   return (
-    <section aria-label={`Sending ${t.label}`} style={{ width }} className="p-5 flex flex-col gap-4 text-text">
+    <section aria-label={`${incoming ? 'Receiving' : 'Sending'} ${t.label}`} style={{ width }} className="p-5 flex flex-col gap-4 text-text">
       <div className="flex items-center gap-3">
         <motion.div
           className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
@@ -47,7 +50,7 @@ export function SendingIsland({ t, width, reduced }: { t: TransferView; width: n
         </motion.div>
         <div className="flex-1 min-w-0">
           <div className="font-display font-semibold text-[16px] truncate">
-            {done ? `“${t.label}” arrived` : `Sending “${t.label}”`}
+            {done ? `“${t.label}” arrived` : `${incoming ? 'Receiving' : 'Sending'} “${t.label}”`}
           </div>
           <div className={`text-[12px] truncate ${failed ? 'text-danger' : 'text-muted'}`} aria-live="polite">
             {line}
