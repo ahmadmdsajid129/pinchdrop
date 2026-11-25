@@ -5,6 +5,9 @@ import { ItemPreview } from '../shared/ItemPreview';
 import type { ItemPreviewData, LiftView } from '../shared/types';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
+  PoseMachine,
+  poseConfigFor,
+  handShape,
   CatchMachine,
   catchConfigFor,
   GrabMachine,
@@ -29,7 +32,7 @@ interface ArmState {
   showRing: boolean;
   sounds: boolean;
   /** "grab" (pinch the selection) or "catch" (v2: open hand takes what the phone lifted). */
-  mode?: 'grab' | 'catch';
+  mode?: 'grab' | 'catch' | 'attention';
 }
 
 /** Mirrors grab::GrabbedItems. */
@@ -255,6 +258,8 @@ export function Overlay() {
 
   const armed = !!arm?.armed;
   const catching = armed && arm?.mode === 'catch';
+  /** v2: the phone is ringing; only palm / swipe / fist mean anything. */
+  const attention = armed && arm?.mode === 'attention';
 
   // v2 · What the phone has in the air (shown big while the webcam waits for an open hand).
   const [lift, setLift] = useState<LiftView | null>(null);
@@ -287,6 +292,22 @@ export function Overlay() {
     const machine = new GrabMachine(grabConfigFor(arm.sensitivity));
     // v2: in catch mode only an open hand counts (no pinching, nothing is picked up here).
     const catcher = arm.mode === 'catch' ? new CatchMachine(catchConfigFor(arm.sensitivity)) : null;
+    // v2 gestures (palm hold, swipe, peace, thumbs up, fist, wave): the Island decides what they do.
+    const poses = new PoseMachine(poseConfigFor(arm.sensitivity));
+    const LABEL: Record<string, string> = {
+      palm_hold: '✋ Open palm',
+      swipe_left: '👈 Swipe',
+      swipe_right: '👉 Swipe',
+      peace_hold: '✌️ Reply',
+      thumbs_up: '👍',
+      fist_hold: '✊ Fist',
+      wave: '👋 Wave',
+    };
+    const sendGesture = (g: string) => {
+      activity();
+      flash(LABEL[g] ?? g);
+      void import('@tauri-apps/api/event').then(({ emitTo }) => emitTo('pill', 'gesture', g)).catch(() => undefined);
+    };
     let shownProgress = 0;
     const showProgress = (v: number) => {
       if (Math.abs(v - shownProgress) >= 0.08 || (v === 0) !== (shownProgress === 0)) {
@@ -427,8 +448,9 @@ export function Overlay() {
           prev = null;
           track.current.live = false;
           setHandIfChanged(null);
-          if (catcher) {
-            catcher.step(now, null);
+          poses.step(now, null);
+          if (catcher || arm?.mode === 'attention') {
+            catcher?.step(now, null);
             showProgress(0);
             return;
           }
@@ -437,6 +459,17 @@ export function Overlay() {
           return;
         }
         const lm = raw;
+        const shapeNow = handShape(lm, res.handedness?.[0]?.[0]?.score ?? 0);
+        if (arm?.mode === 'attention') {
+          // Ringing: the ring sits on the palm and fills while a pose is held.
+          const palm = cameraToScreen(lm[9].x, lm[9].y);
+          feed(fx.filter(palm.x, now) * window.innerWidth, fy.filter(palm.y, now) * window.innerHeight, now, !handRef.current);
+          setHandIfChanged({ pinched: false });
+          const ev = poses.step(now, shapeNow);
+          showProgress(poses.holding?.progress ?? 0);
+          if (ev) sendGesture(ev);
+          return;
+        }
         if (catcher) {
           // The ring sits on the palm; the hold fills it.
           const palm = cameraToScreen(lm[9].x, lm[9].y);
@@ -515,6 +548,11 @@ export function Overlay() {
           lastActivity = now;
           activity();
         }
+        // v2 gestures only while nothing is pinched or carried, so they never fight the grab.
+        if (!machine.holding && machine.state !== 'PINCHING' && !ev) {
+          const g = poses.step(now, shapeNow);
+          if (g) sendGesture(g);
+        } else poses.reset();
         if (ev?.type === 'grab') void onGrab();
         else if (ev?.type === 'release') void onRelease();
         else if (ev?.type === 'cancel') onCancel();
@@ -567,7 +605,7 @@ export function Overlay() {
         )}
       </AnimatePresence>
 
-      {catching && hand && catchProgress > 0 && (
+      {(catching || attention) && hand && catchProgress > 0 && (
         <motion.svg
           className="absolute left-0 top-0 pointer-events-none"
           width="64"
