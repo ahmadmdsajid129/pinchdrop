@@ -5,6 +5,7 @@
 //! pill can show its real name and battery.
 
 pub mod lift;
+pub mod phone_data;
 pub mod proto;
 pub mod store;
 pub mod transfer;
@@ -428,6 +429,12 @@ impl Link {
                     | "transfer.cancel"),
                 ) => self.on_transfer_msg(&dev, kind, &env.payload),
                 (Some(dev), "lift.offer") => self.on_lift_offer(&dev, &env.payload),
+                // v2 · notifications, messages, contacts (§6.6)
+                (Some(_), "phone.reply") => self.on_phone_reply(&env.payload),
+                (Some(_), kind @ ("notif.posted" | "notif.removed" | "notif.sync")) => {
+                    self.on_notif_event(kind, &env.payload)
+                }
+                (Some(_), "sms.new") => self.on_sms_new(&env.payload),
                 (Some(dev), "lift.cancel") => self.on_lift_cancel(&dev, &env.payload),
                 (Some(dev), "unpair") => {
                     self.forget(&dev, false);
@@ -837,6 +844,7 @@ impl Link {
         }
         let Some(dev) = device else { return };
         self.lift_device_gone(&dev);
+        self.phone_data_gone();
         self.pause_transfers_of(&dev);
         let removed = self
             .sessions
