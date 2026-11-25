@@ -121,6 +121,52 @@ export interface TransferView {
   direction: 'out' | 'in';
 }
 
+/** v2 · A phone notification (mirrors link::phone_data::NotifView). Kept in memory only. */
+export interface NotifView {
+  key: string;
+  pkg: string;
+  app: string;
+  title: string;
+  text: string;
+  /** ms since 1970 */
+  time: number;
+  canReply: boolean;
+  icon: string | null;
+}
+
+/** v2 · A text-message conversation on the phone (LINK-v1 §6.6). */
+export interface SmsThread {
+  threadId: number;
+  address: string;
+  name: string | null;
+  snippet: string;
+  date: number;
+  unread: number;
+  outgoing: boolean;
+}
+
+export interface SmsMessage {
+  id: number;
+  body: string;
+  date: number;
+  outgoing: boolean;
+  status: 'received' | 'sent' | 'sending' | 'failed';
+}
+
+export interface SmsThreadDetail {
+  threadId: number;
+  address: string;
+  name: string | null;
+  messages: SmsMessage[];
+}
+
+export interface Contact {
+  id: number;
+  name: string;
+  starred: boolean;
+  numbers: { number: string; label: string }[];
+}
+
 /** v2 · Something the phone lifted and is holding in the air. Mirrors link::lift::LiftView. */
 export interface LiftView {
   id: string;
