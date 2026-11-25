@@ -451,6 +451,7 @@ impl Grab {
         &self,
         app: &AppHandle,
         hold_id: Option<&str>,
+        device: Option<String>,
     ) -> Result<String, String> {
         if let Some(id) = hold_id {
             let matches = self
@@ -471,8 +472,18 @@ impl Grab {
             .hold_end(app, "caught")
             .ok_or("Nothing is being held.")?;
         let link = crate::link_of(app).ok_or("The connection service didn't start")?;
-        link.send_items_for_hold(items.paths, items.texts, current_id, items.open_on_arrival)
-            .await
+        // v2: the other devices stop waiting for it.
+        if let (Some(id), Some(dev)) = (current_id.as_deref(), device.as_deref()) {
+            link.hold_cancel_except(id, dev, "caught_elsewhere");
+        }
+        link.send_items_for_hold(
+            items.paths,
+            items.texts,
+            current_id,
+            items.open_on_arrival,
+            device,
+        )
+        .await
     }
 }
 
