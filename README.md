@@ -128,7 +128,8 @@ PinchDrop is styled in a futuristic, calm, dark-first **aurora glass** theme:
 | **S6** | **Android App v0 (Compose + MediaStore)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S7** | **Grab → Catch & Stage Tray (End-to-End)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S8** | **Air Clipboard & Open-on-Device (Throw G3b)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
-| **S9–S13** | **Gym, Polish, Store Packaging, Launch** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
+| **S9** | **Gesture Gym & Settings (Calibration + Privacy)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
+| **S10–S13** | **Polish, Store Packaging, Pro Tier, Launch** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
 
 ---
 
