@@ -12,7 +12,7 @@ class SaverTest {
         assertNull(Saver.safeSegments("CPP/../../x"))
         assertNull(Saver.safeSegments("/abs/path"))
         assertNull(Saver.safeSegments("a//b"))
-        assertNull(Saver.safeSegments("a\b"))
+        assertNull(Saver.safeSegments("a\\b")) // a Windows backslash must not sneak in
         assertNull(Saver.safeSegments(""))
         assertNull(Saver.safeSegments("./x"))
     }
