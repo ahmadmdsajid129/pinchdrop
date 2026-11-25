@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 10 (Polish Pass & Audio/Haptics)** — Completed. Synthesized Web Audio procedural engine (`audio.ts`), `useMotionPreference` hook with prefers-reduced-motion support, tuned 60fps springs, and automated microsecond latency audit benchmark (`tools/benchmark-latency.mjs`).
+- **Current Stage:** **Stage 11 (Beta Packaging & Installers)** — Completed. Multi-platform installer bundles (Windows NSIS & WiX/MSI), auto-updater with Minisign Ed25519 public key, Android release signing & R8 rules, automated GitHub Actions workflow (`.github/workflows/release.yml`), and 22-check packaging verification audit (`tools/package-verify.mjs`).
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 11 (Beta Packaging & Installers)** — Signed Windows MSI/NSIS installer, auto-updater integration, and Android release AAB configuration.
+- **Next Stage:** **Stage 12 (Pro & Monetization Engine)** — Local licensing engine, Ed25519 cryptographic license key verification, and Pro feature gate hooks.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard, Gesture Gym, and Web Audio engine), `apps/android` (Kotlin/Compose companion app with Share target, Quick Settings tile & Clipboard sync)
+  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard, Gesture Gym, Web Audio engine, and NSIS/MSI installers), `apps/android` (Kotlin/Compose companion app with Release signing config, R8 shrinker & WorkManager)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
@@ -40,6 +40,7 @@
 | **DEC-0008** | 2026-11-25 | Dedicated External Services & Credentials Registry | Centralize developer credentials, keystores, and store accounts into `docs/services.md` with zero-leak policy. | Fragmented instructions in individual app READMEs. | [Services Guide](docs/services.md) |
 | **DEC-0009** | 2026-11-25 | Client-Side Gesture Gym & Privacy Dashboard | Provide users immediate tactile confidence with gamified gesture calibration and zero-recording verification. | Relying on static documentation manuals or external web tutorials. | [Task Board](task.md) |
 | **DEC-0010** | 2026-11-25 | Procedural Web Audio API for Zero-Asset Sound Design | Synthesize tactile audio cues (pop, click, whoosh, thud, chime) directly in Web Audio without shipping heavy audio files. | Bundling static WAV/MP3 audio assets — increases bundle size and incurs decode latency. | [Design Spec](design.md) |
+| **DEC-0011** | 2026-11-25 | Minisign Ed25519 & Dual Windows Installers (NSIS + MSI) | Dual-installer strategy guarantees consumer ease (NSIS setup wizard) and enterprise IT compatibility (silent MSI deployment). | MSI-only or Portable ZIP only — limits consumer adoption and IT administration. | [Services Guide](docs/services.md) |
 
 ---
 
