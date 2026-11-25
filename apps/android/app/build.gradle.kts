@@ -18,9 +18,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "release.jks")
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: "pinchdrop_stub_pw"
+            keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "pinchdrop"
+            keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: "pinchdrop_stub_pw"
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
