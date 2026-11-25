@@ -91,6 +91,7 @@ object PcLink {
         store = PairedPcStore(app)
         settings = SettingsStore(app)
         Receiver.init(app)
+        com.pinchdrop.companion.transfer.Lifter.init(app)
         scope.launch {
             store.pc.map { it?.pcId }.distinctUntilChanged().collect { reevaluate(restart = true) }
         }
@@ -198,11 +199,13 @@ object PcLink {
             live = ws
             _state.value = State.Connected(pcName, host)
             Receiver.onConnected({ ws.send(it) }, pcName)
+            com.pinchdrop.companion.transfer.Lifter.onConnected({ ws.send(it) }, { ws.sendBytes(it) })
             return if (connectedLoop(ws)) SessionEnd.FORGOTTEN else SessionEnd.WAS_CONNECTED
         } finally {
             if (live === ws) {
                 live = null
                 Receiver.onDisconnected()
+                com.pinchdrop.companion.transfer.Lifter.onDisconnected()
             }
             ws.close()
         }
@@ -239,6 +242,10 @@ object PcLink {
                             is WsEvent.Text -> when (e.env.type) {
                                 "push.offer", "transfer.cancel", "transfer.error", "hold.offer", "hold.cancel" -> {
                                     Receiver.onMessage(e.env.type, e.env.payload)
+                                    null
+                                }
+                                "lift.catch", "lift.req", "lift.done", "lift.cancel" -> {
+                                    com.pinchdrop.companion.transfer.Lifter.onMessage(e.env.type, e.env.payload)
                                     null
                                 }
                                 "pc.info" -> {
