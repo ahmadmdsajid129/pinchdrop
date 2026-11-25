@@ -9,6 +9,7 @@ export * from './fsm.js';
 export * from './replay.js';
 export * from './throw.js';
 export * from './grab.js';
+export * from './catch.js';
 
 export const GESTURE_CONFIG = {
   VERSION: '0.1.0',
