@@ -122,6 +122,7 @@ Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](
 | 7 | Proximity-sensor catch | Hover over the phone's top to catch without the camera or opening the app |
 | 8 | Several phones / tablets at once | Whichever device you open your hand over catches it; Island shows all devices |
 | 9 | Laptop ↔ laptop / desktop | Two PCs on one desk pair like a phone; catch with the other PC's webcam |
+| 10 | Pill: unread-message badge + ringing-call icon with caller name | 💬 count beside the battery until read; click → Messages view in the app. 📞 shakes while ringing, missed call leaves a red dot. See [docs/v2-plan.md](docs/v2-plan.md#14-messages-and-calls-on-the-pill) |
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 

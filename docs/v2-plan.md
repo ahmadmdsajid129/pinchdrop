@@ -30,6 +30,7 @@ Status: 🟢 agreed with the founder · 🔵 proposed (needs a yes before we bui
 | 11 | Clipboard both ways | 🔵 |
 | 12 | Grab a screenshot with a two-hand frame | 🔵 |
 | 13 | Find my phone (ring it from the PC) | 🔵 |
+| 14 | Pill shows unread messages and incoming calls; the message icon opens the Messages view | 🟢 |
 
 ### 1. Phone → PC with gestures
 **How it works:**
@@ -130,6 +131,30 @@ See section 2.
 ### 13. Find my phone 🔵
 **How it works:** a button on the Island makes the phone ring loudly at full volume, even if it's on silent, until you tap it.
 
+### 14. Messages and calls on the pill
+The pill becomes a glanceable status bar for the phone, so you see what's happening without opening anything.
+
+**Unread messages:**
+- When a message arrives, a **message icon with a count badge** (e.g. 💬 3) appears on the pill, next to the battery.
+- It slides in with a small pop and stays until you've **opened and read** those messages. Reading them on the PC or on the phone both clear it, because the count follows the phone.
+- **Clicking the message icon** opens the **Messages view** in the PinchDrop app (from feature 3) on the newest unread conversation. Clicking the rest of the pill still opens the Island as before.
+- Over 9 shows "9+".
+
+**Incoming call:**
+- While the phone is ringing, a **phone icon that shakes like a vibrating phone** appears on the pill, beside the message icon.
+- The pill widens just enough to show the **caller's name** (from contacts, feature 4), or the number if unknown.
+- You don't have to answer from the PC. This is so you *know* the phone is ringing even when it's in another room or on silent.
+- If the Island is open (camera on), the call gestures from feature 5 still work: palm = answer on the phone, swipe = reject, fist = silence.
+- When the ringing stops, the icon leaves. A **missed call** leaves a small red dot on the phone icon until you open the app or the phone.
+
+**Order on the pill (left to right):** status dot · phone name · battery · 💬 unread · 📞 ringing (name). On a small pill size, the name is dropped first, then the battery %, so the icons always fit.
+
+**Under the hood:**
+- The phone sends a tiny `status.messages { unread }` and `call.state { ringing | ended | missed, name, number }` update over the existing link, the same way it already sends battery level.
+- The unread count comes from the SMS inbox (feature 3) and/or message notifications (feature 2).
+- The ringing state comes from `READ_PHONE_STATE` (feature 5).
+- Nothing is stored on the PC. The pill only shows the current numbers.
+
 ---
 
 ## 2. The v2 gesture set
@@ -161,6 +186,7 @@ v1 has three gestures: **pinch** (grab), **carry** (move while pinched) and **op
 
 1. **Phone → PC with gestures** (feature 1): the most visible missing half of the core idea.
 2. **Notifications + G4/G5/G6** (features 2, 10): unlocks the gesture vocabulary that calls and SMS reuse.
+   The **pill message badge and ringing-call icon** (feature 14) ship with this step: they reuse the same phone → PC status channel.
 3. **Calls** (feature 5), then **SMS + contacts** (features 3, 4).
 4. **Fast mode** (feature 6) and **proximity catch** (feature 7).
 5. **Multiple devices + device picker** (feature 8), then **laptop ↔ laptop** (feature 9).

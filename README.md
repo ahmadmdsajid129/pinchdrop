@@ -89,7 +89,8 @@ Full details of how each one works: **[docs/v2-plan.md](docs/v2-plan.md)**.
 8. **Several phones and tablets:** device chips fan out while you carry; point, throw or open your hand over the device you want.
 9. **Laptop ↔ laptop:** catch with the other laptop's webcam.
 10. **New gestures** for all of the above.
-11. *Proposed:* clipboard both ways · two-hand-frame screenshot · find my phone.
+11. **Messages and calls on the pill:** a 💬 badge with the unread count beside the battery (click it to open Messages), and a vibrating 📞 with the caller's name while the phone rings.
+12. *Proposed:* clipboard both ways · two-hand-frame screenshot · find my phone.
 
 ---
 
