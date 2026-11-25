@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, Video, VideoOff, Wifi, HardDrive, Lock, X } from 'lucide-react';
 
