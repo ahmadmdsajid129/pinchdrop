@@ -12,7 +12,7 @@
 
 use crate::explorer;
 use crate::fs_info;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
@@ -51,7 +51,8 @@ pub struct ArmState {
     pub sounds: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+/// Sent to the overlay on a pinch and handed back by it on release (hence Deserialize too).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GrabbedItems {
     pub paths: Vec<String>,
@@ -115,9 +116,17 @@ impl Grab {
             .session
             .lock()
             .ok()
-            .and_then(|s| s.as_ref().map(|s| s.deadline.saturating_duration_since(Instant::now())))
+            .and_then(|s| {
+                s.as_ref()
+                    .map(|s| s.deadline.saturating_duration_since(Instant::now()))
+            })
             .unwrap_or_default();
-        SessionView { active: !ends.is_zero(), ends_in_ms: ends.as_millis() as u64, idle_secs: SESSION_IDLE.as_secs(), reason: None }
+        SessionView {
+            active: !ends.is_zero(),
+            ends_in_ms: ends.as_millis() as u64,
+            idle_secs: SESSION_IDLE.as_secs(),
+            reason: None,
+        }
     }
 
     fn emit_session(&self, app: &AppHandle, reason: Option<&str>) {
@@ -133,13 +142,18 @@ impl Grab {
             return Err("Air gestures are off. Turn them on in the Island or in Settings.".into());
         }
         if s.gestures.camera_mode == "on_select" {
-            return Err("The camera follows your selection in this mode (Settings → Gestures).".into());
+            return Err(
+                "The camera follows your selection in this mode (Settings → Gestures).".into(),
+            );
         }
         if self.hold.lock().map(|h| h.is_some()).unwrap_or(false) {
             return Err("Something is already in the air.".into());
         }
         if let Ok(mut g) = self.session.lock() {
-            *g = Some(Session { deadline: Instant::now() + SESSION_IDLE, last_selection: explorer::current().map(|s| s.paths) });
+            *g = Some(Session {
+                deadline: Instant::now() + SESSION_IDLE,
+                last_selection: explorer::current().map(|s| s.paths),
+            });
         }
         self.tick(app);
         self.emit_session(app, None);
@@ -148,7 +162,11 @@ impl Grab {
 
     /// Ends the camera session now (Island closed, Stop camera, error, hold started).
     pub fn session_stop(&self, app: &AppHandle, reason: &str) {
-        let had = self.session.lock().map(|mut g| g.take().is_some()).unwrap_or(false);
+        let had = self
+            .session
+            .lock()
+            .map(|mut g| g.take().is_some())
+            .unwrap_or(false);
         if had {
             self.tick(app);
             self.emit_session(app, Some(reason));
@@ -254,12 +272,23 @@ impl Grab {
                             .and_then(|l| *l)
                             .map(|t| now.duration_since(t) < DISARM_GRACE)
                             .unwrap_or(false);
-                        let prev_label = self.arm.lock().ok().and_then(|a| a.as_ref().and_then(|a| a.label.clone()));
+                        let prev_label = self
+                            .arm
+                            .lock()
+                            .ok()
+                            .and_then(|a| a.as_ref().and_then(|a| a.label.clone()));
                         (recent, if recent { prev_label } else { None })
                     }
                 },
                 // "on_click" (default) and "hotkey": only during a session the user started.
-                _ => (session_on, if session_on { explorer::current().map(|sel| label_for(&sel.paths)) } else { None }),
+                _ => (
+                    session_on,
+                    if session_on {
+                        explorer::current().map(|sel| label_for(&sel.paths))
+                    } else {
+                        None
+                    },
+                ),
             }
         };
 
@@ -309,13 +338,29 @@ impl Grab {
 
     /// Starts holding grabbed items: counts down on the Island and offers them to the phone.
     pub fn hold_start(&self, app: &AppHandle, items: GrabbedItems) -> HoldView {
-        let secs = crate::current_settings(app).gestures.catch_secs.clamp(5, 120) as u64;
+        let secs = crate::current_settings(app)
+            .gestures
+            .catch_secs
+            .clamp(5, 120) as u64;
         let id = crate::link::proto::random_id();
         let phone_name = crate::link_of(app).and_then(|l| {
-            l.hold_offer(&id, &items.label, items.file_count, items.total_bytes, items.is_folder, secs)
+            l.hold_offer(
+                &id,
+                &items.label,
+                items.file_count,
+                items.total_bytes,
+                items.is_folder,
+                secs,
+            )
         });
         if let Ok(mut h) = self.hold.lock() {
-            *h = Some(Hold { id, items, started: Instant::now(), total: Duration::from_secs(secs), phone_name });
+            *h = Some(Hold {
+                id,
+                items,
+                started: Instant::now(),
+                total: Duration::from_secs(secs),
+                phone_name,
+            });
         }
         if let Ok(mut a) = self.arm.lock() {
             *a = None; // re-evaluated (and switched off) on the next tick
@@ -342,7 +387,11 @@ impl Grab {
         let expired = self
             .hold
             .lock()
-            .map(|g| g.as_ref().map(|h| h.started.elapsed() >= h.total).unwrap_or(false))
+            .map(|g| {
+                g.as_ref()
+                    .map(|h| h.started.elapsed() >= h.total)
+                    .unwrap_or(false)
+            })
             .unwrap_or(false);
         if expired {
             self.hold_end(app, "expired");
@@ -354,15 +403,29 @@ impl Grab {
     }
 
     /// The phone caught it (or the user pressed Send now): send the held items for real.
-    pub async fn hold_deliver(&self, app: &AppHandle, hold_id: Option<&str>) -> Result<String, String> {
+    pub async fn hold_deliver(
+        &self,
+        app: &AppHandle,
+        hold_id: Option<&str>,
+    ) -> Result<String, String> {
         if let Some(id) = hold_id {
-            let matches = self.hold.lock().map(|g| g.as_ref().map(|h| h.id == id).unwrap_or(false)).unwrap_or(false);
+            let matches = self
+                .hold
+                .lock()
+                .map(|g| g.as_ref().map(|h| h.id == id).unwrap_or(false))
+                .unwrap_or(false);
             if !matches {
                 return Err("That hold already ended.".into());
             }
         }
-        let current_id = self.hold.lock().ok().and_then(|g| g.as_ref().map(|h| h.id.clone()));
-        let items = self.hold_end(app, "caught").ok_or("Nothing is being held.")?;
+        let current_id = self
+            .hold
+            .lock()
+            .ok()
+            .and_then(|g| g.as_ref().map(|h| h.id.clone()));
+        let items = self
+            .hold_end(app, "caught")
+            .ok_or("Nothing is being held.")?;
         let link = crate::link_of(app).ok_or("The connection service didn't start")?;
         link.send_items_for_hold(items.paths, current_id).await
     }
@@ -388,7 +451,9 @@ pub fn grab_selection() -> Option<GrabbedItems> {
 
 /// Shows the full-screen click-through overlay (camera + hand ring + floating card) or hides it.
 pub fn set_overlay_visible(app: &AppHandle, visible: bool) {
-    let Some(win) = app.get_webview_window("overlay") else { return };
+    let Some(win) = app.get_webview_window("overlay") else {
+        return;
+    };
     if visible {
         // Cover the monitor the user is working on (where the foreground window is), else the primary one.
         let monitor = win.primary_monitor().ok().flatten();
@@ -410,8 +475,12 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
     std::thread::Builder::new()
         .name("pinchdrop-hotkey".into())
         .spawn(move || {
-            use windows::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_SPACE};
-            use windows::Win32::UI::WindowsAndMessaging::{PeekMessageW, MSG, PM_REMOVE, WM_HOTKEY};
+            use windows::Win32::UI::Input::KeyboardAndMouse::{
+                RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_SPACE,
+            };
+            use windows::Win32::UI::WindowsAndMessaging::{
+                PeekMessageW, MSG, PM_REMOVE, WM_HOTKEY,
+            };
             const ID: i32 = 0x5044; // "PD"
             let mut registered = false;
             loop {
@@ -420,7 +489,13 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
                 // SAFETY: hotkey registered and messages read on this same thread.
                 unsafe {
                     if want && !registered {
-                        registered = RegisterHotKey(None, ID, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_SPACE.0 as u32).is_ok();
+                        registered = RegisterHotKey(
+                            None,
+                            ID,
+                            MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT,
+                            VK_SPACE.0 as u32,
+                        )
+                        .is_ok();
                     } else if !want && registered {
                         let _ = UnregisterHotKey(None, ID);
                         registered = false;
@@ -450,6 +525,9 @@ mod tests {
     #[test]
     fn labels_read_naturally() {
         assert_eq!(label_for(&["C:\\Users\\me\\Desktop\\CPP".into()]), "CPP");
-        assert_eq!(label_for(&["C:\\a.txt".into(), "C:\\b.txt".into()]), "2 items");
+        assert_eq!(
+            label_for(&["C:\\a.txt".into(), "C:\\b.txt".into()]),
+            "2 items"
+        );
     }
 }

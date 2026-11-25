@@ -46,7 +46,10 @@ pub fn current() -> Option<Selection> {
     };
     let (reply_tx, reply_rx) = mpsc::channel();
     tx.send(reply_tx).ok()?;
-    reply_rx.recv_timeout(Duration::from_millis(1500)).ok().flatten()
+    reply_rx
+        .recv_timeout(Duration::from_millis(1500))
+        .ok()
+        .flatten()
 }
 
 #[cfg(windows)]
@@ -54,16 +57,20 @@ mod imp {
     use super::{Reply, Selection, Source};
     use std::sync::mpsc::Receiver;
     use windows::core::Interface;
-    use windows::Win32::System::Variant::{VARIANT, VT_I4};
     use windows::Win32::Foundation::HWND;
     use windows::Win32::System::Com::{
-        CoCreateInstance, CoInitializeEx, CoTaskMemFree, IServiceProvider, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
+        CoCreateInstance, CoInitializeEx, CoTaskMemFree, IServiceProvider, CLSCTX_ALL,
+        COINIT_APARTMENTTHREADED,
     };
+    use windows::Win32::System::Variant::{VARIANT, VT_I4};
     use windows::Win32::UI::Shell::{
-        IFolderView, IShellBrowser, IShellItemArray, IShellWindows, IWebBrowserApp, ShellWindows, SID_STopLevelBrowser,
-        SIGDN_FILESYSPATH, SVGIO_SELECTION, SWC_DESKTOP, SWFO_NEEDDISPATCH,
+        IFolderView, IShellBrowser, IShellItemArray, IShellWindows, IWebBrowserApp,
+        SID_STopLevelBrowser, ShellWindows, SIGDN_FILESYSPATH, SVGIO_SELECTION, SWC_DESKTOP,
+        SWFO_NEEDDISPATCH,
     };
-    use windows::Win32::UI::WindowsAndMessaging::{GetAncestor, GetClassNameW, GetForegroundWindow, IsWindowVisible, GA_ROOT};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetAncestor, GetClassNameW, GetForegroundWindow, IsWindowVisible, GA_ROOT,
+    };
 
     fn var_i4(v: i32) -> VARIANT {
         let mut var = VARIANT::default();
@@ -143,29 +150,47 @@ mod imp {
                 let mut hwnd = 0i32;
                 let loc = var_i4(0); // CSIDL_DESKTOP
                 let root_loc = VARIANT::default();
-                let disp = windows.FindWindowSW(&loc, &root_loc, SWC_DESKTOP, &mut hwnd, SWFO_NEEDDISPATCH)?;
+                let disp = windows.FindWindowSW(
+                    &loc,
+                    &root_loc,
+                    SWC_DESKTOP,
+                    &mut hwnd,
+                    SWFO_NEEDDISPATCH,
+                )?;
                 let browser = browser_from(&disp.cast()?)?;
                 return Ok(selection_of(&browser)?
                     .filter(|p| !p.is_empty())
-                    .map(|paths| Selection { source: Source::Desktop, paths }));
+                    .map(|paths| Selection {
+                        source: Source::Desktop,
+                        paths,
+                    }));
             }
 
             if class != "CabinetWClass" {
                 return Ok(None);
             }
             for i in 0..windows.Count()? {
-                let Ok(disp) = windows.Item(&var_i4(i)) else { continue };
-                let Ok(app) = disp.cast::<IWebBrowserApp>() else { continue };
+                let Ok(disp) = windows.Item(&var_i4(i)) else {
+                    continue;
+                };
+                let Ok(app) = disp.cast::<IWebBrowserApp>() else {
+                    continue;
+                };
                 let Ok(h) = app.HWND() else { continue };
                 if h.0 != root.0 as isize {
                     continue;
                 }
-                let Ok(browser) = browser_from(&disp.cast()?) else { continue };
+                let Ok(browser) = browser_from(&disp.cast()?) else {
+                    continue;
+                };
                 if let Ok(Some(paths)) = selection_of(&browser) {
                     if paths.is_empty() {
                         return Ok(None);
                     }
-                    return Ok(Some(Selection { source: Source::Explorer, paths }));
+                    return Ok(Some(Selection {
+                        source: Source::Explorer,
+                        paths,
+                    }));
                 }
             }
             Ok(None)

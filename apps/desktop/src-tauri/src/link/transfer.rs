@@ -109,7 +109,10 @@ impl From<&Transfer> for TransferView {
             files_done: t.files_done,
             bytes_done: t.bytes_done,
             moved: t.moved,
-            first_name: t.files.first().map(|f| f.path.rsplit('/').next().unwrap_or(&f.path).to_string()),
+            first_name: t
+                .files
+                .first()
+                .map(|f| f.path.rsplit('/').next().unwrap_or(&f.path).to_string()),
         }
     }
 }
@@ -127,23 +130,36 @@ pub fn safe_source(p: &str) -> Result<&Path, String> {
 }
 
 fn name_of(p: &Path) -> String {
-    p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "item".into())
+    p.file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "item".into())
 }
 
 fn walk(dir: &Path, rel: &str, out: &mut Vec<FileEntry>) -> Result<(), String> {
-    let mut entries: Vec<_> = fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))?.flatten().collect();
+    let mut entries: Vec<_> = fs::read_dir(dir)
+        .map_err(|e| format!("{}: {e}", dir.display()))?
+        .flatten()
+        .collect();
     entries.sort_by_key(|e| e.file_name());
     for entry in entries {
         if out.len() >= MAX_FILES {
-            return Err(format!("More than {MAX_FILES} files — send a smaller folder."));
+            return Err(format!(
+                "More than {MAX_FILES} files — send a smaller folder."
+            ));
         }
         // symlink_metadata: never follow links out of what the user picked.
-        let Ok(meta) = fs::symlink_metadata(entry.path()) else { continue };
+        let Ok(meta) = fs::symlink_metadata(entry.path()) else {
+            continue;
+        };
         let child = format!("{rel}/{}", entry.file_name().to_string_lossy());
         if meta.is_dir() {
             walk(&entry.path(), &child, out)?;
         } else if meta.is_file() {
-            out.push(FileEntry { path: child, source: entry.path().to_string_lossy().into_owned(), size: meta.len() });
+            out.push(FileEntry {
+                path: child,
+                source: entry.path().to_string_lossy().into_owned(),
+                size: meta.len(),
+            });
         }
     }
     Ok(())
@@ -159,7 +175,11 @@ pub fn build_manifest(paths: &[String]) -> Result<(Vec<FileEntry>, String), Stri
         if meta.is_dir() {
             walk(path, &name, &mut files)?;
         } else if meta.is_file() {
-            files.push(FileEntry { path: name, source: p.clone(), size: meta.len() });
+            files.push(FileEntry {
+                path: name,
+                source: p.clone(),
+                size: meta.len(),
+            });
         }
     }
     let label = match paths {
@@ -174,7 +194,10 @@ mod tests {
     use super::*;
 
     fn tmp(tag: &str) -> std::path::PathBuf {
-        let d = std::env::temp_dir().join(format!("pd-xfer-{tag}-{}", super::super::proto::random_id()));
+        let d = std::env::temp_dir().join(format!(
+            "pd-xfer-{tag}-{}",
+            super::super::proto::random_id()
+        ));
         fs::create_dir_all(&d).unwrap();
         d
     }
@@ -188,7 +211,11 @@ mod tests {
         fs::write(cpp.join("src").join("main.cpp"), b"int main(){}").unwrap();
         let single = root.join("photo.jpg");
         fs::write(&single, b"jpg").unwrap();
-        let (files, label) = build_manifest(&[cpp.to_string_lossy().into(), single.to_string_lossy().into()]).unwrap();
+        let (files, label) = build_manifest(&[
+            cpp.to_string_lossy().into(),
+            single.to_string_lossy().into(),
+        ])
+        .unwrap();
         let paths: Vec<_> = files.iter().map(|f| f.path.as_str()).collect();
         assert_eq!(paths, ["CPP/b.txt", "CPP/src/main.cpp", "photo.jpg"]);
         assert_eq!(files[1].size, 12);
@@ -202,7 +229,12 @@ mod tests {
     fn rejects_relative_and_parent_paths() {
         assert!(safe_source("relative/path").is_err());
         let root = tmp("p");
-        let sneaky = format!("{}{}..{}x", root.display(), std::path::MAIN_SEPARATOR, std::path::MAIN_SEPARATOR);
+        let sneaky = format!(
+            "{}{}..{}x",
+            root.display(),
+            std::path::MAIN_SEPARATOR,
+            std::path::MAIN_SEPARATOR
+        );
         assert!(safe_source(&sneaky).is_err());
         assert!(safe_source(&root.to_string_lossy()).is_ok());
         let _ = fs::remove_dir_all(root);
@@ -223,8 +255,16 @@ mod tests {
             destination: "auto".into(),
             open_first: false,
             files: vec![
-                FileEntry { path: "a".into(), source: "C:\\a".into(), size: 10 },
-                FileEntry { path: "b".into(), source: "C:\\b".into(), size: 5 },
+                FileEntry {
+                    path: "a".into(),
+                    source: "C:\\a".into(),
+                    size: 10,
+                },
+                FileEntry {
+                    path: "b".into(),
+                    source: "C:\\b".into(),
+                    size: 5,
+                },
             ],
             texts: vec![],
             roots: vec!["C:\\a".into()],

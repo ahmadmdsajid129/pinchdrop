@@ -34,7 +34,10 @@ pub struct Envelope {
 }
 
 pub fn now_ms() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 pub fn now_secs() -> u64 {
@@ -65,7 +68,13 @@ pub fn b64url(bytes: &[u8]) -> String {
 
 /// Serialises one message ready to send as a WebSocket text frame.
 pub fn message(kind: &str, payload: Value) -> String {
-    let env = Envelope { v: PROTOCOL_VERSION, id: random_id(), kind: kind.to_string(), ts: now_ms(), payload };
+    let env = Envelope {
+        v: PROTOCOL_VERSION,
+        id: random_id(),
+        kind: kind.to_string(),
+        ts: now_ms(),
+        payload,
+    };
     serde_json::to_string(&env).unwrap_or_default()
 }
 
@@ -96,8 +105,11 @@ pub fn sas_code(fingerprint_hex: &str, pc_nonce: &[u8], phone_nonce: &[u8]) -> O
 }
 
 /// Proof that a reconnecting phone holds the secret it got at pairing.
+/// The phone computes this (Proto.authProof in Kotlin); the PC only verifies, so it's used here by tests.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn auth_proof(secret: &[u8], pc_nonce: &[u8]) -> Vec<u8> {
-    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(secret).expect("HMAC accepts any key length");
+    let mut mac =
+        <Hmac<Sha256> as Mac>::new_from_slice(secret).expect("HMAC accepts any key length");
     mac.update(AUTH_LABEL);
     mac.update(pc_nonce);
     mac.finalize().into_bytes().to_vec()
@@ -105,7 +117,8 @@ pub fn auth_proof(secret: &[u8], pc_nonce: &[u8]) -> Vec<u8> {
 
 /// Constant-time check of a proof sent by the phone.
 pub fn verify_proof(secret: &[u8], pc_nonce: &[u8], proof: &[u8]) -> bool {
-    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(secret).expect("HMAC accepts any key length");
+    let mut mac =
+        <Hmac<Sha256> as Mac>::new_from_slice(secret).expect("HMAC accepts any key length");
     mac.update(AUTH_LABEL);
     mac.update(pc_nonce);
     mac.verify_slice(proof).is_ok()
@@ -116,7 +129,14 @@ fn pct(s: &str) -> String {
 }
 
 /// The text inside the pairing QR code (LINK-v1 §3).
-pub fn pairing_url(pc_id: &str, pc_name: &str, hosts: &[String], port: u16, fingerprint_hex: &str, token: &str) -> String {
+pub fn pairing_url(
+    pc_id: &str,
+    pc_name: &str,
+    hosts: &[String],
+    port: u16,
+    fingerprint_hex: &str,
+    token: &str,
+) -> String {
     format!(
         "pinchdrop://pair?v={PROTOCOL_VERSION}&id={}&n={}&h={}&p={port}&fp={fingerprint_hex}&t={}",
         pct(pc_id),
@@ -174,12 +194,22 @@ mod tests {
 
     #[test]
     fn pairing_url_is_encoded() {
-        let url = pairing_url("abc", "My Laptop", &["192.168.1.5".into(), "10.0.0.2".into()], 47821, "ff", "tok");
+        let url = pairing_url(
+            "abc",
+            "My Laptop",
+            &["192.168.1.5".into(), "10.0.0.2".into()],
+            47821,
+            "ff",
+            "tok",
+        );
         assert_eq!(url, "pinchdrop://pair?v=1&id=abc&n=My%20Laptop&h=192.168.1.5%2C10.0.0.2&p=47821&fp=ff&t=tok");
     }
 
     #[test]
     fn fingerprint_is_hex_sha256() {
-        assert_eq!(fingerprint(b""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        assert_eq!(
+            fingerprint(b""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
     }
 }

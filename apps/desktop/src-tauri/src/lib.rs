@@ -41,11 +41,14 @@ impl AppState {
 }
 
 pub(crate) fn link_of(app: &AppHandle) -> Option<Arc<link::Link>> {
-    app.try_state::<Arc<link::Link>>().map(|l| l.inner().clone())
+    app.try_state::<Arc<link::Link>>()
+        .map(|l| l.inner().clone())
 }
 
 pub(crate) fn current_settings(app: &AppHandle) -> Settings {
-    app.try_state::<AppState>().map(|s| s.snapshot()).unwrap_or_default()
+    app.try_state::<AppState>()
+        .map(|s| s.snapshot())
+        .unwrap_or_default()
 }
 
 /// The name phones see for this PC.
@@ -61,7 +64,10 @@ fn phone_status(app: &AppHandle) -> PhoneStatus {
     if let Some(real) = link_of(app).and_then(|l| l.primary_phone()) {
         return real;
     }
-    let demo = app.try_state::<AppState>().map(|s| s.snapshot().demo_phone).unwrap_or(false);
+    let demo = app
+        .try_state::<AppState>()
+        .map(|s| s.snapshot().demo_phone)
+        .unwrap_or(false);
     PhoneStatus::current(demo)
 }
 
@@ -85,7 +91,10 @@ fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
 fn commit_settings(app: &AppHandle, next: Settings) -> Result<Settings, String> {
     let state = app.state::<AppState>();
     let previous = {
-        let mut guard = state.settings.lock().map_err(|_| "settings lock poisoned")?;
+        let mut guard = state
+            .settings
+            .lock()
+            .map_err(|_| "settings lock poisoned")?;
         let prev = guard.clone();
         *guard = next.clone();
         prev
@@ -143,7 +152,9 @@ fn refresh_pill_visibility(app: &AppHandle) {
 
 fn place_pill_initially(app: &AppHandle) {
     let Some(win) = pill_window(app) else { return };
-    let Some(rect) = pill::outer_rect(&win) else { return };
+    let Some(rect) = pill::outer_rect(&win) else {
+        return;
+    };
     let s = app.state::<AppState>().snapshot();
     let monitors = win.available_monitors().unwrap_or_default();
     let saved_on_screen = match (s.pill.x, s.pill.y) {
@@ -157,16 +168,22 @@ fn place_pill_initially(app: &AppHandle) {
         _ => false,
     };
     if saved_on_screen {
-        pill::set_rect(&win, s.pill.x.unwrap_or(0), s.pill.y.unwrap_or(0), rect.w, rect.h);
-    } else if let Some(work) = win
-        .primary_monitor()
-        .ok()
-        .flatten()
-        .map(|m| {
-            let wa = m.work_area();
-            pill::Rect { x: wa.position.x, y: wa.position.y, w: wa.size.width as i32, h: wa.size.height as i32 }
-        })
-    {
+        pill::set_rect(
+            &win,
+            s.pill.x.unwrap_or(0),
+            s.pill.y.unwrap_or(0),
+            rect.w,
+            rect.h,
+        );
+    } else if let Some(work) = win.primary_monitor().ok().flatten().map(|m| {
+        let wa = m.work_area();
+        pill::Rect {
+            x: wa.position.x,
+            y: wa.position.y,
+            w: wa.size.width as i32,
+            h: wa.size.height as i32,
+        }
+    }) {
         let (x, y) = pill::default_position(work, rect.w, rect.h);
         pill::set_rect(&win, x, y, rect.w, rect.h);
     }
@@ -202,7 +219,9 @@ fn get_phone_status(app: AppHandle) -> PhoneStatus {
 
 #[tauri::command]
 fn pairing_open(app: AppHandle) -> Result<link::PairInfo, String> {
-    Ok(link_of(&app).ok_or("The connection service didn't start")?.pairing_open())
+    Ok(link_of(&app)
+        .ok_or("The connection service didn't start")?
+        .pairing_open())
 }
 
 #[tauri::command]
@@ -232,14 +251,21 @@ fn list_devices(app: AppHandle) -> Vec<link::DeviceView> {
 // ---------------------------------------------------------------- transfers (Phase 4)
 
 #[tauri::command]
-async fn send_items(app: AppHandle, paths: Vec<String>, texts: Vec<String>, destination: String) -> Result<String, String> {
+async fn send_items(
+    app: AppHandle,
+    paths: Vec<String>,
+    texts: Vec<String>,
+    destination: String,
+) -> Result<String, String> {
     let link = link_of(&app).ok_or("The connection service didn't start")?;
     link.send_items(paths, texts, destination).await
 }
 
 #[tauri::command]
 fn list_transfers(app: AppHandle) -> Vec<link::transfer::TransferView> {
-    link_of(&app).map(|l| l.transfers_view()).unwrap_or_default()
+    link_of(&app)
+        .map(|l| l.transfers_view())
+        .unwrap_or_default()
 }
 
 #[tauri::command]
@@ -266,7 +292,10 @@ fn grab_arm_state(app: AppHandle) -> Option<grab::ArmState> {
 /// Called by the overlay the moment a pinch closes: what is selected right now?
 #[tauri::command]
 async fn grab_selection() -> Option<grab::GrabbedItems> {
-    tauri::async_runtime::spawn_blocking(grab::grab_selection).await.ok().flatten()
+    tauri::async_runtime::spawn_blocking(grab::grab_selection)
+        .await
+        .ok()
+        .flatten()
 }
 
 /// Called by the overlay when the hand opens with something grabbed.
@@ -282,7 +311,9 @@ fn hold_start(app: AppHandle, items: grab::GrabbedItems) -> Option<grab::HoldVie
 /// The pill was clicked open: the camera may run until 30 s pass with nothing happening.
 #[tauri::command]
 fn gesture_session_start(app: AppHandle) -> Result<grab::SessionView, String> {
-    app.try_state::<grab::Grab>().ok_or("not ready")?.session_start(&app)
+    app.try_state::<grab::Grab>()
+        .ok_or("not ready")?
+        .session_start(&app)
 }
 
 #[tauri::command]
@@ -347,7 +378,11 @@ fn get_autostart(app: AppHandle) -> bool {
 #[tauri::command]
 fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool, String> {
     let launcher = app.autolaunch();
-    let result = if enabled { launcher.enable() } else { launcher.disable() };
+    let result = if enabled {
+        launcher.enable()
+    } else {
+        launcher.disable()
+    };
     result.map_err(|e| format!("Couldn't change start-with-Windows: {e}"))?;
     Ok(launcher.is_enabled().unwrap_or(enabled))
 }
@@ -398,7 +433,12 @@ fn pill_reset_position(app: AppHandle) -> Result<(), String> {
         .flatten()
         .map(|m| {
             let wa = m.work_area();
-            pill::Rect { x: wa.position.x, y: wa.position.y, w: wa.size.width as i32, h: wa.size.height as i32 }
+            pill::Rect {
+                x: wa.position.x,
+                y: wa.position.y,
+                w: wa.size.width as i32,
+                h: wa.size.height as i32,
+            }
         })
         .ok_or("no monitor")?;
     let (x, y) = pill::default_position(work, r.w, r.h);
@@ -457,9 +497,11 @@ fn open_config_folder(app: AppHandle, state: State<AppState>) -> Result<(), Stri
 /// Sizes and file counts for paths picked in the Send screen. Runs off the UI thread.
 #[tauri::command]
 async fn inspect_paths(paths: Vec<String>) -> Vec<fs_info::PathInfo> {
-    tauri::async_runtime::spawn_blocking(move || paths.iter().map(|p| fs_info::inspect(p)).collect())
-        .await
-        .unwrap_or_default()
+    tauri::async_runtime::spawn_blocking(move || {
+        paths.iter().map(|p| fs_info::inspect(p)).collect()
+    })
+    .await
+    .unwrap_or_default()
 }
 
 /// Resets everything to first-run defaults and unpairs every phone.
@@ -477,15 +519,20 @@ fn reset_app(app: AppHandle) -> Result<Settings, String> {
 fn allow_camera_in_webviews(app: &AppHandle) {
     #[cfg(windows)]
     for label in ["main", "overlay"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
+        let Some(win) = app.get_webview_window(label) else {
+            continue;
+        };
         let _ = win.with_webview(|wv| {
             use webview2_com::Microsoft::Web::WebView2::Win32::{
-                COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_CAMERA, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+                COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_CAMERA,
+                COREWEBVIEW2_PERMISSION_STATE_ALLOW,
             };
             use webview2_com::PermissionRequestedEventHandler;
             // SAFETY: COM calls on the webview's own controller, on its UI thread.
             unsafe {
-                let Ok(core) = wv.controller().CoreWebView2() else { return };
+                let Ok(core) = wv.controller().CoreWebView2() else {
+                    return;
+                };
                 let mut token = Default::default();
                 let _ = core.add_PermissionRequested(
                     &PermissionRequestedEventHandler::create(Box::new(|_, args| {
@@ -513,11 +560,15 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open PinchDrop", true, None::<&str>)?;
     let send = MenuItem::with_id(app, "send", "Send files…", true, None::<&str>)?;
     let visible = app.state::<AppState>().snapshot().pill.visible;
-    let show_pill = CheckMenuItem::with_id(app, "toggle_pill", "Show pill", true, visible, None::<&str>)?;
+    let show_pill =
+        CheckMenuItem::with_id(app, "toggle_pill", "Show pill", true, visible, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit PinchDrop", true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&open, &send, &show_pill, &settings_item, &sep, &quit])?;
+    let menu = Menu::with_items(
+        app,
+        &[&open, &send, &show_pill, &settings_item, &sep, &quit],
+    )?;
 
     if let Ok(mut g) = app.state::<AppState>().tray_show_pill.lock() {
         *g = Some(show_pill.clone());

@@ -39,8 +39,11 @@ pub fn identity_path(config_dir: &Path) -> PathBuf {
 
 fn generate_identity() -> Result<Identity, String> {
     let key = rcgen::KeyPair::generate().map_err(|e| e.to_string())?;
-    let mut params = rcgen::CertificateParams::new(vec!["pinchdrop.local".to_string()]).map_err(|e| e.to_string())?;
-    params.distinguished_name.push(rcgen::DnType::CommonName, "PinchDrop PC");
+    let mut params = rcgen::CertificateParams::new(vec!["pinchdrop.local".to_string()])
+        .map_err(|e| e.to_string())?;
+    params
+        .distinguished_name
+        .push(rcgen::DnType::CommonName, "PinchDrop PC");
     // Valid for a long time: the phone pins the fingerprint, not the dates.
     params.not_before = rcgen::date_time_ymd(2024, 1, 1);
     params.not_after = rcgen::date_time_ymd(2049, 12, 31);
@@ -60,13 +63,27 @@ pub fn load_or_create_identity(config_dir: &Path) -> Result<Identity, String> {
     if let Ok(text) = std::fs::read_to_string(&path) {
         if let Ok(f) = serde_json::from_str::<IdentityFile>(&text) {
             if let (Some(cert_der), Some(key_der)) = (unb64(&f.cert_der), unb64(&f.key_der)) {
-                return Ok(Identity { pc_id: f.pc_id, fingerprint: fingerprint(&cert_der), cert_der, key_der });
+                return Ok(Identity {
+                    pc_id: f.pc_id,
+                    fingerprint: fingerprint(&cert_der),
+                    cert_der,
+                    key_der,
+                });
             }
         }
     }
     let id = generate_identity()?;
-    let file = IdentityFile { pc_id: id.pc_id.clone(), cert_der: b64(&id.cert_der), key_der: b64(&id.key_der) };
-    write_atomic(&path, serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?.as_bytes())?;
+    let file = IdentityFile {
+        pc_id: id.pc_id.clone(),
+        cert_der: b64(&id.cert_der),
+        key_der: b64(&id.key_der),
+    };
+    write_atomic(
+        &path,
+        serde_json::to_string_pretty(&file)
+            .map_err(|e| e.to_string())?
+            .as_bytes(),
+    )?;
     Ok(id)
 }
 
@@ -119,7 +136,12 @@ impl Devices {
     }
 
     pub fn save(&self, path: &Path) -> Result<(), String> {
-        write_atomic(path, serde_json::to_string_pretty(self).map_err(|e| e.to_string())?.as_bytes())
+        write_atomic(
+            path,
+            serde_json::to_string_pretty(self)
+                .map_err(|e| e.to_string())?
+                .as_bytes(),
+        )
     }
 
     pub fn get(&self, id: &str) -> Option<&PairedDevice> {

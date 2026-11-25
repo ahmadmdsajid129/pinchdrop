@@ -18,7 +18,7 @@ pub const EDGE_GAP: i32 = 8;
 pub const SNAP_DISTANCE: i32 = 40;
 
 /// Where a window of `w`×`h` goes when it first appears: top centre.
-pub fn default_position(work: Rect, w: i32, h: i32) -> (i32, i32) {
+pub fn default_position(work: Rect, w: i32, _h: i32) -> (i32, i32) {
     (work.x + (work.w - w) / 2, work.y + EDGE_GAP)
 }
 
@@ -84,7 +84,12 @@ pub fn snap(work: Rect, r: Rect) -> (i32, i32, &'static str, &'static str) {
 pub fn outer_rect(win: &WebviewWindow) -> Option<Rect> {
     let p = win.outer_position().ok()?;
     let s = win.outer_size().ok()?;
-    Some(Rect { x: p.x, y: p.y, w: s.width as i32, h: s.height as i32 })
+    Some(Rect {
+        x: p.x,
+        y: p.y,
+        w: s.width as i32,
+        h: s.height as i32,
+    })
 }
 
 /// Work area (screen minus taskbar) of the monitor the window is on,
@@ -128,7 +133,12 @@ pub fn fullscreen_app_active() -> bool {
 mod tests {
     use super::*;
 
-    const WORK: Rect = Rect { x: 0, y: 0, w: 1920, h: 1040 };
+    const WORK: Rect = Rect {
+        x: 0,
+        y: 0,
+        w: 1920,
+        h: 1040,
+    };
 
     #[test]
     fn default_is_top_centre() {
@@ -137,7 +147,12 @@ mod tests {
 
     #[test]
     fn growing_from_top_centre_keeps_centre_and_top() {
-        let old = Rect { x: 860, y: 8, w: 200, h: 40 };
+        let old = Rect {
+            x: 860,
+            y: 8,
+            w: 200,
+            h: 40,
+        };
         let (x, y) = anchored_position(old, 460, 200, "center", "top");
         assert_eq!(x + 230, old.x + 100);
         assert_eq!(y, 8);
@@ -145,7 +160,12 @@ mod tests {
 
     #[test]
     fn growing_from_bottom_right_keeps_that_corner() {
-        let old = Rect { x: 1700, y: 990, w: 200, h: 40 };
+        let old = Rect {
+            x: 1700,
+            y: 990,
+            w: 200,
+            h: 40,
+        };
         let (x, y) = anchored_position(old, 460, 200, "right", "bottom");
         assert_eq!(x + 460, 1900);
         assert_eq!(y + 200, 1030);
@@ -153,22 +173,54 @@ mod tests {
 
     #[test]
     fn snaps_to_top_centre_when_close() {
-        let (x, y, h, v) = snap(WORK, Rect { x: 870, y: 20, w: 200, h: 40 });
+        let (x, y, h, v) = snap(
+            WORK,
+            Rect {
+                x: 870,
+                y: 20,
+                w: 200,
+                h: 40,
+            },
+        );
         assert_eq!((x, y, h, v), (860, EDGE_GAP, "center", "top"));
     }
 
     #[test]
     fn snaps_to_bottom_left_corner() {
-        let (x, y, h, v) = snap(WORK, Rect { x: 15, y: 985, w: 200, h: 40 });
+        let (x, y, h, v) = snap(
+            WORK,
+            Rect {
+                x: 15,
+                y: 985,
+                w: 200,
+                h: 40,
+            },
+        );
         assert_eq!((h, v), ("left", "bottom"));
         assert_eq!((x, y), (EDGE_GAP, 1040 - 40 - EDGE_GAP));
     }
 
     #[test]
     fn free_spot_is_kept_but_clamped_on_screen() {
-        let (x, y, _, _) = snap(WORK, Rect { x: 500, y: 500, w: 200, h: 40 });
+        let (x, y, _, _) = snap(
+            WORK,
+            Rect {
+                x: 500,
+                y: 500,
+                w: 200,
+                h: 40,
+            },
+        );
         assert_eq!((x, y), (500, 500));
-        let (x, y, _, _) = snap(WORK, Rect { x: -300, y: 2000, w: 200, h: 40 });
+        let (x, y, _, _) = snap(
+            WORK,
+            Rect {
+                x: -300,
+                y: 2000,
+                w: 200,
+                h: 40,
+            },
+        );
         assert!(x >= 0 && y + 40 <= 1040);
     }
 }

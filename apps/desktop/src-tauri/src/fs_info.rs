@@ -22,7 +22,9 @@ pub struct PathInfo {
 }
 
 fn walk(dir: &Path, bytes: &mut u64, files: &mut u64, seen: &mut u64) -> bool {
-    let Ok(entries) = fs::read_dir(dir) else { return true };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return true;
+    };
     for entry in entries.flatten() {
         *seen += 1;
         if *seen > MAX_ENTRIES {

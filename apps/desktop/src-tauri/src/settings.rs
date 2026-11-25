@@ -17,9 +17,9 @@ pub struct PillSettings {
     pub y: Option<i32>,
     /// Which side of the pill stays put when it grows into the Island.
     pub anchor_h: String, // "left" | "center" | "right"
-    pub anchor_v: String, // "top" | "bottom"
-    pub shows: String,    // "name_battery" | "battery" | "dot"
-    pub size: String,     // "s" | "m" | "l"
+    pub anchor_v: String,            // "top" | "bottom"
+    pub shows: String,               // "name_battery" | "battery" | "dot"
+    pub size: String,                // "s" | "m" | "l"
     pub island_auto_close_secs: u32, // 0 = never
     pub hide_in_fullscreen: bool,
 }
@@ -95,7 +95,10 @@ pub struct NotificationSettings {
 
 impl Default for NotificationSettings {
     fn default() -> Self {
-        Self { on_finish: true, on_disconnect: false }
+        Self {
+            on_finish: true,
+            on_disconnect: false,
+        }
     }
 }
 
@@ -112,7 +115,10 @@ impl Default for ProfileSettings {
             .ok()
             .filter(|n| !n.trim().is_empty())
             .unwrap_or_else(|| "My PC".to_string());
-        Self { pc_name: name, avatar_color: "#22D3EE".into() }
+        Self {
+            pc_name: name,
+            avatar_color: "#22D3EE".into(),
+        }
     }
 }
 
