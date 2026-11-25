@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 7 (Grab Sources, Stage Tray & Quick Catch)** — Completed. Android Share Sheet target (`ACTION_SEND` and `ACTION_SEND_MULTIPLE`), Quick Settings `GrabTileService`, PC `StageTrayManager` with 30s ARMED state Quick Catch, and IPC command bridge.
+- **Current Stage:** **Stage 8 (Air Clipboard & Open-on-Device)** — Completed. Ballistic Throw (G3b) velocity detector in `@pinchdrop/gesture-core`, `AirClipboardManager` and `open_in_browser` IPC commands in Rust desktop core, and `AndroidClipboardReceiver` in Kotlin companion app.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 8 (Air Clipboard & Open-on-Device)** — Bi-directional text/URL synchronization, "Open on other device" actions, and ballistic Throw gesture triggers.
+- **Next Stage:** **Stage 9 (Gesture Gym, First-Run Onboarding & Privacy Settings)** — Interactive gesture calibration playground, visual hand coach, and real-time privacy controls.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server & Stage Tray), `apps/android` (Kotlin/Compose companion app with Share target & Quick Settings tile)
+  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray & Air Clipboard), `apps/android` (Kotlin/Compose companion app with Share target, Quick Settings tile & Clipboard sync)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
