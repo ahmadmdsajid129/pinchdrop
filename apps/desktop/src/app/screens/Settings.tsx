@@ -157,23 +157,19 @@ export function SettingsScreen() {
         </Row>
       </Section>
 
-      <Section id="transfers" title="Transfers" badge={<PhaseBadge phase={4} />}>
+      <Section id="transfers" title="Transfers">
         <Row title="When I send something" description="Move puts the PC copy in the Recycle Bin only after the phone confirms">
           <Select label="Copy or move" value={t.mode} onChange={(v) => void update({ transfers: { mode: v } })}
             options={[{ value: 'copy', label: 'Copy (keep on PC)' }, { value: 'move', label: 'Move' }]} />
         </Row>
         <Row title="Photos & videos land in"><span className="text-[13px] text-soft">Gallery · Pictures/PinchDrop, Movies/PinchDrop</span></Row>
         <Row title="Other files & folders land in"><span className="text-[13px] text-soft">Downloads/PinchDrop</span></Row>
-        <Row title="If the name already exists on the phone">
-          <Select label="Name clash" value={t.nameClash} onChange={(v) => void update({ transfers: { nameClash: v } })}
-            options={[{ value: 'keep_both', label: 'Keep both (add " (2)")' }, { value: 'replace', label: 'Replace' }]} />
-        </Row>
-        <Row title="Resume interrupted transfers automatically" last>
-          <Toggle label="Auto-resume" checked={t.autoResume} onChange={(v) => void update({ transfers: { autoResume: v } })} />
+        <Row title="If the name already exists on the phone" description="Chosen on the phone (Settings → Saving), because that's where the files land" last>
+          <span className="text-[13px] text-soft">Set on the phone</span>
         </Row>
       </Section>
 
-      <Section id="notify" title="Notifications" badge={<PhaseBadge phase={4} />}>
+      <Section id="notify" title="Notifications" badge={<PhaseBadge phase={7} />}>
         <Row title="Windows notification when a send finishes or fails">
           <Toggle label="Finish notifications" checked={settings.notifications.onFinish} onChange={(v) => void update({ notifications: { onFinish: v } })} />
         </Row>
@@ -186,8 +182,8 @@ export function SettingsScreen() {
         <div className="py-3.5 border-b border-surface2 text-[13px] text-soft leading-relaxed">
           Camera frames are analysed in memory and thrown away — never saved, never sent. Files travel only between your PC and your phone, encrypted. No accounts, no cloud.
         </div>
-        <Row title="Transfer history" description="Nothing stored yet">
-          <Button size="sm" disabled>Clear history</Button>
+        <Row title="Transfer history" description="Names, sizes and status of past sends, kept only on this PC">
+          <Button size="sm" onClick={() => void api.clearTransferHistory()}>Clear history</Button>
         </Row>
         <Row title="Anonymous crash reports" description="Off by default. Nothing is sent while off." last>
           <Toggle label="Crash reports" checked={settings.crashReports} onChange={(v) => void update({ crashReports: v })} />
@@ -195,7 +191,7 @@ export function SettingsScreen() {
       </Section>
 
       <Section id="about" title="About & updates">
-        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Phase 3 build — pairing and live phone status">
+        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Phase 4 build — manual sending">
           <Button size="sm" disabled>Check for updates</Button>
         </Row>
         <Row title="Preview with a demo phone" description="Shows a pretend phone (marked DEMO) when no real phone is paired">

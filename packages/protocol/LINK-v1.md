@@ -79,12 +79,61 @@ Test vector: fingerprint `00…00` (32 zero bytes), pcNonce = 32 × `0x01`, phon
 
 Someone in the middle would hold a different certificate, so the two screens would show different codes. Users are told to press Pair only when the codes match.
 
-## 6. Storage
+## 6. Sending (Phase P4): PC → phone
+
+Sending only happens inside an authenticated session (§4).
+
+### 6.1 Offer
+The PC sends `push.offer`:
+
+```json
+{ "transferId": "…", "label": "CPP", "destination": "auto",
+  "openFirst": false, "totalBytes": 50331648,
+  "files": [ { "index": 0, "path": "CPP/main.cpp", "size": 1834 } ],
+  "texts": [ "https://example.com" ] }
+```
+
+- `path` uses `/` separators.
+  - A file picked on its own is just its name.
+  - Files in a picked folder start with the folder name.
+  - The PC never sends absolute paths. The phone rejects `..`, empty segments and leading `/`.
+- `destination` is `auto` or `downloads`.
+  - `auto`: a photo or video picked **on its own** goes to the Gallery (`Pictures/PinchDrop`, `Movies/PinchDrop`).
+  - Everything else goes to `Download/PinchDrop/…`, keeping the folder structure.
+- `texts` are notes or links. They are saved to the phone's Received list straight away, and copied to the clipboard when the app is on screen.
+
+The phone replies with one of:
+- `push.accept` `{ transferId }`. This is automatic when its "Manual sends" setting is *Auto*; otherwise the user is asked.
+- `push.decline` `{ transferId }`.
+
+### 6.2 Data — the phone pulls
+- The phone asks for data with `chunk.req` `{ transferId, index, offset, length }`, where `length ≤ 524288`.
+- It keeps up to 4 requests in flight and asks for files in index order.
+- The PC answers each request with one **binary** WebSocket frame:
+
+```
+u32 big-endian headerLength ‖ header JSON (UTF-8) ‖ data bytes
+header = { "t": transferId, "i": index, "o": offset }
+```
+
+- The PC serves only files listed in that transfer's offer, and only to the phone it was offered to. A file whose size changed since the offer fails with `transfer.error` `{ transferId, index, reason: "changed" | "unreadable" }`.
+- When a file has been fully written, the phone sends `file.done` `{ transferId, index }`.
+- When every file is done, it sends `transfer.complete` `{ transferId }`. Only then may the PC apply **Move** (it sends the picked items to the Recycle Bin, never a permanent delete).
+- Either side can send `transfer.cancel` `{ transferId }`. The phone keeps the files it already finished and removes the partial one.
+
+### 6.3 Resume
+- If the link drops, both sides keep the transfer and the phone keeps its partial file.
+- After the phone reconnects, it sends `chunk.req` from the byte where it stopped. The PC keeps unfinished transfers on disk, so this also works after either side restarts.
+- If the PC doesn't know the transfer any more, it answers `transfer.error` `{ reason: "unknown" }` and the phone marks the transfer as failed.
+
+## 7. Storage
 
 | Where | What |
 |---|---|
 | PC `link_identity.json` (app config folder) | `pcId`, certificate DER and PKCS#8 private key DER (both base64) |
 | PC `devices.json` | Paired phones: `id`, `name`, `model`, `secret`, `pairedAt`, `lastSeen` |
 | Phone (app-private DataStore, backups off) | Paired PC: `pcId`, `name`, `fingerprint`, `deviceId`, `secret`, last host and port |
+| PC `transfers.json` | The last 200 sends: item names, sizes, state. Paths are kept only until the transfer finishes. |
+| Phone `received.json` (app-private) | The last 500 received items: name, size, where it was saved (content URI), time, sending PC; unfinished transfers with their byte offset |
 
 Both files stay on the device and are never uploaded. Unpairing deletes the entry on both sides; resetting the app deletes all entries.

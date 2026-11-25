@@ -204,6 +204,9 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
     val (notif, askNotif) = rememberRuntimePermission(notifPerm, resumeTick)
     val (camera, askCamera) = rememberRuntimePermission(Manifest.permission.CAMERA, resumeTick)
     val (nearby, askNearby) = rememberRuntimePermission(nearbyPerm, resumeTick)
+    // Android 8–9 only: saving into the public Download / Pictures folders needs this.
+    val storagePerm = if (Build.VERSION.SDK_INT < 29) Manifest.permission.WRITE_EXTERNAL_STORAGE else null
+    val (storage, askStorage) = rememberRuntimePermission(storagePerm, resumeTick)
     val background = remember(resumeTick) { if (context.ignoringBatteryOptimizations()) PermState.GRANTED else PermState.ASK }
     val askBackground = {
         runCatching {
@@ -233,7 +236,12 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
                 "Lets your PC show this phone's battery and reach it while the screen is off. Uses very little battery.",
                 background, askBackground,
             )
-            PermissionRow(Icons.Filled.Folder, "Saving files", "No permission needed — files go to Gallery and Downloads/PinchDrop.", PermState.NOT_NEEDED) {}
+            PermissionRow(
+                Icons.Filled.Folder, "Saving files",
+                if (storagePerm == null) "No permission needed — files go to Gallery and Downloads/PinchDrop."
+                else "Lets PinchDrop save what you receive into Download/PinchDrop and Pictures/PinchDrop.",
+                storage, askStorage,
+            )
             if (camera != PermState.GRANTED) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Filled.PanTool, contentDescription = null, tint = c.muted, modifier = Modifier.size(16.dp))

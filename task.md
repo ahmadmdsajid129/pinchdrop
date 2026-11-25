@@ -10,7 +10,7 @@
 | **Source of Truth For** | Roadmap tracking (S0–S13), sprint tasks, and backlog |
 
 > [!NOTE]
-> **v1 rebuild in progress — Phase P3 of 7.** P1 and P2 code done (founder checks P1.7 / P2.7 open). P3 code written, not yet compiled — the dev PC is still downloading the C++ build tools and Gradle. The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
+> **v1 rebuild in progress — Phase P4 of 7.** P1–P4 code written; none of P2–P4 is compiled yet because the dev PC is still downloading the C++ build tools and Gradle. Founder checks P1.7 / P2.7 / P3.8 / P4.8 open. The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
 
 ---
 
@@ -22,8 +22,8 @@ Approved 2026-11-25 together with the full screen design (see [memory.md](memory
 |---|---|---|---|
 | **P1** | **Desktop shell** — pill, Dynamic Island, main window screens, tray, start with Windows, settings | Run the `.exe` | 🟢 Built — founder check open |
 | **P2** | **Android app shell** — every phone screen, permission flow, settings | Install the APK | 🟢 Written — build + founder check open |
-| **P3** | **Real connection** — discovery, QR + 6-digit pairing, encrypted link, live phone name + battery | Pair your phone | 🟡 In progress |
-| **P4** | **Manual send** — files, folders, text; Gallery / Downloads saving; receive animations; history; resume | Send real files | ⚪ Pending |
+| **P3** | **Real connection** — discovery, QR + 6-digit pairing, encrypted link, live phone name + battery | Pair your phone | 🟢 Written — build + founder check open |
+| **P4** | **Manual send** — files, folders, text; Gallery / Downloads saving; receive animations; history; resume | Send real files | 🟡 In progress |
 | **P5** | **Grab on PC** — Explorer/Desktop selection, webcam pinch, floating card, Island countdown | Pinch a folder | ⚪ Pending |
 | **P6** | **Catch on phone** — incoming alert, camera open-hand detection, full gesture loop | The whole thing | ⚪ Pending |
 | **P7** | **Polish & installers** — sounds, haptics, error states, Windows installer, release APK | Install fresh | ⚪ Pending |
@@ -56,6 +56,17 @@ Spec: [packages/protocol/LINK-v1.md](packages/protocol/LINK-v1.md).
 - [x] `P3.6` Phone: CameraX + ZXing QR scanner (offline), "Found on this Wi-Fi" list, code screen, optional "Stay connected in background" foreground service (connectedDevice), restart after reboot.
 - [ ] `P3.7` Compile both apps and run the unit tests (blocked on toolchain downloads).
 - [ ] `P3.8` Founder check: pair the real phone, watch its battery on the pill, unplug Wi-Fi and come back.
+
+### P4 · Manual send
+Spec: [LINK-v1 §6](packages/protocol/LINK-v1.md).
+- [x] `P4.1` PC: Send button works — files, folders (structure kept), notes and links; offer lists files by index only, so the phone can never ask for anything the user didn't pick; absolute paths only, `..` rejected, symlinks not followed.
+- [x] `P4.2` Data: phone pulls 512 KB chunks, 4 in flight, as binary WebSocket frames; PC checks the file didn't change since the offer.
+- [x] `P4.3` Phone saving: loose photos/videos → Gallery (Pictures/Movies/PinchDrop), the rest → Download/PinchDrop/…; written hidden (`IS_PENDING` / `.part`) until complete; "Replace" sends our own earlier copy to the phone trash (Android 11+), never a permanent delete; Android 8–9 keeps both.
+- [x] `P4.4` Resume: both sides keep unfinished transfers on disk (`transfers.json` / `inbox.json`); the phone restarts from the bytes really on disk after a dropped link or restart.
+- [x] `P4.5` Move mode: PC copy goes to the Recycle Bin (`trash` crate) only after the phone confirms every file.
+- [x] `P4.6` Phone: Accept automatically or Ask first; real Receiving screen + progress notification; Arrived animation with the real photo; notes copied to the clipboard; Received list (filters, open, share, copy, remove from list) and Home "Recently received".
+- [x] `P4.7` PC: Transfers screen with live progress, paused/declined/failed states, search, filters, cancel, clear history.
+- [ ] `P4.8` Founder check: send a photo, a big video and a folder; turn Wi-Fi off halfway and back on; try Move.
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 

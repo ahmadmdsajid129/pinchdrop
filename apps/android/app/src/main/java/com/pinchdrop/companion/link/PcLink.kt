@@ -11,6 +11,7 @@ import android.os.StatFs
 import androidx.core.content.ContextCompat
 import com.pinchdrop.companion.data.DeviceInfo
 import com.pinchdrop.companion.data.SettingsStore
+import com.pinchdrop.companion.transfer.Receiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -89,6 +90,7 @@ object PcLink {
         app = context.applicationContext
         store = PairedPcStore(app)
         settings = SettingsStore(app)
+        Receiver.init(app)
         scope.launch {
             store.pc.map { it?.pcId }.distinctUntilChanged().collect { reevaluate(restart = true) }
         }
@@ -96,6 +98,7 @@ object PcLink {
 
     fun setForeground(on: Boolean) {
         foreground = on
+        Receiver.foreground = on
         reevaluate()
     }
 
@@ -194,9 +197,13 @@ object PcLink {
             store.rememberAddress(host, port)
             live = ws
             _state.value = State.Connected(pcName, host)
+            Receiver.onConnected({ ws.send(it) }, pcName)
             return if (connectedLoop(ws)) SessionEnd.FORGOTTEN else SessionEnd.WAS_CONNECTED
         } finally {
-            if (live === ws) live = null
+            if (live === ws) {
+                live = null
+                Receiver.onDisconnected()
+            }
             ws.close()
         }
     }
@@ -230,10 +237,15 @@ object PcLink {
                         when (val e = r.getOrNull()) {
                             null, is WsEvent.Closed -> false
                             is WsEvent.Text -> when (e.env.type) {
+                                "push.offer", "transfer.cancel", "transfer.error" -> {
+                                    Receiver.onMessage(e.env.type, e.env.payload)
+                                    null
+                                }
                                 "pc.info" -> {
                                     val n = e.env.payload.optString("pcName")
                                     if (n.isNotBlank()) {
                                         store.rename(n)
+                                        Receiver.pcName = n.take(40)
                                         _state.value = State.Connected(n.take(40), ws.host)
                                     }
                                     null
@@ -243,6 +255,10 @@ object PcLink {
                                     true
                                 }
                                 else -> null
+                            }
+                            is WsEvent.Binary -> {
+                                Receiver.onBinary(e.bytes)
+                                null
                             }
                             WsEvent.Open -> null
                         }
@@ -364,7 +380,7 @@ object PcLink {
                                     "pair.reject" -> Pairing.Failed(rejectText(e.env.payload.optString("reason")))
                                     else -> null
                                 }
-                                WsEvent.Open -> null
+                                WsEvent.Open, is WsEvent.Binary -> null
                             }
                         }
                     }

@@ -42,6 +42,10 @@ fn link_of(app: &AppHandle) -> Option<Arc<link::Link>> {
     app.try_state::<Arc<link::Link>>().map(|l| l.inner().clone())
 }
 
+pub(crate) fn current_settings(app: &AppHandle) -> Settings {
+    app.try_state::<AppState>().map(|s| s.snapshot()).unwrap_or_default()
+}
+
 /// The name phones see for this PC.
 pub(crate) fn current_pc_name(app: &AppHandle) -> String {
     app.try_state::<AppState>()
@@ -221,6 +225,33 @@ fn pairing_respond(app: AppHandle, accept: bool) {
 #[tauri::command]
 fn list_devices(app: AppHandle) -> Vec<link::DeviceView> {
     link_of(&app).map(|l| l.devices()).unwrap_or_default()
+}
+
+// ---------------------------------------------------------------- transfers (Phase 4)
+
+#[tauri::command]
+async fn send_items(app: AppHandle, paths: Vec<String>, texts: Vec<String>, destination: String) -> Result<String, String> {
+    let link = link_of(&app).ok_or("The connection service didn't start")?;
+    link.send_items(paths, texts, destination).await
+}
+
+#[tauri::command]
+fn list_transfers(app: AppHandle) -> Vec<link::transfer::TransferView> {
+    link_of(&app).map(|l| l.transfers_view()).unwrap_or_default()
+}
+
+#[tauri::command]
+fn cancel_transfer(app: AppHandle, id: String) {
+    if let Some(l) = link_of(&app) {
+        l.cancel_transfer(&id);
+    }
+}
+
+#[tauri::command]
+fn clear_transfer_history(app: AppHandle) {
+    if let Some(l) = link_of(&app) {
+        l.clear_transfer_history();
+    }
 }
 
 #[tauri::command]
@@ -503,7 +534,11 @@ pub fn run() {
             pairing_request,
             pairing_respond,
             list_devices,
-            unpair_device
+            unpair_device,
+            send_items,
+            list_transfers,
+            cancel_transfer,
+            clear_transfer_history
         ])
         .run(tauri::generate_context!())
         .expect("error while running PinchDrop");

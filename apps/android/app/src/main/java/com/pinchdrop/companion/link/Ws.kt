@@ -8,6 +8,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import okio.ByteString
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
@@ -39,6 +40,8 @@ class PinningTrustManager(private val expectedFingerprint: String) : X509TrustMa
 sealed interface WsEvent {
     data object Open : WsEvent
     data class Text(val env: Proto.Envelope) : WsEvent
+    /** File data (LINK-v1 §6.2). */
+    class Binary(val bytes: ByteArray) : WsEvent
     data class Closed(val error: Throwable?) : WsEvent
 }
 
@@ -63,7 +66,7 @@ class WsConn private constructor(
             when (val e = events.receiveCatching().getOrNull() ?: return@withTimeoutOrNull null) {
                 is WsEvent.Text -> return@withTimeoutOrNull e.env
                 is WsEvent.Closed -> return@withTimeoutOrNull null
-                WsEvent.Open -> Unit
+                WsEvent.Open, is WsEvent.Binary -> Unit
             }
         }
         @Suppress("UNREACHABLE_CODE")
@@ -96,6 +99,10 @@ class WsConn private constructor(
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     Proto.parse(text)?.let { events.trySend(WsEvent.Text(it)) }
+                }
+
+                override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    events.trySend(WsEvent.Binary(bytes.toByteArray()))
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {

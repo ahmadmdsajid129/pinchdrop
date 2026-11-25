@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { DeepPartial, DeviceView, PairInfo, PairRequest, PathInfo, PhoneStatus, Settings } from './types';
+import type { DeepPartial, DeviceView, PairInfo, PairRequest, PathInfo, PhoneStatus, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -123,6 +123,15 @@ export const api = {
   listDevices: (): Promise<DeviceView[]> => (inTauri ? invoke('list_devices') : Promise.resolve([])),
   unpairDevice: (id: string) => (inTauri ? invoke<void>('unpair_device', { id }) : Promise.resolve()),
 
+  // Phase 4 transfers.
+  sendItems: (paths: string[], texts: string[], destination: 'auto' | 'downloads'): Promise<string> =>
+    inTauri
+      ? invoke('send_items', { paths, texts, destination })
+      : Promise.reject(new Error('Sending works only in the PinchDrop app, not in a browser preview.')),
+  listTransfers: (): Promise<TransferView[]> => (inTauri ? invoke('list_transfers') : Promise.resolve([])),
+  cancelTransfer: (id: string) => (inTauri ? invoke<void>('cancel_transfer', { id }) : Promise.resolve()),
+  clearTransferHistory: () => (inTauri ? invoke<void>('clear_transfer_history') : Promise.resolve()),
+
   resetApp: async (): Promise<Settings> => {
     if (inTauri) return invoke('reset_app');
     localStorage.removeItem(MOCK_KEY);
@@ -205,6 +214,16 @@ export function useDevices() {
   }, []);
   useAsyncSubscription(() => onEvent<DeviceView[]>('devices-changed', setDevices), []);
   return devices;
+}
+
+/** Live list of sends, newest first (Phase 4). */
+export function useTransfers() {
+  const [transfers, setTransfers] = useState<TransferView[]>([]);
+  useEffect(() => {
+    api.listTransfers().then(setTransfers);
+  }, []);
+  useAsyncSubscription(() => onEvent<TransferView[]>('transfers-changed', setTransfers), []);
+  return transfers;
 }
 
 /** Applies the theme setting to <html data-theme>. Pass `force` to pin one (the pill is always dark). */

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 8-9 only: lets other apps open files PinchDrop saved in Download/Pictures/Movies. -->
+<paths>
+    <external-path name="download" path="Download/PinchDrop/" />
+    <external-path name="pictures" path="Pictures/PinchDrop/" />
+    <external-path name="movies" path="Movies/PinchDrop/" />
+</paths>

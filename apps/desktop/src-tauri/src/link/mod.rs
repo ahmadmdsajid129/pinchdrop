@@ -6,6 +6,7 @@
 
 pub mod proto;
 pub mod store;
+pub mod transfer;
 
 use crate::phone::PhoneStatus;
 use futures_util::{SinkExt, StreamExt};
@@ -19,6 +20,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use store::{Devices, Identity, PairedDevice};
+use transfer::{Transfer, TransferView, CHUNK_MAX, HISTORY_MAX};
 use tauri::{AppHandle, Emitter};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
@@ -30,6 +32,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 enum Out {
     Text(String),
+    Binary(Vec<u8>),
     Close,
 }
 
@@ -129,6 +132,9 @@ pub struct Link {
     sessions: Mutex<HashMap<String, Session>>,
     next_conn: AtomicU64,
     mdns: Mutex<Option<mdns_sd::ServiceDaemon>>,
+    transfers: Mutex<Vec<Transfer>>,
+    transfers_path: PathBuf,
+    last_progress_emit: Mutex<Instant>,
 }
 
 /// Local IPv4 addresses the phone could reach, home-network ranges first.
@@ -189,6 +195,15 @@ impl Link {
         let identity = store::load_or_create_identity(config_dir)?;
         let devices_path = store::devices_path(config_dir);
         let devices = Devices::load(&devices_path);
+        let transfers_path = config_dir.join("transfers.json");
+        let mut transfers: Vec<Transfer> = std::fs::read_to_string(&transfers_path)
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok())
+            .unwrap_or_default();
+        // Anything that was moving when the app closed waits for the phone to resume it.
+        for t in transfers.iter_mut().filter(|t| t.state == "sending") {
+            t.state = "paused".into();
+        }
         Ok(Arc::new(Self {
             app,
             identity,
@@ -200,6 +215,9 @@ impl Link {
             sessions: Mutex::new(HashMap::new()),
             next_conn: AtomicU64::new(1),
             mdns: Mutex::new(None),
+            transfers: Mutex::new(transfers),
+            transfers_path,
+            last_progress_emit: Mutex::new(Instant::now()),
         }))
     }
 
@@ -308,6 +326,7 @@ impl Link {
                 tokio::select! {
                     m = rx.recv() => match m {
                         Some(Out::Text(t)) => if sink.send(Message::Text(t)).await.is_err() { break },
+                        Some(Out::Binary(b)) => if sink.send(Message::Binary(b)).await.is_err() { break },
                         Some(Out::Close) | None => { let _ = sink.send(Message::Close(None)).await; break }
                     },
                     _ = ping.tick() => if sink.send(Message::Ping(Vec::new())).await.is_err() { break },
@@ -346,6 +365,11 @@ impl Link {
                     }
                 }
                 (Some(dev), "status") => self.on_status(&dev, conn_id, &env.payload),
+                // Served in order, one at a time, so chunks reach the phone in the order it asked.
+                (Some(dev), "chunk.req") => self.serve_chunk(&dev, &tx, &env.payload).await,
+                (Some(dev), kind @ ("push.accept" | "push.decline" | "file.done" | "transfer.complete" | "transfer.cancel")) => {
+                    self.on_transfer_msg(&dev, kind, &env.payload)
+                }
                 (Some(dev), "unpair") => {
                     self.forget(&dev, false);
                     break;
@@ -606,6 +630,15 @@ impl Link {
             let _ = old.tx.send(Out::Close);
         }
         let _ = tx.send(Out::Text(message("welcome", json!({ "pcName": self.pc_name() }))));
+        // Offers the phone never answered (it was away) are sent again.
+        let pending: Vec<String> = self
+            .transfers
+            .lock()
+            .map(|ts| ts.iter().filter(|t| t.device_id == device.id && t.state == "offered").map(offer_message).collect())
+            .unwrap_or_default();
+        for m in pending {
+            let _ = tx.send(Out::Text(m));
+        }
         if let Ok(mut ds) = self.devices.lock() {
             ds.touch(&device.id, None, None, now_secs());
         }
@@ -645,6 +678,7 @@ impl Link {
             self.emit_pair_result("phone_left", &name);
         }
         let Some(dev) = device else { return };
+        self.pause_transfers_of(&dev);
         let removed = self
             .sessions
             .lock()
@@ -773,4 +807,305 @@ impl Link {
         let _ = self.app.emit("devices-changed", self.devices());
         crate::emit_phone_status(&self.app);
     }
+
+    // ------------------------------------------------------------ transfers (Phase 4)
+
+    fn session_tx(&self, device_id: &str) -> Option<Tx> {
+        self.sessions.lock().ok()?.get(device_id).map(|s| s.tx.clone())
+    }
+
+    /// The phone a manual send goes to: the most recently connected one.
+    fn target_device(&self) -> Option<(String, String)> {
+        let id = self.sessions.lock().ok()?.iter().max_by_key(|(_, s)| s.since).map(|(id, _)| id.clone())?;
+        let name = self.devices.lock().ok()?.get(&id).map(|d| d.name.clone()).unwrap_or_else(|| "phone".into());
+        Some((id, name))
+    }
+
+    fn save_transfers(&self) {
+        if let Ok(mut ts) = self.transfers.lock() {
+            // Keep every unfinished transfer plus the newest finished ones.
+            let finished = ts.iter().filter(|t| !t.is_active()).count();
+            if finished > HISTORY_MAX {
+                let mut drop_n = finished - HISTORY_MAX;
+                ts.retain(|t| {
+                    if drop_n > 0 && !t.is_active() {
+                        drop_n -= 1;
+                        false
+                    } else {
+                        true
+                    }
+                });
+            }
+            if let Ok(text) = serde_json::to_string(&*ts) {
+                let tmp = self.transfers_path.with_extension("tmp");
+                if std::fs::write(&tmp, text).is_ok() {
+                    let _ = std::fs::rename(&tmp, &self.transfers_path);
+                }
+            }
+        }
+    }
+
+    pub fn transfers_view(&self) -> Vec<TransferView> {
+        let mut v: Vec<TransferView> = self.transfers.lock().map(|ts| ts.iter().map(TransferView::from).collect()).unwrap_or_default();
+        v.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        v
+    }
+
+    fn emit_transfers(&self, force: bool) {
+        if !force {
+            if let Ok(mut last) = self.last_progress_emit.lock() {
+                if last.elapsed() < Duration::from_millis(250) {
+                    return;
+                }
+                *last = Instant::now();
+            }
+        }
+        let _ = self.app.emit("transfers-changed", self.transfers_view());
+    }
+
+    fn update_transfer<R>(&self, id: &str, f: impl FnOnce(&mut Transfer) -> R) -> Option<R> {
+        let mut ts = self.transfers.lock().ok()?;
+        ts.iter_mut().find(|t| t.id == id).map(f)
+    }
+
+    /// Starts a manual send of picked paths and/or texts to the connected phone.
+    pub async fn send_items(self: &Arc<Self>, paths: Vec<String>, texts: Vec<String>, destination: String) -> Result<String, String> {
+        let (device_id, device_name) = self.target_device().ok_or("Your phone isn't connected right now.")?;
+        let texts: Vec<String> = texts
+            .into_iter()
+            .map(|t| t.trim().chars().take(100_000).collect::<String>())
+            .filter(|t| !t.is_empty())
+            .collect();
+        let p2 = paths.clone();
+        let (files, label) = tauri::async_runtime::spawn_blocking(move || transfer::build_manifest(&p2))
+            .await
+            .map_err(|e| e.to_string())??;
+        if files.is_empty() && texts.is_empty() {
+            return Err("Nothing to send — the folders are empty.".into());
+        }
+        let label = if paths.is_empty() {
+            if texts.len() == 1 { "Text".to_string() } else { format!("{} notes", texts.len()) }
+        } else {
+            label
+        };
+        let settings = crate::current_settings(&self.app);
+        let t = Transfer {
+            id: random_id(),
+            device_id: device_id.clone(),
+            device_name,
+            label,
+            created_at: now_secs(),
+            finished_at: None,
+            state: "offered".into(),
+            error: None,
+            mode: settings.transfers.mode.clone(),
+            destination: if destination == "downloads" { "downloads".into() } else { "auto".into() },
+            open_first: settings.transfers.open_first,
+            total_bytes: files.iter().map(|f| f.size).sum(),
+            files,
+            texts,
+            roots: paths,
+            files_done: 0,
+            bytes_done: 0,
+            moved: false,
+        };
+        let id = t.id.clone();
+        let msg = offer_message(&t);
+        if let Ok(mut ts) = self.transfers.lock() {
+            ts.push(t);
+        }
+        self.save_transfers();
+        self.emit_transfers(true);
+        let tx = self.session_tx(&device_id).ok_or("Your phone disconnected.")?;
+        let _ = tx.send(Out::Text(msg));
+        Ok(id)
+    }
+
+    fn on_transfer_msg(&self, device_id: &str, kind: &str, p: &Value) {
+        let id = p.get("transferId").and_then(Value::as_str).unwrap_or_default().to_string();
+        let mine = self.update_transfer(&id, |t| t.device_id == device_id).unwrap_or(false);
+        if !mine {
+            return;
+        }
+        let mut finished_move: Option<Vec<String>> = None;
+        self.update_transfer(&id, |t| match kind {
+            "push.accept" if t.state == "offered" => {
+                if t.files.is_empty() {
+                    t.state = "done".into();
+                    t.finished_at = Some(now_secs());
+                    t.scrub();
+                } else {
+                    t.state = "sending".into();
+                }
+            }
+            "push.decline" if t.is_active() => {
+                t.state = "declined".into();
+                t.finished_at = Some(now_secs());
+                t.scrub();
+            }
+            "file.done" => {
+                if let Some(i) = p.get("index").and_then(Value::as_u64) {
+                    let i = i as usize;
+                    if i < t.files.len() {
+                        t.files_done = t.files_done.max(i as u32 + 1);
+                        t.bytes_done = t.bytes_before(i + 1);
+                    }
+                }
+            }
+            "transfer.complete" if t.is_active() => {
+                t.state = "done".into();
+                t.files_done = t.files.len() as u32;
+                t.bytes_done = t.total_bytes;
+                t.finished_at = Some(now_secs());
+                if t.mode == "move" && !t.roots.is_empty() {
+                    finished_move = Some(t.roots.clone());
+                }
+                t.scrub();
+            }
+            "transfer.cancel" if t.is_active() => {
+                t.state = "cancelled".into();
+                t.finished_at = Some(now_secs());
+                t.scrub();
+            }
+            _ => {}
+        });
+        if let Some(roots) = finished_move {
+            // Move: the phone confirmed every file, so the PC copies go to the Recycle Bin (never a permanent delete).
+            let result = trash::delete_all(&roots);
+            self.update_transfer(&id, |t| match result {
+                Ok(()) => t.moved = true,
+                Err(e) => t.error = Some(format!("Sent, but couldn't move the PC copy to the Recycle Bin: {e}")),
+            });
+        }
+        self.save_transfers();
+        self.emit_transfers(true);
+    }
+
+    async fn serve_chunk(&self, device_id: &str, tx: &Tx, p: &Value) {
+        let id = p.get("transferId").and_then(Value::as_str).unwrap_or_default().to_string();
+        let index = p.get("index").and_then(Value::as_u64).unwrap_or(u64::MAX) as usize;
+        let offset = p.get("offset").and_then(Value::as_u64).unwrap_or(0);
+        let length = p.get("length").and_then(Value::as_u64).unwrap_or(CHUNK_MAX).min(CHUNK_MAX);
+        let fail = |reason: &str| {
+            let _ = tx.send(Out::Text(message("transfer.error", json!({ "transferId": id, "index": index, "reason": reason }))));
+        };
+        // Look the file up by index in this phone's own transfer, never by a path from the phone.
+        let entry = self.update_transfer(&id, |t| {
+            if t.device_id != device_id || !matches!(t.state.as_str(), "sending" | "paused") {
+                return None;
+            }
+            let f = t.files.get(index)?.clone();
+            t.state = "sending".into();
+            t.bytes_done = t.bytes_before(index) + offset.min(f.size);
+            Some(f)
+        });
+        let Some(Some(file)) = entry else { return fail("unknown") };
+        if offset > file.size {
+            return fail("changed");
+        }
+        let read = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, &'static str> {
+            use std::io::{Read, Seek, SeekFrom};
+            let mut f = std::fs::File::open(&file.source).map_err(|_| "unreadable")?;
+            let len = f.metadata().map_err(|_| "unreadable")?.len();
+            if len != file.size {
+                return Err("changed");
+            }
+            f.seek(SeekFrom::Start(offset)).map_err(|_| "unreadable")?;
+            let want = length.min(file.size - offset) as usize;
+            let mut buf = vec![0u8; want];
+            f.read_exact(&mut buf).map_err(|_| "unreadable")?;
+            Ok(buf)
+        })
+        .await;
+        match read {
+            Ok(Ok(data)) => {
+                let header = json!({ "t": id, "i": index, "o": offset }).to_string().into_bytes();
+                let mut frame = Vec::with_capacity(4 + header.len() + data.len());
+                frame.extend_from_slice(&(header.len() as u32).to_be_bytes());
+                frame.extend_from_slice(&header);
+                frame.extend_from_slice(&data);
+                let _ = tx.send(Out::Binary(frame));
+                self.emit_transfers(false);
+            }
+            Ok(Err(reason)) => {
+                self.update_transfer(&id, |t| {
+                    t.state = "failed".into();
+                    t.error = Some(if reason == "changed" { "A file changed on the PC while sending." } else { "A file couldn't be read." }.into());
+                    t.finished_at = Some(now_secs());
+                    t.scrub();
+                });
+                self.save_transfers();
+                self.emit_transfers(true);
+                fail(reason)
+            }
+            Err(_) => fail("unreadable"),
+        }
+    }
+
+    fn pause_transfers_of(&self, device_id: &str) {
+        let changed = self
+            .transfers
+            .lock()
+            .map(|mut ts| {
+                let mut n = 0;
+                for t in ts.iter_mut().filter(|t| t.device_id == device_id && t.state == "sending") {
+                    t.state = "paused".into();
+                    n += 1;
+                }
+                n > 0
+            })
+            .unwrap_or(false);
+        if changed {
+            self.save_transfers();
+            self.emit_transfers(true);
+        }
+    }
+
+    pub fn cancel_transfer(&self, id: &str) {
+        let device = self.update_transfer(id, |t| {
+            if !t.is_active() {
+                return None;
+            }
+            t.state = "cancelled".into();
+            t.finished_at = Some(now_secs());
+            t.scrub();
+            Some(t.device_id.clone())
+        });
+        if let Some(Some(dev)) = device {
+            if let Some(tx) = self.session_tx(&dev) {
+                let _ = tx.send(Out::Text(message("transfer.cancel", json!({ "transferId": id }))));
+            }
+        }
+        self.save_transfers();
+        self.emit_transfers(true);
+    }
+
+    pub fn clear_transfer_history(&self) {
+        if let Ok(mut ts) = self.transfers.lock() {
+            ts.retain(|t| t.is_active());
+        }
+        self.save_transfers();
+        self.emit_transfers(true);
+    }
+}
+
+fn offer_message(t: &Transfer) -> String {
+    let files: Vec<Value> = t
+        .files
+        .iter()
+        .enumerate()
+        .map(|(i, f)| json!({ "index": i, "path": f.path, "size": f.size }))
+        .collect();
+    message(
+        "push.offer",
+        json!({
+            "transferId": t.id,
+            "label": t.label,
+            "destination": t.destination,
+            "openFirst": t.open_first,
+            "totalBytes": t.total_bytes,
+            "files": files,
+            "texts": t.texts,
+        }),
+    )
 }

@@ -16,10 +16,10 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Phase:** **v1 rebuild — Phase P3 (Real connection)**. P1 desktop shell and P2 Android shell code are done (founder checks open). P3 code is written but not compiled yet: the dev PC is still downloading the MSVC build tools / Windows SDK and Gradle. The earlier S3–S12 "done" stages were UI prototypes with mocked data (fake pairing, fake LAN server, prefix-only licence). On 2026-11-25 the founder approved a full v1 design (PC → phone only) and a 7-phase rebuild (P1–P7, see [task.md](task.md)).
+- **Current Phase:** **v1 rebuild — Phase P4 (Manual send)**. P1–P4 code is written; P2–P4 are not compiled yet because the dev PC is still downloading the MSVC build tools / Windows SDK and Gradle (the founder's editor, Antigravity IDE with the Red Hat Java extension, also auto-syncs the Android project and competes for the download). The earlier S3–S12 "done" stages were UI prototypes with mocked data (fake pairing, fake LAN server, prefix-only licence). On 2026-11-25 the founder approved a full v1 design (PC → phone only) and a 7-phase rebuild (P1–P7, see [task.md](task.md)).
 - **Design reference:** "PinchDrop — Desktop & Mobile App Design" canvas (claude.ai artifact, private to the founder): every desktop + phone screen, pill/Island states, send animations, and the "How it works" spec.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Phase:** **P4 — Manual send** (files, folders, text from the PC; Gallery / Downloads saving; receive animations; history; resume).
+- **Next Phase:** **P5 — Grab on PC** (Explorer/Desktop selection, webcam pinch, floating card, Island countdown).
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Rust `1.100` (MSVC), Tauri `2.x`
   - `apps/desktop`: Tauri 2 shell rebuilt in P1 — pill + Dynamic Island window, main window (onboarding, Home, Send, Transfers, Devices, Pair, Settings, Profile), tray, start-with-Windows, persistent settings. No phone connection yet (P3); "demo phone" preview setting stands in.
@@ -48,6 +48,7 @@
 | **DEC-0013** | 2026-11-25 | v1 = PC → phone only, rebuilt in 7 phases (P1 shell → P7 installers) | Earlier stages were mock-ups; a real end-to-end path beats breadth. Phone → PC, Throw, rename/lock gestures and Pro come after v1. | Keep extending the prototype code — rejected: fake pairing/server/licence could not be built on. | [task.md](task.md) |
 | **DEC-0014** | 2026-11-25 | Pill is its own always-on-top window that resizes to its content | Transparent areas of a WebView2 window still swallow clicks, so the window must be exactly pill- or Island-sized; Rust keeps the anchored edge fixed while resizing. | One large transparent overlay window — rejected: blocks clicks on apps underneath. | [task.md](task.md) |
 | **DEC-0016** | 2026-11-25 | Link = WebSocket over TLS with a pinned self-signed PC certificate; pairing by QR or mDNS + 6-digit SAS code; reconnect by HMAC proof | No accounts or cloud; the QR carries the fingerprint so the phone can't be fooled, and the code catches a man-in-the-middle when the list is used instead. Spec: [LINK-v1](packages/protocol/LINK-v1.md). | Mutual TLS with phone certificates — more moving parts on Android for no real gain in v1; plain HTTP on the LAN — rejected (privacy). | [LINK-v1](packages/protocol/LINK-v1.md) |
+| **DEC-0017** | 2026-11-25 | Transfers: the phone pulls chunks over the existing link; files addressed by index in the offer | Pull gives natural flow control and resume-from-bytes-on-disk; index addressing means a phone can never read a path the user didn't pick. One socket, already authenticated. | Separate HTTP range server — a second port, second auth path, more firewall prompts. | [LINK-v1 §6](packages/protocol/LINK-v1.md) |
 | **DEC-0015** | 2026-11-25 | Default send mode is copy; "move" recycles the PC file only after the phone confirms | Never lose a file to a dropped connection; still no permanent deletes. | Move by default — rejected as risky. | [task.md](task.md) |
 
 ---

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { File, Folder, Image, Link2, Type, Video, X } from 'lucide-react';
-import { formatBytes } from '../../shared/api';
+import { api, formatBytes } from '../../shared/api';
 import { useApp } from '../context';
 import type { QueueItem } from '../context';
-import { Button, Card, PageTitle, PhaseBadge, Radio, Toggle } from '../ui';
+import { Button, Card, PageTitle, Radio, Toggle } from '../ui';
 import { pickFiles, pickFolder } from '../pickers';
 
 const IMAGE = /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?)$/i;
@@ -41,6 +41,24 @@ export function Send() {
   const { phone, settings, update, queue, addPaths, addText, removeItem, clearQueue, go } = useApp();
   const [text, setText] = useState('');
   const [allToDownloads, setAllToDownloads] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    setSending(true);
+    setError(null);
+    try {
+      const paths = queue.filter((i) => i.kind !== 'text' && i.info).map((i) => i.info!.path);
+      const texts = queue.filter((i) => i.kind === 'text').map((i) => i.text ?? '');
+      await api.sendItems(paths, texts, allToDownloads ? 'downloads' : 'auto');
+      clearQueue();
+      go('transfers');
+    } catch (e) {
+      setError(String(e instanceof Error ? e.message : e));
+    } finally {
+      setSending(false);
+    }
+  }
 
   const totalBytes = queue.reduce((n, i) => n + (i.info?.sizeBytes ?? 0), 0);
   const unreadable = queue.some((i) => i.info?.error);
@@ -51,7 +69,7 @@ export function Send() {
   if (queue.length === 0) blocker = 'Add something to send first.';
   else if (phone.state === 'none') blocker = 'Pair a phone first.';
   else if (phone.state === 'offline') blocker = `${phone.name} is offline.`;
-  else if (phone.isDemo) blocker = 'This is the demo phone — real sending arrives in Phase 4.';
+  else if (phone.isDemo) blocker = 'That is the demo phone — pair your real phone to send.';
 
   return (
     <>
@@ -149,13 +167,15 @@ export function Send() {
             <Toggle label="Open first file on phone" checked={settings.transfers.openFirst} onChange={(v) => void update({ transfers: { openFirst: v } })} />
           </div>
 
-          <Button variant="primary" size="lg" disabled={blocker !== null || unreadable}>
-            Send {queue.length || ''} item{queue.length === 1 ? '' : 's'} to {target}
+          <Button variant="primary" size="lg" disabled={blocker !== null || unreadable || sending} onClick={() => void send()}>
+            {sending ? 'Starting…' : `Send ${queue.length || ''} item${queue.length === 1 ? '' : 's'} to ${target}`}
           </Button>
-          {blocker ? (
-            <div className="text-[12px] text-warn flex items-center gap-2 flex-wrap">{blocker} <PhaseBadge phase={4} /></div>
+          {error ? (
+            <div className="text-[12px] text-danger" role="alert">{error}</div>
+          ) : blocker ? (
+            <div className="text-[12px] text-warn">{blocker}</div>
           ) : (
-            <div className="text-[12px] text-muted">Manual sends skip the catch gesture.</div>
+            <div className="text-[12px] text-muted">Manual sends skip the catch gesture. The phone may ask first, depending on its settings.</div>
           )}
         </Card>
       </div>

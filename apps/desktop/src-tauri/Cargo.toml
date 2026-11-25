@@ -37,6 +37,8 @@ urlencoding = "2"
 mdns-sd = "0.13"
 if-addrs = "0.13"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+# Phase 4: "Move" sends the PC copy to the Recycle Bin (never a permanent delete)
+trash = "5"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation"] }

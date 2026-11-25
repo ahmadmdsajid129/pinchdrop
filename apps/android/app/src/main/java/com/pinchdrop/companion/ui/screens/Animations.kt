@@ -1,5 +1,21 @@
 package com.pinchdrop.companion.ui.screens
 
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.layout.ContentScale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pinchdrop.companion.data.ItemKind
+import com.pinchdrop.companion.data.formatBytes
+import com.pinchdrop.companion.transfer.Receiver
+import com.pinchdrop.companion.ui.isLink
+import com.pinchdrop.companion.ui.loadThumbnail
+import com.pinchdrop.companion.ui.openUri
+import com.pinchdrop.companion.ui.shareUri
 import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -76,11 +92,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** True when the user turned animations off in Android's accessibility / developer settings. */
-private fun Context.animationsOff(): Boolean =
+internal fun Context.animationsOff(): Boolean =
     Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
 /** A short two-note chime from the system tone generator — no bundled audio needed. */
-private fun chime() {
+internal fun chime() {
     runCatching {
         val tg = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 70)
         tg.startTone(ToneGenerator.TONE_PROP_ACK, 220)
@@ -174,9 +190,23 @@ fun CatchScreen(pcName: String, onAccept: () -> Unit, onDecline: () -> Unit) {
 
 // ---------- Receiving ----------
 
+/** What the Receiving screen draws; shared by the real transfer and the demo preview. */
+data class ReceivingInfo(
+    val label: String,
+    val pcName: String,
+    val fraction: Float,
+    val filesDone: Int,
+    val fileCount: Int,
+    val bytesDone: Long,
+    val totalBytes: Long,
+    val bytesPerSec: Long,
+    val paused: Boolean,
+    val isDemo: Boolean,
+)
+
+/** Demo preview: a pretend folder fills up over ~5 s, then the Arrived preview plays. */
 @Composable
 fun ReceivingScreen(pcName: String, onDone: () -> Unit, onHide: () -> Unit, onCancel: () -> Unit) {
-    val c = Pd.colors
     val context = LocalContext.current
     val still = remember { context.animationsOff() }
     val progress = remember { Animatable(0f) }
@@ -186,35 +216,71 @@ fun ReceivingScreen(pcName: String, onDone: () -> Unit, onHide: () -> Unit, onCa
         delay(250)
         onDone()
     }
+    val p = progress.value
+    val total = DemoItem.MB * 1024L * 1024L
+    ReceivingView(
+        ReceivingInfo(
+            DemoItem.FOLDER, pcName, p, (p * DemoItem.FILES).toInt().coerceAtMost(DemoItem.FILES), DemoItem.FILES,
+            (p * total).toLong(), total, 21L * 1024 * 1024, paused = false, isDemo = true,
+        ),
+        onHide, onCancel,
+    )
+}
+
+/** The real thing: progress of the transfer that's arriving now. */
+@Composable
+fun LiveReceivingScreen(onHide: () -> Unit, onCancel: () -> Unit) {
+    val p by Receiver.progress.collectAsStateWithLifecycle()
+    val cur = p
+    if (cur == null) {
+        // Nothing arriving (finished or cancelled) — go back.
+        LaunchedEffect(Unit) { onHide() }
+        return
+    }
+    ReceivingView(
+        ReceivingInfo(
+            cur.label, cur.pcName,
+            if (cur.totalBytes > 0) cur.bytesDone.toFloat() / cur.totalBytes else 0f,
+            cur.filesDone, cur.fileCount, cur.bytesDone, cur.totalBytes, cur.bytesPerSec, cur.paused, isDemo = false,
+        ),
+        onHide, onCancel,
+    )
+}
+
+@Composable
+fun ReceivingView(info: ReceivingInfo, onHide: () -> Unit, onCancel: () -> Unit) {
+    val c = Pd.colors
+    val context = LocalContext.current
+    val still = remember { context.animationsOff() }
     val fall = rememberInfiniteTransition(label = "fall")
     val t by fall.animateFloat(0f, 1f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing)), label = "t")
     val breath by fall.animateFloat(1f, 1.06f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "breath")
-
-    val p = progress.value
+    val p = info.fraction.coerceIn(0f, 1f)
     val pct = (p * 100).toInt()
-    val filesDone = (p * DemoItem.FILES).toInt().coerceAtMost(DemoItem.FILES)
-    val mbDone = (p * DemoItem.MB).toInt()
+    var confirmCancel by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("from $pcName", color = c.muted, fontSize = 14.sp)
-            DemoTag()
+            Text("from ${info.pcName}", color = c.muted, fontSize = 14.sp)
+            if (info.isDemo) DemoTag()
         }
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(230.dp).graphicsLayer { scaleX = if (still) 1f else breath; scaleY = scaleX }, contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(230.dp).graphicsLayer { val s = if (still || info.paused) 1f else breath; scaleX = s; scaleY = s },
+                contentAlignment = Alignment.Center,
+            ) {
                 Canvas(Modifier.fillMaxSize()) {
                     val sw = 12.dp.toPx()
                     drawCircle(c.surface2, style = Stroke(sw))
                     drawArc(
-                        Brush.sweepGradient(listOf(c.primary, c.accent, c.primary)),
+                        if (info.paused) Brush.linearGradient(listOf(c.warn, c.warn)) else Brush.sweepGradient(listOf(c.primary, c.accent, c.primary)),
                         -90f, 360f * p, false, style = Stroke(sw, cap = StrokeCap.Round),
                         topLeft = Offset(sw / 2, sw / 2), size = Size(size.width - sw, size.height - sw),
                     )
                 }
                 Text("$pct%", color = c.text, fontSize = 40.sp, fontWeight = FontWeight.Bold)
             }
-            if (!still && p < 1f) {
-                // A file card falling into the ring, over and over.
+            if (!still && !info.paused && p < 1f) {
                 Icon(
                     Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, tint = c.accent,
                     modifier = Modifier.size(40.dp).graphicsLayer {
@@ -231,36 +297,50 @@ fun ReceivingScreen(pcName: String, onDone: () -> Unit, onHide: () -> Unit, onCa
                 )
             }
         }
-        Text("Receiving “${DemoItem.FOLDER}”", color = c.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+        Text("Receiving “${info.label}”", color = c.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         Text(
-            "$filesDone of ${DemoItem.FILES} files · $mbDone / ${DemoItem.MB} MB · 21 MB/s",
-            color = c.muted, fontSize = 14.sp,
+            if (info.paused) "Paused — resumes when ${info.pcName} is back on this Wi-Fi"
+            else "${info.filesDone} of ${info.fileCount} files · ${formatBytes(info.bytesDone)} / ${formatBytes(info.totalBytes)}" +
+                if (info.bytesPerSec > 0) " · ${formatBytes(info.bytesPerSec)}/s" else "",
+            color = if (info.paused) c.warn else c.muted, fontSize = 14.sp, textAlign = TextAlign.Center,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
         Spacer(Modifier.height(20.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SecondaryButton("Hide (keeps going)", onClick = onHide, modifier = Modifier.weight(1f))
-            SecondaryButton("Cancel", onClick = onCancel, modifier = Modifier.weight(1f), danger = true)
+            SecondaryButton("Cancel", onClick = { if (info.isDemo) onCancel() else confirmCancel = true }, modifier = Modifier.weight(1f), danger = true)
         }
+    }
+    if (confirmCancel) {
+        AlertDialog(
+            onDismissRequest = { confirmCancel = false },
+            title = { Text("Stop receiving?") },
+            text = { Text("Files that already arrived stay on this phone. The one in progress is removed.") },
+            confirmButton = { TextButton(onClick = { confirmCancel = false; onCancel() }) { Text("Stop", color = c.danger) } },
+            dismissButton = { TextButton(onClick = { confirmCancel = false }) { Text("Keep going") } },
+            containerColor = c.surface, titleContentColor = c.text, textContentColor = c.soft,
+        )
     }
 }
 
-// ---------- Photo arrived ----------
+// ---------- Arrived ----------
 
 /**
  * Sequence (design M-Arrived): drops from the top, blurred → lands with a bounce + haptic tap →
  * sharpens and grows → green check pops → chime. Honours the Arrival animation / sound / vibrate settings
- * and Android's "remove animations".
+ * and Android's "remove animations". [arrived] null = the demo preview.
  */
 @Composable
-fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit) {
+fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit, arrived: Receiver.Arrived? = null) {
     val c = Pd.colors
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val animate = settings.arrivalAnimation && !remember { context.animationsOff() }
     var run by remember { mutableIntStateOf(0) }
+    val isDemo = arrived == null
+    val thumb = remember(arrived?.uri) { arrived?.takeIf { it.kind == ItemKind.PHOTO }?.uri?.let { loadThumbnail(context, it) } }
 
-    val y = remember { Animatable(0f) }      // dp offset
+    val y = remember { Animatable(0f) }
     val scale = remember { Animatable(1f) }
     val squash = remember { Animatable(1f) }
     val blur = remember { Animatable(0f) }
@@ -277,18 +357,14 @@ fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit) {
             return@LaunchedEffect
         }
         y.snapTo(-520f); scale.snapTo(0.45f); squash.snapTo(1f); blur.snapTo(8f); badge.snapTo(0f); text.snapTo(0f); glowAlpha = 0f
-        // 1. Fall in, blurred.
         launch { scale.animateTo(0.55f, tween(500)) }
         y.animateTo(0f, tween(520, easing = FastOutSlowInEasing))
-        // 2. Land: squash, tap, small bounce.
         if (settings.vibrate) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
         squash.animateTo(0.82f, tween(90))
         launch { squash.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
         y.animateTo(-14f, tween(120)); y.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-        // 3. Sharpen and grow.
         launch { blur.animateTo(0f, tween(420)) }
         scale.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessLow))
-        // 4. Check pops + glow + chime, then the text slides up.
         launch {
             glowAlpha = 0.8f
             glow.snapTo(0.6f); glow.animateTo(1.4f, tween(700))
@@ -297,11 +373,27 @@ fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit) {
         if (settings.arrivalSound) chime()
         badge.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium))
         text.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+        if (arrived?.openFirst == true && arrived.uri != null) openUri(context, arrived.uri)
     }
+
+    val title = when {
+        arrived == null -> "trip.jpg arrived"
+        arrived.kind == ItemKind.TEXT -> "${arrived.name} from ${arrived.pcName}"
+        else -> "${arrived.name} arrived"
+    }
+    val subtitle = when {
+        arrived == null -> "From $pcName · 4.2 MB · saved to Gallery › PinchDrop"
+        arrived.kind == ItemKind.TEXT -> "Copied to the clipboard"
+        arrived.fileCount > 1 -> "From ${arrived.pcName} · ${arrived.fileCount} files · ${formatBytes(arrived.size)} · ${arrived.location}"
+        else -> "From ${arrived.pcName} · ${formatBytes(arrived.size)} · saved to ${arrived.location}"
+    }
+
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DemoTag()
-            Text("Preview of what you'll see when a photo lands", color = c.muted, fontSize = 13.sp)
+        if (isDemo) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DemoTag()
+                Text("Preview of what you'll see when a photo lands", color = c.muted, fontSize = 13.sp)
+            }
         }
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             Box(
@@ -316,7 +408,15 @@ fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit) {
                     transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
                 },
             ) {
-                DemoPhoto(Modifier.size(260.dp, 300.dp).blur(blur.value.dp))
+                val m = Modifier.size(260.dp, 300.dp).blur(blur.value.dp)
+                when {
+                    isDemo -> DemoPhoto(m)
+                    thumb != null -> Image(
+                        thumb, contentDescription = arrived?.name, contentScale = ContentScale.Crop,
+                        modifier = m.clip(RoundedCornerShape(22.dp)),
+                    )
+                    else -> KindCard(arrived!!, m)
+                }
                 Box(
                     Modifier.align(Alignment.BottomEnd).padding(10.dp).size(44.dp)
                         .graphicsLayer { scaleX = badge.value; scaleY = badge.value }
@@ -329,18 +429,44 @@ fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit) {
             Modifier.graphicsLayer { translationY = (24f * (1f - text.value)).dp.toPx(); alpha = text.value },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("trip.jpg arrived", color = c.text, fontSize = 24.sp, fontWeight = FontWeight.SemiBold,
+            Text(title, color = c.text, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             Spacer(Modifier.height(4.dp))
-            Text("From $pcName · 4.2 MB · saved to Gallery › PinchDrop", color = c.muted, fontSize = 14.sp, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(6.dp))
-            Text("Demo — nothing was actually saved.", color = c.warn, fontSize = 13.sp)
+            Text(subtitle, color = c.muted, fontSize = 14.sp, textAlign = TextAlign.Center)
+            if (isDemo) {
+                Spacer(Modifier.height(6.dp))
+                Text("Demo — nothing was actually saved.", color = c.warn, fontSize = 13.sp)
+            }
         }
         Spacer(Modifier.height(18.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SecondaryButton("Replay", onClick = { run++ }, modifier = Modifier.weight(1f))
+            when {
+                isDemo -> SecondaryButton("Replay", onClick = { run++ }, modifier = Modifier.weight(1f))
+                arrived?.uri != null && arrived.fileCount <= 1 -> {
+                    SecondaryButton("Open", onClick = { openUri(context, arrived.uri) }, modifier = Modifier.weight(1f))
+                    SecondaryButton("Share", onClick = { shareUri(context, arrived.uri) }, modifier = Modifier.weight(1f))
+                }
+                arrived?.text != null && isLink(arrived.text) ->
+                    SecondaryButton("Open link", onClick = { openUri(context, arrived.text.trim()) }, modifier = Modifier.weight(1f))
+            }
             PrimaryButton("Done", onClick = onClose, modifier = Modifier.weight(1f))
         }
+    }
+}
+
+/** Big icon card for things that aren't photos (folders, files, notes). */
+@Composable
+private fun KindCard(a: Receiver.Arrived, modifier: Modifier) {
+    val c = Pd.colors
+    val icon = when (a.kind) {
+        ItemKind.FOLDER -> Icons.Filled.Folder
+        ItemKind.TEXT -> Icons.AutoMirrored.Filled.Notes
+        ItemKind.VIDEO -> Icons.Filled.Movie
+        ItemKind.PHOTO -> Icons.Filled.Image
+        ItemKind.FILE -> Icons.AutoMirrored.Filled.InsertDriveFile
+    }
+    Box(modifier.clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(c.primary, c.accent))), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(96.dp))
     }
 }
 

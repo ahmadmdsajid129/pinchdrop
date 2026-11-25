@@ -27,7 +27,13 @@ object Notifications {
     private const val CH_INCOMING = "incoming"
     private const val CH_PROGRESS = "progress"
     const val CH_CONNECTION = "connection"
+    private const val CH_ARRIVED = "arrived"
+    const val ROUTE_RECEIVING = "receiving"
+    const val ROUTE_RECEIVED = "received"
     private const val ID_INCOMING_DEMO = 1001
+    private const val ID_OFFER = 1002
+    private const val ID_PROGRESS = 1003
+    private var nextArrivedId = 1100
 
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -40,6 +46,11 @@ object Notifications {
         nm.createNotificationChannel(
             NotificationChannel(CH_PROGRESS, "Transfer progress", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Progress while files are arriving"
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_ARRIVED, "Arrived", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "When something from your PC has finished arriving"
             },
         )
         nm.createNotificationChannel(
@@ -81,6 +92,53 @@ object Notifications {
         @Suppress("MissingPermission") // checked in canPost()
         NotificationManagerCompat.from(context).notify(ID_INCOMING_DEMO, n)
         return true
+    }
+
+    @Suppress("MissingPermission") // every caller path checks canPost()
+    private fun post(context: Context, id: Int, n: android.app.Notification) {
+        if (!canPost(context)) return
+        ensureChannels(context)
+        NotificationManagerCompat.from(context).notify(id, n)
+    }
+
+    /** A real send is waiting for the user to accept ("Manual sends: Ask me first"). */
+    fun postOffer(context: Context, pcName: String, label: String, files: Int, bytes: Long) {
+        post(context, ID_OFFER, NotificationCompat.Builder(context, CH_INCOMING)
+            .setSmallIcon(R.drawable.ic_stat_pinchdrop)
+            .setContentTitle("$pcName wants to send “$label”")
+            .setContentText(if (files > 0) "$files file${if (files == 1) "" else "s"} · ${com.pinchdrop.companion.data.formatBytes(bytes)} — tap to accept or decline" else "Tap to accept or decline")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(openApp(context, ROUTE_RECEIVING, 10))
+            .build())
+    }
+
+    fun cancelOffer(context: Context) = NotificationManagerCompat.from(context).cancel(ID_OFFER)
+
+    fun postProgress(context: Context, label: String, pcName: String, done: Long, total: Long) {
+        val pct = if (total > 0) (done * 100 / total).toInt() else 0
+        post(context, ID_PROGRESS, NotificationCompat.Builder(context, CH_PROGRESS)
+            .setSmallIcon(R.drawable.ic_stat_pinchdrop)
+            .setContentTitle("Receiving “$label”")
+            .setContentText("From $pcName · $pct%")
+            .setProgress(100, pct, false)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setContentIntent(openApp(context, ROUTE_RECEIVING, 11))
+            .build())
+    }
+
+    fun cancelProgress(context: Context) = NotificationManagerCompat.from(context).cancel(ID_PROGRESS)
+
+    fun postArrived(context: Context, title: String, text: String) {
+        post(context, nextArrivedId++, NotificationCompat.Builder(context, CH_ARRIVED)
+            .setSmallIcon(R.drawable.ic_stat_pinchdrop)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setAutoCancel(true)
+            .setContentIntent(openApp(context, ROUTE_RECEIVED, 12))
+            .build())
     }
 
     fun cancelIncomingDemo(context: Context) {

@@ -1,5 +1,10 @@
 package com.pinchdrop.companion.ui.screens
 
+import com.pinchdrop.companion.transfer.History
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -147,7 +152,8 @@ fun HomeScreen(
                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onSeeAll).padding(8.dp),
             )
         }
-        EmptyReceived(compact = true)
+        val recent by History.items.collectAsStateWithLifecycle()
+        if (recent.isEmpty()) EmptyReceived(compact = true) else recent.take(5).forEach { ReceivedRow(it) }
     }
 }
 
@@ -162,7 +168,6 @@ private fun EmptyReceived(compact: Boolean) {
         Icon(Icons.Filled.Inventory2, contentDescription = null, tint = c.muted, modifier = Modifier.size(if (compact) 28.dp else 40.dp))
         Text("Nothing received yet", color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Text("Files you catch from your PC show up here.", color = c.muted, fontSize = 13.sp, textAlign = TextAlign.Center)
-        if (!compact) PhaseBadge(4)
     }
 }
 
@@ -171,28 +176,43 @@ private fun EmptyReceived(compact: Boolean) {
 @Composable
 fun ReceivedScreen() {
     val c = Pd.colors
-    var filter by rememberSaveable { mutableStateOf("All") }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Received", color = c.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("All", "Photos", "Videos", "Files").forEach { f ->
-                FilterChip(
-                    selected = filter == f,
-                    onClick = { filter = f },
-                    label = { Text(f) },
-                    modifier = Modifier.heightIn(min = 40.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = c.primary, selectedLabelColor = Color.White,
-                        containerColor = c.surface, labelColor = c.soft,
-                    ),
+    val items by History.items.collectAsStateWithLifecycle()
+    var filter by rememberSaveable { mutableStateOf(ReceivedFilter.ALL) }
+    val shown = items.filter { filter.matches(it) }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            Text("Received", color = c.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ReceivedFilter.entries.forEach { f ->
+                    FilterChip(
+                        selected = filter == f,
+                        onClick = { filter = f },
+                        label = { Text(f.label) },
+                        modifier = Modifier.heightIn(min = 40.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = c.primary, selectedLabelColor = Color.White,
+                            containerColor = c.surface, labelColor = c.soft,
+                        ),
+                    )
+                }
+            }
+        }
+        if (shown.isEmpty()) {
+            item { EmptyReceived(compact = false) }
+        } else {
+            items(shown, key = { it.id }) { ReceivedRow(it) }
+            item {
+                Text(
+                    "Tap to open. Long-press for Share, Copy or Remove from list (the file stays on the phone).",
+                    color = c.muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 6.dp),
                 )
             }
         }
-        EmptyReceived(compact = false)
-        Text(
-            "Long-press an item: Open · Share · Show in folder · Delete from phone (goes to the phone's trash where Android supports it).",
-            color = c.muted, fontSize = 13.sp, lineHeight = 18.sp,
-        )
-        Spacer(Modifier.height(8.dp))
     }
 }

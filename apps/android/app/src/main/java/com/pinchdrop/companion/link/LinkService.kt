@@ -87,10 +87,22 @@ class LinkService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 2001
 
-        /** Starts or stops the service to match "Stay connected in background" and pairing. */
+        @Volatile private var wantStay = false
+        @Volatile private var wantPaired = false
+        @Volatile private var busy = false
+
+        /** Keeps the service up while a transfer is running, even without "Stay connected". */
+        fun setBusy(context: Context, on: Boolean) {
+            busy = on
+            sync(context, wantStay, wantPaired)
+        }
+
+        /** Starts or stops the service to match "Stay connected in background", pairing and transfers. */
         fun sync(context: Context, stayConnected: Boolean, paired: Boolean) {
+            wantStay = stayConnected
+            wantPaired = paired
             val intent = Intent(context, LinkService::class.java)
-            if (stayConnected && paired) {
+            if ((stayConnected || busy) && paired) {
                 runCatching { ContextCompat.startForegroundService(context, intent) }
             } else {
                 context.stopService(intent)

@@ -94,6 +94,25 @@ export interface DeviceView {
   freeSpaceGb: number | null;
 }
 
+/** One send, as the Transfers screen shows it. Mirrors link::transfer::TransferView. */
+export interface TransferView {
+  id: string;
+  deviceName: string;
+  label: string;
+  createdAt: number;
+  finishedAt: number | null;
+  state: 'offered' | 'sending' | 'paused' | 'done' | 'declined' | 'failed' | 'cancelled';
+  error: string | null;
+  mode: 'copy' | 'move';
+  fileCount: number;
+  textCount: number;
+  totalBytes: number;
+  filesDone: number;
+  bytesDone: number;
+  moved: boolean;
+  firstName: string | null;
+}
+
 export interface PathInfo {
   path: string;
   name: string;
