@@ -6,6 +6,7 @@ import { UndoToast } from './components/UndoToast';
 import { GestureGym } from './components/GestureGym';
 import { PrivacyDashboard } from './components/PrivacyDashboard';
 import { ProModal } from './components/ProModal';
+import { DynamicIsland } from './components/DynamicIsland';
 import { soundEngine } from './utils/audio';
 import { useMotionPreference } from './hooks/useMotionPreference';
 import { useLicense } from './hooks/useLicense';
@@ -37,6 +38,7 @@ export default function App() {
   const [isGymOpen, setIsGymOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [isIslandOnly, setIsIslandOnly] = useState(false);
   const [cameraActive, setCameraActive] = useState(true);
 
   // Undo Toast state
@@ -185,7 +187,18 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-screen h-screen bg-[#0B1020] text-[#E8ECFF] flex flex-col justify-between p-6 overflow-hidden">
+    <div
+      className={`relative w-screen h-screen ${
+        isIslandOnly ? 'bg-transparent' : 'bg-[#0B1020]'
+      } text-[#E8ECFF] flex flex-col justify-between p-6 overflow-hidden transition-colors`}
+    >
+      {/* Floating Dynamic Island at Top */}
+      <DynamicIsland
+        isArmed={phoneArmed}
+        isIslandOnly={isIslandOnly}
+        onToggleMode={() => setIsIslandOnly(!isIslandOnly)}
+      />
+
       {/* Dynamic Pointer Ring */}
       <PointerRing
         x={pointerPos.x}
@@ -195,7 +208,11 @@ export default function App() {
       />
 
       {/* Header Bar */}
-      <header className="flex items-center justify-between z-10 bg-[#141B34]/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-[#1C2547]">
+      <header
+        className={`flex items-center justify-between z-10 bg-[#141B34]/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-[#1C2547] ${
+          isIslandOnly ? 'opacity-0 hover:opacity-100 transition-opacity' : ''
+        }`}
+      >
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#34D399] animate-pulse" />
@@ -212,6 +229,15 @@ export default function App() {
 
         {/* Controls */}
         <div className="flex items-center space-x-2.5">
+          {/* Dynamic Island Toggle */}
+          <button
+            onClick={() => setIsIslandOnly(!isIslandOnly)}
+            title={isIslandOnly ? 'Switch to Full Air Workspace' : 'Switch to Desktop Island Pill'}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#22D3EE]/20 text-[#22D3EE] border border-[#22D3EE]/40 hover:bg-[#22D3EE]/30 transition"
+          >
+            <span>{isIslandOnly ? 'Full Workspace' : 'Dynamic Island'}</span>
+          </button>
+
           {/* Pro Upgrade / Tier Badge */}
           <button
             onClick={() => setIsProModalOpen(true)}
@@ -295,81 +321,85 @@ export default function App() {
       </header>
 
       {/* Main Workspace Layout (4 Edge Zones + Center File Grid) */}
-      <div className="relative flex-1 my-6 flex items-center justify-between">
-        {/* Left Zones Column */}
-        <div className="flex flex-col justify-between h-full z-10">
-          <EdgeZone
-            type="phone"
-            label="Phone Zone"
-            sublabel="Drop to Send / Clipboard"
-            isHovered={activeZone === 'phone'}
-          />
-          <EdgeZone
-            type="rename"
-            label="Rename Zone"
-            sublabel="Peace-Hold (600ms)"
-            isHovered={activeZone === 'rename'}
-          />
-        </div>
+      {!isIslandOnly && (
+        <div className="relative flex-1 my-6 flex items-center justify-between">
+          {/* Left Zones Column */}
+          <div className="flex flex-col justify-between h-full z-10">
+            <EdgeZone
+              type="phone"
+              label="Phone Zone"
+              sublabel="Drop to Send / Clipboard"
+              isHovered={activeZone === 'phone'}
+            />
+            <EdgeZone
+              type="rename"
+              label="Rename Zone"
+              sublabel="Peace-Hold (600ms)"
+              isHovered={activeZone === 'rename'}
+            />
+          </div>
 
-        {/* Center File Cards Grid */}
-        <div className="flex-1 flex flex-wrap items-center justify-center gap-6 px-12 z-10">
-          {files.map((file) => {
-            const isCardGrabbed = grabbedCardId === file.id;
-            return (
-              <div
-                key={file.id}
-                onMouseDown={() => setGrabbedCardId(file.id)}
-                className="cursor-pointer"
-              >
-                <FileCard
-                  file={file}
-                  isHovered={false}
-                  isGrabbed={isCardGrabbed}
-                  reducedMotion={reducedMotion}
-                />
-              </div>
-            );
-          })}
-        </div>
+          {/* Center File Cards Grid */}
+          <div className="flex-1 flex flex-wrap items-center justify-center gap-6 px-12 z-10">
+            {files.map((file) => {
+              const isCardGrabbed = grabbedCardId === file.id;
+              return (
+                <div
+                  key={file.id}
+                  onMouseDown={() => setGrabbedCardId(file.id)}
+                  className="cursor-pointer"
+                >
+                  <FileCard
+                    file={file}
+                    isHovered={false}
+                    isGrabbed={isCardGrabbed}
+                    reducedMotion={reducedMotion}
+                  />
+                </div>
+              );
+            })}
+          </div>
 
-        {/* Right Zones Column */}
-        <div className="flex flex-col justify-between h-full z-10">
-          <EdgeZone
-            type="inbox"
-            label="Inbox Zone"
-            sublabel="💨 Flick to Throw (Instant)"
-            isHovered={activeZone === 'inbox'}
-          />
-          <EdgeZone
-            type="trash"
-            label="Recycle Bin"
-            sublabel="Hold 600ms to Trash"
-            isHovered={activeZone === 'trash'}
-          />
+          {/* Right Zones Column */}
+          <div className="flex flex-col justify-between h-full z-10">
+            <EdgeZone
+              type="inbox"
+              label="Inbox Zone"
+              sublabel="💨 Flick to Throw (Instant)"
+              isHovered={activeZone === 'inbox'}
+            />
+            <EdgeZone
+              type="trash"
+              label="Recycle Bin"
+              sublabel="Hold 600ms to Trash"
+              isHovered={activeZone === 'trash'}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Footer Stage Tray */}
-      <footer className="h-14 bg-[#141B34]/80 backdrop-blur-md px-6 rounded-2xl border border-[#1C2547] flex items-center justify-between z-10">
-        <div className="flex items-center space-x-3 text-xs">
-          <span className="font-semibold text-[#8B94B8]">Stage Tray:</span>
-          {phoneArmed ? (
-            <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-[#FBBF24]/20 border border-[#FBBF24] text-[#FBBF24]">
-              <Globe className="w-3.5 h-3.5 text-[#22D3EE]" />
-              <span>🔗 Link Ready from Phone</span>
-              <span className="font-mono text-[10px] font-bold">Pinch anywhere to Catch</span>
-            </div>
-          ) : (
-            <span className="text-[#8B94B8]/60 italic">Tray is empty — items caught from phone appear here</span>
-          )}
-        </div>
+      {!isIslandOnly && (
+        <footer className="h-14 bg-[#141B34]/80 backdrop-blur-md px-6 rounded-2xl border border-[#1C2547] flex items-center justify-between z-10">
+          <div className="flex items-center space-x-3 text-xs">
+            <span className="font-semibold text-[#8B94B8]">Stage Tray:</span>
+            {phoneArmed ? (
+              <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-[#FBBF24]/20 border border-[#FBBF24] text-[#FBBF24]">
+                <Globe className="w-3.5 h-3.5 text-[#22D3EE]" />
+                <span>🔗 Link Ready from Phone</span>
+                <span className="font-mono text-[10px] font-bold">Pinch anywhere to Catch</span>
+              </div>
+            ) : (
+              <span className="text-[#8B94B8]/60 italic">Tray is empty — items caught from phone appear here</span>
+            )}
+          </div>
 
-        <div className="text-[11px] text-[#8B94B8] flex items-center space-x-4">
-          <span>💨 G3b Ballistic Throw Active (≥ 0.6x speed)</span>
-          <span className="text-[#34D399]">● Air Clipboard Ready</span>
-        </div>
-      </footer>
+          <div className="text-[11px] text-[#8B94B8] flex items-center space-x-4">
+            <span>💨 G3b Ballistic Throw Active (≥ 0.6x speed)</span>
+            <span className="text-[#34D399]">● Air Clipboard Ready</span>
+          </div>
+        </footer>
+      )}
 
       {/* Floating Undo Toast */}
       <UndoToast
