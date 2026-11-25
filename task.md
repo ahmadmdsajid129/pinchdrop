@@ -10,7 +10,7 @@
 | **Source of Truth For** | Roadmap tracking (S0–S13), sprint tasks, and backlog |
 
 > [!NOTE]
-> Overall Project Progress: `▰▰▱▱▱▱▱▱▱▱ 15%` (Stage 0 Complete)
+> Overall Project Progress: `▰▰▰▰▰▰▰▱▱▱ 71%` (Stages 0–9 Complete)
 
 ---
 
@@ -29,7 +29,7 @@
 | **S6** | **Android App v0** | Compose app, QR pairing, MediaStore download | 3 wks | 🟢 Done |
 | **S7** | **Grab → Catch & Stage Tray** | Share target, tiles, in-app capture, Peek, ARMED state | 3 wks | 🟢 Done |
 | **S8** | **Air Clipboard** | Bi-directional clipboard, Open on device, Throw gesture | 1 wk | 🟢 Done |
-| **S9** | **Gesture Gym & Settings** | First-run onboarding, calibration, privacy controls | 2 wks | ⚪ Pending |
+| **S9** | **Gesture Gym & Settings** | First-run onboarding, calibration, privacy controls | 2 wks | 🟢 Done |
 | **S10** | **Polish Pass** | 60 fps spring animations, audio cues, a11y, latency audit | 3 wks | ⚪ Pending |
 | **S11** | **Beta Packaging** | Signed Windows MSI/NSIS installer, updater, Play AAB | 2 wks | ⚪ Pending |
 | **S12** | **Pro & Monetization** | Local licensing engine, Pro feature unlock (lasso/smart) | 3 wks | ⚪ Pending |
@@ -74,6 +74,11 @@
 - [x] `T-3.4` Implement dynamic Pointer Ring with hold-fill animation and interactive card snapping.
 - [x] `T-3.5` Implement 8-second visual Undo Toast with radial countdown ring and Recycle Bin restore.
 - [x] `T-3.6` Wire mouse fallback alongside `@pinchdrop/gesture-core` state machine and simulate Phone Grab (ARMED).
+
+### Stage 9: Gesture Gym & Privacy Dashboard (🟢 Done)
+- [x] `T-9.1` Implement interactive Gesture Gym with real-time feedback, pinch gauge calibration, and achievement tiers.
+- [x] `T-9.2` Implement Zero-Storage Privacy Dashboard with cryptographic local-only proof and hardware camera kill switch.
+- [x] `T-9.3` Integrate Gesture Gym and Privacy Dashboard modal controls into desktop header bar.
 
 ---
 
