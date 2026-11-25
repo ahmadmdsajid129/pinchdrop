@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 9 (Gesture Gym & Privacy Settings)** — Completed. Interactive calibration gym (`GestureGym.tsx`) with pinch gauge, mastery tier tracking, and real-time posture coach; Zero-Storage Privacy Dashboard (`PrivacyDashboard.tsx`) with cryptographic local-only verification and camera kill switch.
+- **Current Stage:** **Stage 10 (Polish Pass & Audio/Haptics)** — Completed. Synthesized Web Audio procedural engine (`audio.ts`), `useMotionPreference` hook with prefers-reduced-motion support, tuned 60fps springs, and automated microsecond latency audit benchmark (`tools/benchmark-latency.mjs`).
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 10 (Polish Pass & Audio/Haptics)** — 60 fps spring tuning, spatial audio feedback cues, and a11y reduced-motion modes.
+- **Next Stage:** **Stage 11 (Beta Packaging & Installers)** — Signed Windows MSI/NSIS installer, auto-updater integration, and Android release AAB configuration.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard & Gesture Gym/Privacy Dashboard), `apps/android` (Kotlin/Compose companion app with Share target, Quick Settings tile & Clipboard sync)
+  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard, Gesture Gym, and Web Audio engine), `apps/android` (Kotlin/Compose companion app with Share target, Quick Settings tile & Clipboard sync)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
@@ -39,6 +39,7 @@
 | **DEC-0007** | 2026-11-24 | Vendored Offline Models & Zero CDN Runtime | Ensures complete offline capability and satisfies zero-cloud privacy commitments. | Runtime CDN fetching (unpkg/cdnjs) — violates privacy and breaks without internet. | [ADR-0007](docs/adr/0007-vendored-local-models.md) |
 | **DEC-0008** | 2026-11-25 | Dedicated External Services & Credentials Registry | Centralize developer credentials, keystores, and store accounts into `docs/services.md` with zero-leak policy. | Fragmented instructions in individual app READMEs. | [Services Guide](docs/services.md) |
 | **DEC-0009** | 2026-11-25 | Client-Side Gesture Gym & Privacy Dashboard | Provide users immediate tactile confidence with gamified gesture calibration and zero-recording verification. | Relying on static documentation manuals or external web tutorials. | [Task Board](task.md) |
+| **DEC-0010** | 2026-11-25 | Procedural Web Audio API for Zero-Asset Sound Design | Synthesize tactile audio cues (pop, click, whoosh, thud, chime) directly in Web Audio without shipping heavy audio files. | Bundling static WAV/MP3 audio assets — increases bundle size and incurs decode latency. | [Design Spec](design.md) |
 
 ---
 
