@@ -2,6 +2,7 @@
 
 mod allowlist;
 mod clipboard;
+mod explorer_hook;
 mod journal;
 mod license;
 mod pairing;
@@ -12,6 +13,7 @@ mod trash_ops;
 
 use allowlist::AllowList;
 use clipboard::{AirClipboardManager, ClipboardPayload};
+use explorer_hook::{DesktopExplorerHook, DesktopItem};
 use journal::{FileOpType, UndoJournal};
 use license::{LicenseInfo, LicenseManager};
 use pairing::{KeyStore, PairedDevice, QrPairingPayload};
@@ -28,6 +30,7 @@ struct AppState {
     stage_tray: Mutex<StageTrayManager>,
     clipboard: Mutex<AirClipboardManager>,
     license: Mutex<LicenseManager>,
+    explorer_hook: Mutex<DesktopExplorerHook>,
 }
 
 #[tauri::command]
@@ -170,6 +173,15 @@ fn deactivate_license(state: tauri::State<AppState>) -> Result<LicenseInfo, Stri
     lic.deactivate()
 }
 
+#[tauri::command]
+fn resolve_desktop_item(
+    target_name: Option<String>,
+    state: tauri::State<AppState>,
+) -> Result<DesktopItem, String> {
+    let hook = state.explorer_hook.lock().unwrap();
+    hook.resolve_target(target_name.as_deref())
+}
+
 fn main() {
     let home = std::env::var("USERPROFILE")
         .map(PathBuf::from)
@@ -183,6 +195,7 @@ fn main() {
         stage_tray: Mutex::new(StageTrayManager::new()),
         clipboard: Mutex::new(AirClipboardManager::new()),
         license: Mutex::new(LicenseManager::new(home.join(".pinchdrop"))),
+        explorer_hook: Mutex::new(DesktopExplorerHook::new()),
     };
 
     tauri::Builder::default()
@@ -198,7 +211,8 @@ fn main() {
             open_in_browser,
             get_license_info,
             activate_license_key,
-            deactivate_license
+            deactivate_license,
+            resolve_desktop_item
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
