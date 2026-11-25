@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod allowlist;
+mod clipboard;
 mod journal;
 mod pairing;
 mod server;
@@ -9,6 +10,7 @@ mod transfer;
 mod trash_ops;
 
 use allowlist::AllowList;
+use clipboard::{AirClipboardManager, ClipboardPayload};
 use journal::{FileOpType, UndoJournal};
 use pairing::{KeyStore, PairedDevice, QrPairingPayload};
 use server::{LanServer, ServerConfig};
@@ -22,6 +24,30 @@ struct AppState {
     key_store: Mutex<KeyStore>,
     lan_server: Mutex<LanServer>,
     stage_tray: Mutex<StageTrayManager>,
+    clipboard: Mutex<AirClipboardManager>,
+}
+
+#[tauri::command]
+fn push_clipboard_text(text: String, state: tauri::State<AppState>) -> ClipboardPayload {
+    let mut clip = state.clipboard.lock().unwrap();
+    clip.set_clipboard(text, "pc_desktop_primary".to_string())
+}
+
+#[tauri::command]
+fn open_in_browser(url: String) -> Result<String, String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Only valid HTTP/HTTPS URLs allowed".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("rundll32")
+            .args(&["url.dll,FileProtocolHandler", &url])
+            .spawn()
+            .map_err(|e| format!("Failed to launch browser: {}", e))?;
+    }
+
+    Ok(format!("Opened '{}' in default browser", url))
 }
 
 #[tauri::command]
@@ -131,6 +157,7 @@ fn main() {
         key_store: Mutex::new(KeyStore::new()),
         lan_server: Mutex::new(LanServer::new(ServerConfig::default())),
         stage_tray: Mutex::new(StageTrayManager::new()),
+        clipboard: Mutex::new(AirClipboardManager::new()),
     };
 
     tauri::Builder::default()
@@ -141,7 +168,9 @@ fn main() {
             get_pairing_qr_payload,
             register_phone_device,
             simulate_phone_grab,
-            catch_held_item
+            catch_held_item,
+            push_clipboard_text,
+            open_in_browser
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
