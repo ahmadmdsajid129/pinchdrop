@@ -164,6 +164,10 @@ export function SettingsScreen() {
         </Row>
       </Section>
 
+      <Section id="phone" title="Your phone">
+        <PhoneSection />
+      </Section>
+
       <Section id="transfers" title="Transfers">
         <Row title="When I send something" description="Move puts the PC copy in the Recycle Bin only after the phone confirms">
           <Select label="Copy or move" value={t.mode} onChange={(v) => void update({ transfers: { mode: v } })}
@@ -208,6 +212,41 @@ export function SettingsScreen() {
           <Button size="sm" onClick={() => void api.openConfigFolder()}>Open</Button>
         </Row>
       </Section>
+    </>
+  );
+}
+
+/** v2 · Calls, clipboard, find my phone. */
+function PhoneSection() {
+  const { settings, update } = useApp();
+  const ph = settings.phone ?? { clipboardSync: false, callGestures: true };
+  const [ringing, setRinging] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  async function find(stop: boolean) {
+    setNote(null);
+    try {
+      await api.findPhone(stop);
+      setRinging(!stop);
+      if (!stop) window.setTimeout(() => setRinging(false), 60_000);
+    } catch (e) {
+      setNote(String(e instanceof Error ? e.message : e));
+    }
+  }
+  return (
+    <>
+      <Row title="Answer calls with gestures" description="While your phone rings, the camera watches for an open palm (answer), a swipe (reject) or a fist (silence). Only while it rings.">
+        <Toggle label="Answer calls with gestures" checked={ph.callGestures} onChange={(v) => void update({ phone: { callGestures: v } })} />
+      </Row>
+      <Row title="Share the clipboard" description="Copy text on the PC and paste it on the phone. Text copied on the phone comes over when you open PinchDrop there (Android only allows that).">
+        <Toggle label="Share the clipboard" checked={ph.clipboardSync} onChange={(v) => void update({ phone: { clipboardSync: v } })} />
+      </Row>
+      <Row title="Find my phone" description={note ?? 'Rings your phone loudly, even on silent, for up to a minute'} last>
+        {ringing ? (
+          <Button size="sm" onClick={() => void find(true)}>Stop ringing</Button>
+        ) : (
+          <Button size="sm" variant="primary" onClick={() => void find(false)}>Ring my phone</Button>
+        )}
+      </Row>
     </>
   );
 }
