@@ -31,11 +31,14 @@ export function NotifIsland({
   width,
   onClose,
   onReplying,
+  replyNonce = 0,
 }: {
   n: NotifView;
   width: number;
   onClose: () => void;
   onReplying: (on: boolean) => void;
+  /** Bumped by the peace-sign gesture: open the reply box. */
+  replyNonce?: number;
 }) {
   const [replying, setReplying] = useState(false);
   const [text, setText] = useState('');
@@ -48,6 +51,9 @@ export function NotifIsland({
     setText('');
     setError(null);
   }, [n.key]);
+  useEffect(() => {
+    if (replyNonce > 0 && n.canReply) setReplying(true);
+  }, [replyNonce]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     onReplying(replying);
     if (replying) input.current?.focus();
