@@ -204,6 +204,35 @@ Dates are milliseconds since 1970 (UTC). Phone numbers are passed exactly as the
 - `notif.sync` `{ items: [ notif.posted payloads ] }`: everything currently showing, sent on connect (up to 30).
 - `sms.new` `{ threadId?, address, name?, body, date }`: a text message just arrived.
 
+### Calls, unread texts, find my phone, clipboard (v2)
+
+| Request (PC → phone) | `data` |
+|---|---|
+| `call.answer` / `call.reject` / `call.silence` `{ reqId }` | `{}`. Answers / ends / stops the ringing of the current call (needs "Calls on your PC") |
+| `phone.ring` / `phone.ring.stop` `{ reqId }` | `{}`. Find my phone: loud alarm for up to 60 s |
+
+Events from the phone:
+- `call.state` `{ state, number?, name? }`, where `state` is one of:
+  - `"ringing"`
+  - `"active"`: answered
+  - `"ended"`
+  - `"missed"`: rang and stopped without being answered
+- `status.messages` `{ unread }`: unread SMS count. Sent on connect and whenever it changes.
+- `clip.set` `{ text }`: text copied on the phone. Only sent while sharing is on, and only when PinchDrop is opened, because Android blocks reading the clipboard in the background.
+
+Events from the PC (no reply):
+- `clip.config` `{ enabled }`: sent after `welcome` and whenever the setting changes.
+- `clip.set` `{ text }`: text copied on the PC (≤ 100 000 characters), sent only while sharing is on.
+
+### Several phones and tablets (v2)
+- `hold.offer` goes to **every** connected device. The first `hold.catch` wins; the others get `hold.cancel` `{ reason: "caught_elsewhere" }`.
+- A send aimed at one device (a device chip on the PC, or the Send screen) goes only to that device.
+
+## 6.7 Fast mode (v2)
+- `welcome` carries `caps: ["chunk2m"]`. A phone that sees it may ask for chunks of up to **2 MiB** (`length ≤ 2097152`) and keep up to **6** requests in flight.
+- PCs without `caps` stay at 512 KiB / 4.
+- Lifts (§6.5) keep 512 KiB.
+
 ## 7. Storage
 
 | Where | What |
