@@ -50,6 +50,9 @@ pub struct Transfer {
     pub files_done: u32,
     pub bytes_done: u64,
     pub moved: bool,
+    /// "out" (PC → phone, the default) or "in" (a lift from the phone, v2).
+    #[serde(default)]
+    pub direction: String,
 }
 
 impl Transfer {
@@ -90,6 +93,8 @@ pub struct TransferView {
     pub bytes_done: u64,
     pub moved: bool,
     pub first_name: Option<String>,
+    /// "out" or "in".
+    pub direction: String,
 }
 
 impl From<&Transfer> for TransferView {
@@ -113,6 +118,11 @@ impl From<&Transfer> for TransferView {
                 .files
                 .first()
                 .map(|f| f.path.rsplit('/').next().unwrap_or(&f.path).to_string()),
+            direction: if t.direction == "in" {
+                "in".into()
+            } else {
+                "out".into()
+            },
         }
     }
 }
@@ -273,6 +283,7 @@ mod tests {
             files_done: 0,
             bytes_done: 0,
             moved: false,
+            direction: String::new(),
         };
         assert_eq!(t.bytes_before(1), 10);
         assert!(t.is_active());
