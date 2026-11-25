@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 8 (Air Clipboard & Open-on-Device)** — Completed. Ballistic Throw (G3b) velocity detector in `@pinchdrop/gesture-core`, `AirClipboardManager` and `open_in_browser` IPC commands in Rust desktop core, and `AndroidClipboardReceiver` in Kotlin companion app.
+- **Current Stage:** **Stage 9 (Gesture Gym & Privacy Settings)** — Completed. Interactive calibration gym (`GestureGym.tsx`) with pinch gauge, mastery tier tracking, and real-time posture coach; Zero-Storage Privacy Dashboard (`PrivacyDashboard.tsx`) with cryptographic local-only verification and camera kill switch.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 9 (Gesture Gym, First-Run Onboarding & Privacy Settings)** — Interactive gesture calibration playground, visual hand coach, and real-time privacy controls.
+- **Next Stage:** **Stage 10 (Polish Pass & Audio/Haptics)** — 60 fps spring tuning, spatial audio feedback cues, and a11y reduced-motion modes.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray & Air Clipboard), `apps/android` (Kotlin/Compose companion app with Share target, Quick Settings tile & Clipboard sync)
+  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard & Gesture Gym/Privacy Dashboard), `apps/android` (Kotlin/Compose companion app with Share target, Quick Settings tile & Clipboard sync)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
@@ -38,6 +38,7 @@
 | **DEC-0006** | 2026-11-24 | Pure TS Deterministic Gesture Core with Replay Harness | Allows testing gesture classification, smoothing, and FSM against pre-recorded landmark sessions in CI. | Coupling gesture logic to DOM/React components — untestable in headless CI. | [ADR-0006](docs/adr/0006-deterministic-gesture-core.md) |
 | **DEC-0007** | 2026-11-24 | Vendored Offline Models & Zero CDN Runtime | Ensures complete offline capability and satisfies zero-cloud privacy commitments. | Runtime CDN fetching (unpkg/cdnjs) — violates privacy and breaks without internet. | [ADR-0007](docs/adr/0007-vendored-local-models.md) |
 | **DEC-0008** | 2026-11-25 | Dedicated External Services & Credentials Registry | Centralize developer credentials, keystores, and store accounts into `docs/services.md` with zero-leak policy. | Fragmented instructions in individual app READMEs. | [Services Guide](docs/services.md) |
+| **DEC-0009** | 2026-11-25 | Client-Side Gesture Gym & Privacy Dashboard | Provide users immediate tactile confidence with gamified gesture calibration and zero-recording verification. | Relying on static documentation manuals or external web tutorials. | [Task Board](task.md) |
 
 ---
 
