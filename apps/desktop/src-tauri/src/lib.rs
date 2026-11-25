@@ -309,9 +309,28 @@ async fn send_items(
     paths: Vec<String>,
     texts: Vec<String>,
     destination: String,
+    device_id: Option<String>,
 ) -> Result<String, String> {
     let link = link_of(&app).ok_or("The connection service didn't start")?;
-    link.send_items(paths, texts, destination).await
+    link.send_items(paths, texts, destination, device_id).await
+}
+
+/// v2 · Dropped on a device chip (or thrown at it): straight to that device, no catch needed.
+#[tauri::command]
+async fn send_to_device(
+    app: AppHandle,
+    items: grab::GrabbedItems,
+    device_id: String,
+) -> Result<String, String> {
+    let link = link_of(&app).ok_or("The connection service didn't start")?;
+    link.send_items_for_hold(
+        items.paths,
+        items.texts,
+        None,
+        items.open_on_arrival,
+        Some(device_id),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -604,7 +623,7 @@ fn hold_cancel(app: AppHandle) {
 #[tauri::command]
 async fn hold_send_now(app: AppHandle) -> Result<String, String> {
     let g = app.try_state::<grab::Grab>().ok_or("not ready")?;
-    g.hold_deliver(&app, None).await
+    g.hold_deliver(&app, None, None).await
 }
 
 #[tauri::command]
@@ -980,6 +999,7 @@ pub fn run() {
             contacts_list,
             phone_dial,
             phone_live,
+            send_to_device,
             clear_missed,
             call_action,
             find_phone,
