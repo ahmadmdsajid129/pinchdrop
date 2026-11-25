@@ -56,6 +56,12 @@ pub struct ArmState {
 #[serde(rename_all = "camelCase")]
 pub struct GrabbedItems {
     pub paths: Vec<String>,
+    /// Links or short notes taken from the clipboard (sent as text; the phone opens links).
+    #[serde(default)]
+    pub texts: Vec<String>,
+    /// Open it on the phone when it lands (notes and links from the clipboard).
+    #[serde(default)]
+    pub open_on_arrival: bool,
     pub label: String,
     pub file_count: u64,
     pub total_bytes: u64,
@@ -423,25 +429,81 @@ impl Grab {
             .hold_end(app, "caught")
             .ok_or("Nothing is being held.")?;
         let link = crate::link_of(app).ok_or("The connection service didn't start")?;
-        link.send_items_for_hold(items.paths, current_id).await
+        link.send_items_for_hold(items.paths, items.texts, current_id, items.open_on_arrival)
+            .await
     }
 }
 
-/// Builds what a pinch grabs right now (selection + sizes), or None if nothing is selected.
-pub fn grab_selection() -> Option<GrabbedItems> {
-    let sel = explorer::current()?;
-    let infos: Vec<fs_info::PathInfo> = sel.paths.iter().map(|p| fs_info::inspect(p)).collect();
-    let readable: Vec<&fs_info::PathInfo> = infos.iter().filter(|i| i.error.is_none()).collect();
-    if readable.is_empty() {
-        return None;
+/// Builds what a pinch grabs right now: the Explorer / Desktop selection, or — when nothing is
+/// selected — the clipboard (a link, a short note, or a long text turned into a file).
+pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
+    if let Some(sel) = explorer::current() {
+        let infos: Vec<fs_info::PathInfo> = sel.paths.iter().map(|p| fs_info::inspect(p)).collect();
+        let readable: Vec<&fs_info::PathInfo> =
+            infos.iter().filter(|i| i.error.is_none()).collect();
+        if readable.is_empty() {
+            return None;
+        }
+        return Some(GrabbedItems {
+            paths: readable.iter().map(|i| i.path.clone()).collect(),
+            texts: Vec::new(),
+            open_on_arrival: false,
+            label: label_for(&sel.paths),
+            file_count: readable.iter().map(|i| i.file_count).sum(),
+            total_bytes: readable.iter().map(|i| i.size_bytes).sum(),
+            is_folder: readable.len() == 1 && readable[0].is_dir,
+            partial: readable.iter().any(|i| i.partial),
+        });
     }
-    Some(GrabbedItems {
-        paths: readable.iter().map(|i| i.path.clone()).collect(),
-        label: label_for(&sel.paths),
-        file_count: readable.iter().map(|i| i.file_count).sum(),
-        total_bytes: readable.iter().map(|i| i.size_bytes).sum(),
-        is_folder: readable.len() == 1 && readable[0].is_dir,
-        partial: readable.iter().any(|i| i.partial),
+    let (text, html) = crate::clip::read()?;
+    let base = GrabbedItems {
+        paths: Vec::new(),
+        texts: Vec::new(),
+        open_on_arrival: true,
+        label: String::new(),
+        file_count: 0,
+        total_bytes: text.len() as u64,
+        is_folder: false,
+        partial: false,
+    };
+    Some(match crate::clip::classify(&text) {
+        crate::clip::TextPlan::Link(url) => {
+            let host = url
+                .split("://")
+                .nth(1)
+                .and_then(|r| r.split('/').next())
+                .unwrap_or("Link")
+                .to_string();
+            GrabbedItems {
+                texts: vec![url],
+                label: host,
+                ..base
+            }
+        }
+        crate::clip::TextPlan::Short(t) => {
+            let n = t.split_whitespace().count();
+            let words: Vec<&str> = t.split_whitespace().take(4).collect();
+            GrabbedItems {
+                label: format!("“{}{}”", words.join(" "), if n > 4 { "…" } else { "" }),
+                texts: vec![t],
+                ..base
+            }
+        }
+        crate::clip::TextPlan::Long(t) => {
+            let path = crate::clip::write_note(outbox, &t, html.as_deref()).ok()?;
+            let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+            let label = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "Note".into());
+            GrabbedItems {
+                paths: vec![path.to_string_lossy().into_owned()],
+                file_count: 1,
+                total_bytes: size,
+                label,
+                ..base
+            }
+        }
     })
 }
 
@@ -472,7 +534,11 @@ pub fn flash_overlay(app: &AppHandle, ms: u64) {
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(ms.min(5000)));
-        let armed = app.try_state::<Grab>().and_then(|g| g.arm_state()).map(|a| a.armed).unwrap_or(false);
+        let armed = app
+            .try_state::<Grab>()
+            .and_then(|g| g.arm_state())
+            .map(|a| a.armed)
+            .unwrap_or(false);
         if !armed {
             set_overlay_visible(&app, false);
         }
@@ -486,8 +552,12 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
     std::thread::Builder::new()
         .name("pinchdrop-hotkey".into())
         .spawn(move || {
-            use windows::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_SPACE};
-            use windows::Win32::UI::WindowsAndMessaging::{PeekMessageW, MSG, PM_REMOVE, WM_HOTKEY};
+            use windows::Win32::UI::Input::KeyboardAndMouse::{
+                RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_SPACE,
+            };
+            use windows::Win32::UI::WindowsAndMessaging::{
+                PeekMessageW, MSG, PM_REMOVE, WM_HOTKEY,
+            };
             const ID: i32 = 0x5044; // "PD"
             let mut registered = false;
             loop {
@@ -496,7 +566,13 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
                 // SAFETY: hotkey registered and messages read on this same thread.
                 unsafe {
                     if want && !registered {
-                        registered = RegisterHotKey(None, ID, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_SPACE.0 as u32).is_ok();
+                        registered = RegisterHotKey(
+                            None,
+                            ID,
+                            MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT,
+                            VK_SPACE.0 as u32,
+                        )
+                        .is_ok();
                     } else if !want && registered {
                         let _ = UnregisterHotKey(None, ID);
                         registered = false;

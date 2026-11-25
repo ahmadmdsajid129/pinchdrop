@@ -34,6 +34,8 @@ interface Grabbed {
   totalBytes: number;
   isFolder: boolean;
   partial: boolean;
+  texts?: string[];
+  openOnArrival?: boolean;
 }
 
 type Card = { items: Grabbed; phase: 'held' | 'flying' | 'dropped' };
@@ -207,8 +209,8 @@ export function Overlay() {
       busy = false;
       if (!items) {
         machine.reset();
-        flash('Select a file or folder first, then pinch');
-        reportError('Nothing was selected. Click a file or folder in Explorer or on the Desktop, then pinch.', false);
+        flash('Select a file, or copy a link or text, then pinch');
+        reportError('Nothing to grab. Select a file or folder, or copy a link or some text, then pinch.', false);
         return;
       }
       if (arm?.sounds) sound.pop();
@@ -437,8 +439,10 @@ export function Overlay() {
             <div className="min-w-0">
               <div className="font-semibold text-[15px] max-w-[220px] truncate">{card.items.label}</div>
               <div className="text-[12px] text-[#8B94B8]">
-                {card.items.fileCount} file{card.items.fileCount === 1 ? '' : 's'}
-                {card.items.partial ? '+' : ''} · {formatBytes(card.items.totalBytes)} · open your hand to drop
+                {card.items.fileCount === 0
+                  ? 'From your clipboard'
+                  : `${card.items.fileCount} file${card.items.fileCount === 1 ? '' : 's'}${card.items.partial ? '+' : ''} · ${formatBytes(card.items.totalBytes)}`}{' '}
+                · open your hand to drop
               </div>
             </div>
           </motion.div>

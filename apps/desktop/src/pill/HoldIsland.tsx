@@ -69,7 +69,7 @@ export function HoldIsland({ hold, width }: { hold: HoldView; width: number }) {
             <span className="truncate">“{hold.label}” is in the air</span>
           </div>
           <div className="text-[12px] text-muted truncate">
-            {hold.fileCount} file{hold.fileCount === 1 ? '' : 's'} · {formatBytes(hold.totalBytes)} ·{' '}
+            {hold.fileCount === 0 ? 'Link or note' : `${hold.fileCount} file${hold.fileCount === 1 ? '' : 's'} · ${formatBytes(hold.totalBytes)}`} ·{' '}
             {hold.phoneName ? `open your hand over ${hold.phoneName}` : 'no phone connected — use Send now'}
           </div>
         </div>

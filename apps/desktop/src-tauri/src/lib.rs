@@ -4,6 +4,7 @@
 //! persistent settings tie them together. Phase 3 adds the encrypted link
 //! to paired phones (`link`).
 
+mod clip;
 mod explorer;
 mod fs_info;
 mod grab;
@@ -290,12 +291,21 @@ fn grab_arm_state(app: AppHandle) -> Option<grab::ArmState> {
 }
 
 /// Called by the overlay the moment a pinch closes: what is selected right now?
+/// (Explorer / Desktop selection first; otherwise the clipboard's link or text.)
 #[tauri::command]
-async fn grab_selection() -> Option<grab::GrabbedItems> {
-    tauri::async_runtime::spawn_blocking(grab::grab_selection)
+async fn grab_selection(app: AppHandle) -> Option<grab::GrabbedItems> {
+    let outbox = outbox_dir(&app);
+    tauri::async_runtime::spawn_blocking(move || grab::grab_selection(&outbox))
         .await
         .ok()
         .flatten()
+}
+
+/// Where long texts become files before they're sent.
+pub(crate) fn outbox_dir(app: &AppHandle) -> PathBuf {
+    app.try_state::<AppState>()
+        .map(|s| s.config_dir.join("outbox"))
+        .unwrap_or_else(|| std::env::temp_dir().join("PinchDrop").join("outbox"))
 }
 
 /// Called by the overlay when the hand opens with something grabbed.
@@ -653,6 +663,7 @@ pub fn run() {
                 Err(e) => eprintln!("PinchDrop link failed to start: {e}"),
             }
             app.manage(grab::Grab::default());
+            clip::tidy_outbox(&outbox_dir(&handle));
             grab::spawn_hotkey_thread(handle.clone());
             allow_camera_in_webviews(&handle);
             build_tray(&handle)?;

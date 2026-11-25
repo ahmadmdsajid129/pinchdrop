@@ -1091,10 +1091,18 @@ impl Link {
     pub async fn send_items_for_hold(
         self: &Arc<Self>,
         paths: Vec<String>,
+        texts: Vec<String>,
         hold_id: Option<String>,
+        open_on_arrival: bool,
     ) -> Result<String, String> {
-        self.send_inner(paths, Vec::new(), "auto".into(), hold_id)
-            .await
+        self.send_inner(
+            paths,
+            texts,
+            "auto".into(),
+            hold_id,
+            open_on_arrival.then_some(true),
+        )
+        .await
     }
 
     /// Starts a manual send of picked paths and/or texts to the connected phone.
@@ -1104,16 +1112,31 @@ impl Link {
         texts: Vec<String>,
         destination: String,
     ) -> Result<String, String> {
-        self.send_inner(paths, texts, destination, None).await
+        self.send_inner(paths, texts, destination, None, None).await
     }
 
     async fn send_inner(
         self: &Arc<Self>,
-        paths: Vec<String>,
+        mut paths: Vec<String>,
         texts: Vec<String>,
         destination: String,
         hold_id: Option<String>,
+        open_first: Option<bool>,
     ) -> Result<String, String> {
+        // Long texts travel as .txt files (exact text and line breaks); links and short notes as text.
+        let outbox = crate::outbox_dir(&self.app);
+        let mut short = Vec::new();
+        for t in texts {
+            match crate::clip::classify(&t) {
+                crate::clip::TextPlan::Long(long) => paths.push(
+                    crate::clip::write_note(&outbox, &long, None)?
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
+                crate::clip::TextPlan::Link(s) | crate::clip::TextPlan::Short(s) => short.push(s),
+            }
+        }
+        let texts = short;
         let (device_id, device_name) = self
             .target_device()
             .ok_or("Your phone isn't connected right now.")?;
@@ -1155,7 +1178,7 @@ impl Link {
             } else {
                 "auto".into()
             },
-            open_first: settings.transfers.open_first,
+            open_first: open_first.unwrap_or(settings.transfers.open_first),
             total_bytes: files.iter().map(|f| f.size).sum(),
             files,
             texts,

@@ -133,7 +133,7 @@ impl Default for ProfileSettings {
 pub struct Settings {
     pub onboarded: bool,
     pub keep_running_on_close: bool,
-    pub theme: String,  // "dark" | "light" | "system"
+    pub theme: String, // "dark" | "light" | "system"
     /// Bumped when a new default look ships; v2 = the white Apple-style palette.
     /// Missing in older files → 0 (not the struct default), so the one-time switch runs.
     #[serde(default)]
@@ -227,7 +227,8 @@ pub fn apply_patch(current: &Settings, patch: &Value) -> Result<Settings, String
 mod tests {
     #[test]
     fn old_files_switch_to_the_light_look_once() {
-        let mut old: Settings = serde_json::from_str(r#"{"theme":"dark","onboarded":true}"#).unwrap();
+        let mut old: Settings =
+            serde_json::from_str(r#"{"theme":"dark","onboarded":true}"#).unwrap();
         assert_eq!(old.ui_version, 0);
         migrate(&mut old);
         assert_eq!(old.theme, "light");
