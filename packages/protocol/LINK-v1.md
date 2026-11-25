@@ -142,6 +142,33 @@ When the user pinches something on the PC and opens their hand, the PC **holds**
 - PC → phone `hold.cancel` `{ holdId, reason }`, where `reason` is `"expired" | "cancelled"`. The phone closes its Catch screen.
 - If the PC user presses *Send now* on the Island, the PC sends the `push.offer` with the `holdId` directly. Receiving it closes the phone's Catch screen, and the phone's normal Accept/Ask setting applies.
 
+### 6.5 Lift: phone → PC (v2)
+
+The other direction. On the phone the user taps **Share → PinchDrop** and **pinches** in front of the phone, which lifts the item into the air. Then they **open their hand at the laptop's webcam**, and the item lands on the PC.
+
+- Phone → PC `lift.offer`:
+  ```json
+  { "liftId": "…", "label": "IMG_2041.jpg", "totalBytes": 3145728, "expiresInSecs": 30,
+    "files": [ { "index": 0, "name": "IMG_2041.jpg", "size": 3145728, "mime": "image/jpeg" } ],
+    "texts": [], "thumb": "data:image/jpeg;base64,…", "sendNow": false }
+  ```
+  - `name` is a plain file name (no folders). The PC strips anything path-like and Windows-reserved, and never writes outside its save folder.
+  - `thumb` is optional: a small JPEG, at most 64 KB, used for the PC's preview card.
+  - `texts` are links or notes shared from the phone (no files then).
+  - `sendNow: true` means the user pressed *Send without gesture*. The PC catches it at once.
+  - If the PC is busy with another lift, the newer one replaces it (the older one gets `lift.cancel` `{ reason: "replaced" }`).
+- PC → phone `lift.catch` `{ liftId }`. The PC user opened their hand at the webcam, or pressed *Take it* on the Island.
+  - Texts are handled at once: a link opens in the PC's browser (http/https only), short text goes on the PC clipboard, and long text becomes a `.txt` that opens.
+- **Data: the PC pulls.** This mirrors §6.2.
+  - The PC sends `lift.req` `{ liftId, index, offset, length }`, with `length ≤ 524288`. Up to 4 requests are in flight, files go in index order.
+  - The phone answers each request with one binary frame in the §6.2 layout, with header `{ "t": liftId, "i": index, "o": offset }`.
+- PC → phone `lift.done` `{ liftId }` once every file is saved.
+  - Files are saved in `Downloads\PinchDrop` (name clashes become `name (2).ext`).
+  - A single file opens in its default app. Several files open the folder.
+- Either side can send `lift.cancel` `{ liftId, reason }`, where `reason` is one of `"expired" | "cancelled" | "failed" | "unreadable" | "replaced"`. The PC deletes any partial file.
+- Lifts are not resumed in v2.0. If the link drops mid-way, the lift fails and the partial file is removed.
+- The PC turns its webcam on for a lift only while one is in the air (at most `expiresInSecs`). The camera rules of §6.4 apply: frames are never stored or sent.
+
 ## 7. Storage
 
 | Where | What |
