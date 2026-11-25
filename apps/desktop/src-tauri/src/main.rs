@@ -4,6 +4,7 @@ mod allowlist;
 mod journal;
 mod pairing;
 mod server;
+mod stage_tray;
 mod transfer;
 mod trash_ops;
 
@@ -11,6 +12,7 @@ use allowlist::AllowList;
 use journal::{FileOpType, UndoJournal};
 use pairing::{KeyStore, PairedDevice, QrPairingPayload};
 use server::{LanServer, ServerConfig};
+use stage_tray::{StageItem, StageTrayManager};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -19,6 +21,7 @@ struct AppState {
     undo_journal: Mutex<UndoJournal>,
     key_store: Mutex<KeyStore>,
     lan_server: Mutex<LanServer>,
+    stage_tray: Mutex<StageTrayManager>,
 }
 
 #[tauri::command]
@@ -44,6 +47,28 @@ fn register_phone_device(
     let name = device.name.clone();
     keystore.add_device(device);
     Ok(format!("Device '{}' paired successfully with certificate pinned", name))
+}
+
+#[tauri::command]
+fn simulate_phone_grab(state: tauri::State<AppState>) -> StageItem {
+    let mut tray = state.stage_tray.lock().unwrap();
+    let item = StageItem {
+        item_id: format!("item_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis()),
+        file_name: "IMG_20261125_Camera.jpg".to_string(),
+        mime_type: "image/jpeg".to_string(),
+        file_size: 4_290_100,
+        thumbnail_b64: None,
+        received_at_ms: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64,
+        is_caught: false,
+    };
+    tray.arm_item(item.clone());
+    item
+}
+
+#[tauri::command]
+fn catch_held_item(item_id: String, state: tauri::State<AppState>) -> Result<StageItem, String> {
+    let mut tray = state.stage_tray.lock().unwrap();
+    tray.catch_item(&item_id).ok_or_else(|| "Item not found or already caught".to_string())
 }
 
 #[tauri::command]
@@ -105,6 +130,7 @@ fn main() {
         undo_journal: Mutex::new(UndoJournal::new(100)),
         key_store: Mutex::new(KeyStore::new()),
         lan_server: Mutex::new(LanServer::new(ServerConfig::default())),
+        stage_tray: Mutex::new(StageTrayManager::new()),
     };
 
     tauri::Builder::default()
@@ -113,7 +139,9 @@ fn main() {
             safe_move_file,
             safe_recycle_file,
             get_pairing_qr_payload,
-            register_phone_device
+            register_phone_device,
+            simulate_phone_grab,
+            catch_held_item
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
