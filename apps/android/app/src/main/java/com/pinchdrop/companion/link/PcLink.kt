@@ -194,6 +194,8 @@ object PcLink {
                 }
                 else -> return SessionEnd.FAILED
             }
+            // v2: the PC says what it supports (fast mode = bigger chunks).
+            Receiver.fast = reply.payload.optJSONArray("caps")?.let { caps -> (0 until caps.length()).any { caps.optString(it) == "chunk2m" } } == true
             val pcName = reply.payload.optString("pcName").ifBlank { pc.name }
             if (pcName != pc.name) store.rename(pcName)
             store.rememberAddress(host, port)
@@ -249,6 +251,10 @@ object PcLink {
                                 }
                                 "lift.catch", "lift.req", "lift.done", "lift.cancel" -> {
                                     com.pinchdrop.companion.transfer.Lifter.onMessage(e.env.type, e.env.payload)
+                                    null
+                                }
+                                in com.pinchdrop.companion.phone.PhoneData.eventTypes -> {
+                                    com.pinchdrop.companion.phone.PhoneData.onEvent(e.env.type, e.env.payload)
                                     null
                                 }
                                 in com.pinchdrop.companion.phone.PhoneData.requestTypes -> {
