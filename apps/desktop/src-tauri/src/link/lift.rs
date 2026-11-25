@@ -512,7 +512,7 @@ impl Link {
             let mut in_flight = 0u64;
             while offset < f.size {
                 while in_flight < WINDOW && requested < f.size {
-                    let len = CHUNK_MAX.min(f.size - requested);
+                    let len = transfer::LIFT_CHUNK.min(f.size - requested);
                     let req = json!({ "liftId": lift.id, "index": index, "offset": requested, "length": len });
                     if tx.send(Out::Text(message("lift.req", req))).is_err() {
                         cleanup(&part);
