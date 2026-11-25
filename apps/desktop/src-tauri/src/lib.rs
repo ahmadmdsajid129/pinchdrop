@@ -127,7 +127,14 @@ fn commit_settings(app: &AppHandle, next: Settings) -> Result<Settings, String> 
 fn patch_settings(app: &AppHandle, patch: Value) -> Result<Settings, String> {
     let current = app.state::<AppState>().snapshot();
     let next = settings::apply_patch(&current, &patch)?;
-    commit_settings(app, next)
+    let clip_changed = next.phone.clipboard_sync != current.phone.clipboard_sync;
+    let out = commit_settings(app, next);
+    if clip_changed {
+        if let Some(l) = link_of(app) {
+            l.clip_config_all();
+        }
+    }
+    out
 }
 
 /// Shows or hides the pill according to settings, "hide for 1 hour" and
@@ -520,6 +527,50 @@ async fn phone_dial(app: AppHandle, number: String) -> Result<serde_json::Value,
         .await
 }
 
+#[tauri::command]
+fn phone_live() -> link::phone_live::PhoneLive {
+    link::phone_live::live()
+}
+
+#[tauri::command]
+fn clear_missed(app: AppHandle) {
+    if let Some(l) = link_of(&app) {
+        l.clear_missed();
+    }
+}
+
+/// Answer / reject / silence the ringing phone (palm, swipe, fist, or a click).
+#[tauri::command]
+async fn call_action(app: AppHandle, action: String) -> Result<(), String> {
+    let kind = match action.as_str() {
+        "answer" => "call.answer",
+        "reject" => "call.reject",
+        "silence" => "call.silence",
+        _ => return Err("Unknown call action".into()),
+    };
+    link_or_err(&app)?
+        .phone_request(kind, serde_json::json!({}), "calls")
+        .await
+        .map(|_| ())
+}
+
+/// Find my phone: ring it loudly (or stop).
+#[tauri::command]
+async fn find_phone(app: AppHandle, stop: bool) -> Result<(), String> {
+    link_or_err(&app)?
+        .phone_request(
+            if stop {
+                "phone.ring.stop"
+            } else {
+                "phone.ring"
+            },
+            serde_json::json!({}),
+            "find my phone",
+        )
+        .await
+        .map(|_| ())
+}
+
 /// v2 · Lift: what the phone has in the air, if anything.
 #[tauri::command]
 fn lift_state(app: AppHandle) -> Option<link::lift::LiftView> {
@@ -843,6 +894,7 @@ pub fn run() {
             app.manage(grab::Grab::default());
             clip::tidy_outbox(&outbox_dir(&handle));
             grab::spawn_hotkey_thread(handle.clone());
+            link::phone_live::spawn_clipboard_watch(handle.clone());
             allow_camera_in_webviews(&handle);
             build_tray(&handle)?;
             place_pill_initially(&handle);
@@ -927,6 +979,10 @@ pub fn run() {
             sms_send,
             contacts_list,
             phone_dial,
+            phone_live,
+            clear_missed,
+            call_action,
+            find_phone,
             hold_send_now,
             gesture_session_start,
             gesture_session_stop,
