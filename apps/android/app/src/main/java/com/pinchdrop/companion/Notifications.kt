@@ -24,7 +24,7 @@ object Notifications {
     const val ROUTE_CATCH_DEMO = "catch_demo"
     const val ROUTE_RECEIVING_DEMO = "receiving_demo"
 
-    private const val CH_INCOMING = "incoming"
+    const val CH_INCOMING = "incoming"
     private const val CH_PROGRESS = "progress"
     const val CH_CONNECTION = "connection"
     private const val CH_ARRIVED = "arrived"
