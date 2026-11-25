@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
+import type { Contact, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -151,6 +151,19 @@ export const api = {
   transferPreview: (id: string): Promise<ItemPreviewData | null> =>
     inTauri ? invoke<ItemPreviewData | null>('transfer_preview', { id }).catch(() => null) : Promise.resolve(null),
 
+  // v2 · The phone's notifications, messages and contacts (asked from the phone; nothing kept on disk).
+  phoneNotifications: (): Promise<NotifView[]> => (inTauri ? invoke('phone_notifications') : Promise.resolve([])),
+  notifDismiss: (key: string) => (inTauri ? invoke<void>('notif_dismiss', { key }) : Promise.resolve()),
+  notifReply: (key: string, text: string) => (inTauri ? invoke<void>('notif_reply', { key, text }) : Promise.resolve()),
+  smsThreads: async (): Promise<SmsThread[]> =>
+    inTauri ? ((await invoke<{ threads: SmsThread[] }>('sms_threads')).threads ?? []) : DEMO_THREADS,
+  smsThread: (threadId: number): Promise<SmsThreadDetail> =>
+    inTauri ? invoke('sms_thread', { threadId }) : Promise.resolve(demoThread(threadId)),
+  smsSend: (address: string, text: string) => (inTauri ? invoke<void>('sms_send', { address, text }) : Promise.resolve()),
+  contacts: async (): Promise<Contact[]> =>
+    inTauri ? ((await invoke<{ contacts: Contact[] }>('contacts_list')).contacts ?? []) : DEMO_CONTACTS,
+  dial: (number: string): Promise<{ how: string }> => (inTauri ? invoke('phone_dial', { number }) : Promise.resolve({ how: 'calling' })),
+
   // v2 · Lift (phone → PC).
   liftState: (): Promise<LiftView | null> => (inTauri ? invoke<LiftView | null>('lift_state') : Promise.resolve(null)),
   liftCatch: (id?: string) => (inTauri ? invoke<void>('lift_catch', { id: id ?? null }) : Promise.resolve()),
@@ -244,6 +257,41 @@ export function useDevices() {
   useAsyncSubscription(() => onEvent<DeviceView[]>('devices-changed', setDevices), []);
   return devices;
 }
+
+/** v2 · The phone's current notifications, live. */
+export function useNotifications() {
+  const [items, setItems] = useState<NotifView[]>([]);
+  useEffect(() => {
+    api.phoneNotifications().then(setItems);
+  }, []);
+  useAsyncSubscription(() => onEvent<NotifView[]>('phone-notifs', setItems), []);
+  return items;
+}
+
+// Design-preview data for the plain browser only (never shown in the app).
+const DEMO_THREADS: SmsThread[] = [
+  { threadId: 1, address: '+919800000001', name: 'Ammi', snippet: 'Khana kha liya?', date: Date.now() - 5 * 60e3, unread: 2, outgoing: false },
+  { threadId: 2, address: 'AX-HDFCBK', name: null, snippet: 'OTP for your transaction is 482913. Do not share.', date: Date.now() - 3600e3, unread: 0, outgoing: false },
+  { threadId: 3, address: '+919800000002', name: 'Rahul', snippet: 'See you at 7', date: Date.now() - 86400e3, unread: 0, outgoing: true },
+];
+function demoThread(threadId: number): SmsThreadDetail {
+  const t = DEMO_THREADS.find((x) => x.threadId === threadId) ?? DEMO_THREADS[0];
+  return {
+    threadId,
+    address: t.address,
+    name: t.name,
+    messages: [
+      { id: 1, body: 'Kab aa rahe ho ghar?', date: Date.now() - 30 * 60e3, outgoing: false, status: 'received' },
+      { id: 2, body: 'Shaam tak, inshallah', date: Date.now() - 25 * 60e3, outgoing: true, status: 'sent' },
+      { id: 3, body: t.snippet, date: t.date, outgoing: t.outgoing, status: t.outgoing ? 'sent' : 'received' },
+    ],
+  };
+}
+const DEMO_CONTACTS: Contact[] = [
+  { id: 1, name: 'Ammi', starred: true, numbers: [{ number: '+919800000001', label: 'Mobile' }] },
+  { id: 2, name: 'Rahul Sharma', starred: false, numbers: [{ number: '+919800000002', label: 'Mobile' }, { number: '+911140000000', label: 'Work' }] },
+  { id: 3, name: 'Zoya', starred: false, numbers: [{ number: '+919800000003', label: 'Mobile' }] },
+];
 
 /** Live list of sends, newest first (Phase 4). */
 export function useTransfers() {
