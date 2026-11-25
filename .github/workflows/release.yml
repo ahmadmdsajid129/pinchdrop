@@ -1,0 +1,89 @@
+name: PinchDrop Multi-Platform Release Packaging
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-desktop-windows:
+    name: Build Windows Desktop (NSIS & MSI)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Monorepo Dependencies
+        run: pnpm install
+
+      - name: Run Gesture Core Unit Tests
+        run: pnpm test
+
+      - name: Run Latency Benchmark Audit
+        run: pnpm audit:latency
+
+      - name: Build Desktop Frontend
+        run: pnpm --filter @pinchdrop/desktop build
+
+      - name: Build Tauri Desktop Installer (NSIS & MSI)
+        run: pnpm --filter @pinchdrop/desktop exec tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+
+      - name: Upload Windows Installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinchdrop-windows-installers
+          path: apps/desktop/src-tauri/target/release/bundle/
+
+  build-android-companion:
+    name: Build Android Companion (AAB & APK)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Android Release Bundle (AAB)
+        working-directory: apps/android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:bundleRelease --stacktrace
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Upload Android Bundle (AAB)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinchdrop-android-aab
+          path: apps/android/app/build/outputs/bundle/release/
