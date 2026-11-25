@@ -29,6 +29,8 @@ data class AppSettings(
     val arrivalAnimation: Boolean = true,
     val arrivalSound: Boolean = true,
     val vibrate: Boolean = true,
+    /** v2: hover a hand over the top of the phone to catch (proximity sensor). */
+    val proximityCatch: Boolean = true,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -46,6 +48,7 @@ private object Keys {
     val arrivalAnimation = booleanPreferencesKey("arrival_animation")
     val arrivalSound = booleanPreferencesKey("arrival_sound")
     val vibrate = booleanPreferencesKey("vibrate")
+    val proximityCatch = booleanPreferencesKey("proximity_catch")
     /** 2 = the white Apple-style look; older installs switch to it once. */
     val uiVersion = androidx.datastore.preferences.core.intPreferencesKey("ui_version")
 }
@@ -73,6 +76,7 @@ class SettingsStore(private val context: Context) {
             arrivalAnimation = p[Keys.arrivalAnimation] ?: d.arrivalAnimation,
             arrivalSound = p[Keys.arrivalSound] ?: d.arrivalSound,
             vibrate = p[Keys.vibrate] ?: d.vibrate,
+            proximityCatch = p[Keys.proximityCatch] ?: d.proximityCatch,
         )
 
     /** Read-modify-write inside one DataStore transaction, so quick successive changes never overwrite each other. */
@@ -91,6 +95,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.arrivalAnimation] = s.arrivalAnimation
             p[Keys.arrivalSound] = s.arrivalSound
             p[Keys.vibrate] = s.vibrate
+            p[Keys.proximityCatch] = s.proximityCatch
             p[Keys.uiVersion] = 2
         }
     }
