@@ -13,6 +13,7 @@ interface FileCardProps {
   file: FileCardData;
   isHovered: boolean;
   isGrabbed: boolean;
+  reducedMotion?: boolean;
   position?: { x: number; y: number };
 }
 
@@ -20,6 +21,7 @@ export const FileCard: React.FC<FileCardProps> = ({
   file,
   isHovered,
   isGrabbed,
+  reducedMotion = false,
 }) => {
   const getIcon = () => {
     switch (file.type) {
@@ -44,7 +46,11 @@ export const FileCard: React.FC<FileCardProps> = ({
           ? '0 8px 24px rgba(34, 211, 238, 0.2)'
           : '0 4px 12px rgba(0, 0, 0, 0.3)',
       }}
-      transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+      transition={
+        reducedMotion
+          ? { duration: 0.05, ease: 'linear' }
+          : { type: 'spring', damping: 24, stiffness: 380, mass: 0.7 }
+      }
       className={`w-36 h-28 rounded-2xl p-3 flex flex-col justify-between border select-none transition-colors ${
         isGrabbed
           ? 'bg-[#1C2547] border-[#34D399]'
