@@ -67,6 +67,9 @@ pub struct GrabbedItems {
     pub total_bytes: u64,
     pub is_folder: bool,
     pub partial: bool,
+    /// What the floating card and the Island show (thumbnail, first lines, folder contents…).
+    #[serde(default)]
+    pub preview: crate::preview::Preview,
 }
 
 /// What the Island shows while something is held.
@@ -82,6 +85,7 @@ pub struct HoldView {
     pub total_ms: u64,
     /// The phone it was offered to, if one is connected.
     pub phone_name: Option<String>,
+    pub preview: crate::preview::Preview,
 }
 
 struct Hold {
@@ -335,6 +339,7 @@ impl Grab {
             expires_in_ms: h.total.saturating_sub(h.started.elapsed()).as_millis() as u64,
             total_ms: h.total.as_millis() as u64,
             phone_name: h.phone_name.clone(),
+            preview: h.items.preview.clone(),
         })
     }
 
@@ -457,6 +462,9 @@ pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
             total_bytes: readable.iter().map(|i| i.size_bytes).sum(),
             is_folder: readable.len() == 1 && readable[0].is_dir,
             partial: readable.iter().any(|i| i.partial),
+            preview: crate::preview::for_paths(
+                &readable.iter().map(|i| i.path.clone()).collect::<Vec<_>>(),
+            ),
         });
     }
     let (text, html) = crate::clip::read()?;
@@ -469,6 +477,7 @@ pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
         total_bytes: text.len() as u64,
         is_folder: false,
         partial: false,
+        preview: Default::default(),
     };
     Some(match crate::clip::classify(&text) {
         crate::clip::TextPlan::Link(url) => {
@@ -479,6 +488,7 @@ pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
                 .unwrap_or("Link")
                 .to_string();
             GrabbedItems {
+                preview: crate::preview::for_link(&url, &host),
                 texts: vec![url],
                 label: host,
                 ..base
@@ -489,6 +499,7 @@ pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
             let words: Vec<&str> = t.split_whitespace().take(4).collect();
             GrabbedItems {
                 label: format!("“{}{}”", words.join(" "), if n > 4 { "…" } else { "" }),
+                preview: crate::preview::for_note(&t),
                 texts: vec![t],
                 ..base
             }
@@ -501,6 +512,15 @@ pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "Note".into());
             GrabbedItems {
+                preview: crate::preview::Preview {
+                    kind: "note".into(),
+                    ext: if html.is_some() {
+                        "HTML".into()
+                    } else {
+                        "TXT".into()
+                    },
+                    ..crate::preview::for_note(&t)
+                },
                 paths: vec![path.to_string_lossy().into_owned()],
                 file_count: 1,
                 total_bytes: size,
@@ -512,7 +532,21 @@ pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
 }
 
 /// Shows the full-screen click-through overlay (camera + hand ring + floating card) or hides it.
+/// While a send animation plays, nothing else may hide the overlay (arm changes, hold start...).
+static FX_UNTIL: std::sync::Mutex<Option<Instant>> = std::sync::Mutex::new(None);
+
+fn fx_playing() -> bool {
+    FX_UNTIL
+        .lock()
+        .ok()
+        .and_then(|u| *u)
+        .is_some_and(|t| Instant::now() < t)
+}
+
 pub fn set_overlay_visible(app: &AppHandle, visible: bool) {
+    if !visible && fx_playing() {
+        return; // the flash hides it when it's done
+    }
     let Some(win) = app.get_webview_window("overlay") else {
         return;
     };
@@ -534,10 +568,18 @@ pub fn set_overlay_visible(app: &AppHandle, visible: bool) {
 /// Shows the click-through overlay for a short send animation, then hides it again unless the
 /// camera needs it meanwhile.
 pub fn flash_overlay(app: &AppHandle, ms: u64) {
+    let ms = ms.min(5000);
+    if let Ok(mut u) = FX_UNTIL.lock() {
+        let end = Instant::now() + Duration::from_millis(ms);
+        *u = Some(u.map_or(end, |cur| cur.max(end)));
+    }
     set_overlay_visible(app, true);
     let app = app.clone();
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(ms.min(5000)));
+        std::thread::sleep(Duration::from_millis(ms + 20));
+        if fx_playing() {
+            return; // a later flash extended it and hides it itself
+        }
         let armed = app
             .try_state::<Grab>()
             .and_then(|g| g.arm_state())

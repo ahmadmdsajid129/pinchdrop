@@ -98,6 +98,10 @@ Pairing, live battery and sending were confirmed working on a POCO F7 + HP lapto
 - [x] Drag lag: one responsive pointer filter + motion prediction, detection once per camera frame, 640×360 up to 60 fps.
 - [x] Full-screen lift-off animation when a send starts; "landed" burst for big sends.
 - [x] Clipboard: pinch with nothing selected sends a copied link (opens on the phone), a short note, a long text as `.txt` (exact text), or formatted text as `.html`.
+- [x] Island sized correctly while a send runs (no clipped pill shape); lift-off animation can no longer be hidden mid-play.
+- [x] Phone opens the Catch camera by itself when the PC holds something ("Open Catch by itself" = Display over other apps; Xiaomi also needs "Open new windows while running in the background"); over the lock screen like a call.
+- [x] Drag drawn at display rate (glide between camera frames + critically damped follow); the card is "carried" with a slight tilt.
+- [x] Real previews on the floating card and Island: Explorer thumbnails in their own shape (photos, video frames, PDFs, Office), folder contents, first lines of text, link card, stacked multi-select.
 - [ ] Founder check of v1.1 on the real laptop + phone (feel of the drag, colours, Island).
 
 ## 🚀 v2 backlog (agreed 2026-11-25, not started)

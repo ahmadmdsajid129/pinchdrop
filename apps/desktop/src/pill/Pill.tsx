@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronUp, Hand, Smartphone, Upload, LayoutGrid } from 'lucide-react';
 import { api, inTauri, onEvent, usePhone, useReducedMotion, useSettings, useTheme, useTransfers } from '../shared/api';
@@ -140,28 +140,26 @@ export function Pill() {
     void api.pillResize(p.w, p.h);
   }, []);
 
-  // Follows whichever content box is entering. (React clears refs of *exiting* boxes when their
-  // exit animation ends, so a plain ref would lose the live box; null calls are ignored here.)
+  // Watches whichever content box is current. After every change we look it up by its data-box
+  // attribute rather than relying on ref callbacks: when the Island re-opens before its close
+  // animation finished, the animation library *reuses* the old element (no new ref call), which
+  // left the shell sized for the pill while the Island's content was showing.
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const observer = useRef<ResizeObserver | null>(null);
-  const contentRef = useCallback(
-    (el: HTMLDivElement | null) => {
-      if (!el) return;
-      observer.current?.disconnect();
-      const measure = () => {
-        const w = el.offsetWidth;
-        const h = el.offsetHeight;
-        if (w > 0 && h > 0) {
-          setShell((s) => (s && s.w === w && s.h === h ? s : { w, h }));
-          sizeWindow(w, h);
-          if (!sizedOnce.current) requestAnimationFrame(() => (sizedOnce.current = true));
-        }
-      };
-      measure();
-      observer.current = new ResizeObserver(measure);
-      observer.current.observe(el);
+  const observed = useRef<Element | null>(null);
+  const measureBox = useCallback(
+    (el: Element) => {
+      const w = (el as HTMLElement).offsetWidth;
+      const h = (el as HTMLElement).offsetHeight;
+      if (w > 0 && h > 0) {
+        setShell((s) => (s && s.w === w && s.h === h ? s : { w, h }));
+        sizeWindow(w, h);
+        if (!sizedOnce.current) requestAnimationFrame(() => (sizedOnce.current = true));
+      }
     },
     [sizeWindow],
   );
+  const contentRef = useCallback((_: HTMLDivElement | null) => undefined, []);
   useEffect(() => () => observer.current?.disconnect(), []);
 
   const collapse = useCallback(() => {
@@ -179,6 +177,17 @@ export function Pill() {
     // "auto": camera starts with the Island. "button": the Island shows Start gestures instead.
     if (settings?.gestures.islandCamera !== 'button') startCamera();
   }, [settings?.gestures.sounds, settings?.gestures.islandCamera, startCamera]);
+  useLayoutEffect(() => {
+    const el = shellRef.current?.querySelector(`[data-box="${expanded ? 'island' : 'pill'}"]`);
+    if (!el) return;
+    if (observed.current !== el) {
+      observer.current?.disconnect();
+      observed.current = el;
+      observer.current = new ResizeObserver(() => measureBox(el));
+      observer.current.observe(el);
+    }
+    measureBox(el);
+  });
   const expandedRef = useRef(false);
   expandedRef.current = expanded;
 
@@ -368,6 +377,7 @@ export function Pill() {
   return (
     <div className={`flex ${justify} ${align} w-screen h-screen`} style={{ padding: PAD }}>
       <motion.div
+        ref={shellRef}
         className={`relative overflow-hidden bg-black ring-1 ring-inset ${ringClass}`}
         initial={false}
         animate={shell ? { width: shell.w, height: shell.h, borderRadius: collapsed ? shell.h / 2 : 30 } : undefined}
@@ -387,7 +397,7 @@ export function Pill() {
               exit={{ opacity: 0, scale: 0.97, transition: fade }}
               style={{ transformOrigin: origin }}
             >
-              <div ref={contentRef} className="shrink-0">
+              <div ref={contentRef} data-box="island" className="shrink-0">
               {hold ? (
                 <HoldIsland hold={hold} width={ISLAND_W} />
               ) : liveTransfer ? (
@@ -423,7 +433,7 @@ export function Pill() {
               exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.1 } }}
               style={{ transformOrigin: origin }}
             >
-              <div ref={contentRef} className="shrink-0">
+              <div ref={contentRef} data-box="pill" className="shrink-0">
                 <PillButton
                   settings={settings}
                   phone={phone}

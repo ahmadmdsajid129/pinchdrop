@@ -144,7 +144,7 @@ export const api = {
     await invoke<void>('overlay_flash', { ms: detail.kind === 'landed' ? 1500 : 1800 });
     const { emitTo } = await import('@tauri-apps/api/event');
     // Give the just-shown overlay a frame to wake up before it starts animating.
-    window.setTimeout(() => void emitTo('overlay', 'send-fx', detail), 70);
+    window.setTimeout(() => void emitTo('overlay', 'send-fx', detail), 140);
   },
 
   // Phase 5 grab-and-hold.

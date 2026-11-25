@@ -11,6 +11,7 @@ mod grab;
 mod link;
 mod phone;
 mod pill;
+mod preview;
 mod settings;
 
 use phone::PhoneStatus;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { File, Folder, Upload } from 'lucide-react';
 import { api, formatBytes } from '../shared/api';
+import { ItemThumb } from '../shared/ItemPreview';
 import type { HoldView } from '../shared/types';
 
 /**
@@ -73,6 +74,7 @@ export function HoldIsland({ hold, width }: { hold: HoldView; width: number }) {
             {hold.phoneName ? `open your hand over ${hold.phoneName}` : 'no phone connected — use Send now'}
           </div>
         </div>
+        <ItemThumb p={hold.preview} size={48} />
       </div>
       {error && (
         <div className="text-[12px] text-danger" role="alert">

@@ -146,6 +146,7 @@ object Notifications {
             .setAutoCancel(true)
             .setTimeoutAfter(secs * 1000L)
             .setContentIntent(openApp(context, ROUTE_CATCH, 20))
+            .setFullScreenIntent(openApp(context, ROUTE_CATCH, 22), true)
             .addAction(0, "Catch", openApp(context, ROUTE_CATCH, 21))
             .build())
     }

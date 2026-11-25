@@ -39,6 +39,8 @@ if-addrs = "0.13"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 # Phase 4: "Move" sends the PC copy to the Recycle Bin (never a permanent delete)
 trash = "5"
+# v1.1: thumbnails for the floating card (already used by Tauri, nothing new downloaded)
+png = "0.18"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation"] }
@@ -46,6 +48,7 @@ windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundatio
 # Same versions Tauri already uses, so nothing extra is downloaded.
 windows = { version = "0.62", features = [
     "Win32_Foundation",
+    "Win32_Graphics_Gdi",
     "Win32_System_Com",
     "Win32_System_DataExchange",
     "Win32_System_Memory",

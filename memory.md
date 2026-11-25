@@ -78,13 +78,16 @@
 4. **Windows Reserved File Characters:** Paths containing `< > : " / \ | ? *` or reserved names (`CON`, `PRN`, `AUX`, `NUL`) must be sanitized before disk writes.
 5. **SmartScreen & Code Signing:** Unsigned Windows binaries encounter severe SmartScreen warnings. Stage 11 must introduce valid code signing certificates.
 6. **No-CDN Policy:** All MediaPipe WASM binaries and HandLandmarker `.task` model files must be bundled inside the desktop package.
-7. **Android camera from background:** Android does not let an app start the camera while it is in the background, so the phone "catch" needs the app on screen — a high-priority notification brings up the Catch screen, with "Accept without gesture" as a fallback.
+7. **Android camera from background:** Android does not let an app start the camera (or any screen) from the background. Fix: with "Display over other apps" (`SYSTEM_ALERT_WINDOW`) allowed, the app may start its Catch screen itself; on Xiaomi/HyperOS the extra "Open new windows while running in the background" switch is also needed. The hold alert carries a full-screen intent (lock screen) and stays as the fallback.
 8. **Transparent WebView2 windows still capture clicks** in their transparent parts — keep the pill window sized to its content.
 9. **Android build needs `local.properties`** (`sdk.dir=...`, not committed) or `ANDROID_HOME`. Only SDK platform 36 is installed on the dev PC, so compileSdk is 36.
 10. **Slow first builds on the dev PC:** the first Gradle and MSVC builds download hundreds of MB to GB; on the founder's connection that took over an hour. Later builds are offline from caches.
 11. **Windows Firewall:** the first time PinchDrop opens port 47821, Windows asks; it must be allowed on *private* networks or phones can't connect.
 12. **Explorer selection:** read via Shell COM (`IShellWindows` → `IShellBrowser` → `IFolderView::Items(SVGIO_SELECTION)`). Windows 11 tabs share one top-level HWND, so only the tab whose view window is visible counts. Desktop = `FindWindowSW(CSIDL_DESKTOP, SWC_DESKTOP)`.
 13. **Smooth pill/Island:** measure the content with `offsetWidth/offsetHeight` (layout size), never `getBoundingClientRect` (includes animation transforms → an OS window resize on every frame = stutter). The window grows once before the morph and shrinks once after it. Hand ring/card move via framer-motion motion values set from the camera loop, not React state.
+14. **Island content swaps:** AnimatePresence can *reuse* an exiting element when the Island re-opens quickly (hold → send), so ref callbacks don't fire again. The pill finds the current box by `data-box` after every render and re-observes it.
+15. **Overlay flashes:** every arm-state change used to hide the overlay; a short "fx playing" window now keeps it up until the send animation finishes.
+16. **Shell thumbnails:** `IShellItemImageFactory::GetImage(256, SIIGBF_THUMBNAILONLY)` on its own STA thread (1.5 s cap). Bitmaps are premultiplied BGRA, or alpha all zero for opaque JPEGs — fix both before PNG-encoding.
 
 ---
 

@@ -195,8 +195,13 @@ object Receiver {
             totalSecs = secs,
         )
         _hold.value = h
-        // Android won't let an app open the camera from the background, so ask the user to open it.
-        if (!foreground) Notifications.postHold(app, h.pcName, h.label, h.fileCount, h.totalBytes, secs)
+        // On screen: the app switches to Catch by itself. In the background: open Catch straight
+        // away when "Open Catch by itself" is allowed; the alert stays as a fallback (and opens it
+        // over the lock screen, like a call).
+        if (!foreground) {
+            Notifications.postHold(app, h.pcName, h.label, h.fileCount, h.totalBytes, secs)
+            if (AutoOpen.allowed(app)) AutoOpen.openCatch(app)
+        }
         scope.launch {
             kotlinx.coroutines.delay(secs * 1000L + 500)
             if (_hold.value?.id == id) clearHold()

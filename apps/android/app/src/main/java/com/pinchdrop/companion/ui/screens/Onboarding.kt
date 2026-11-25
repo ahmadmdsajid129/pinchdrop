@@ -214,6 +214,10 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
         }.onFailure { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
         Unit
     }
+    val autoOpen = remember(resumeTick) {
+        if (com.pinchdrop.companion.transfer.AutoOpen.allowed(context)) PermState.GRANTED else PermState.ASK
+    }
+    val askAutoOpen = { com.pinchdrop.companion.transfer.AutoOpen.requestOverlay(context) }
     // Before Android 13 there is no pop-up, but the user can still turn notifications off for the app.
     val notifState = remember(notif, resumeTick) {
         if (notif == PermState.NOT_NEEDED) {
@@ -236,6 +240,20 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
                 "Lets your PC show this phone's battery and reach it while the screen is off. Uses very little battery.",
                 background, askBackground,
             )
+            PermissionRow(
+                Icons.Filled.PanTool, "Open Catch by itself",
+                if (com.pinchdrop.companion.transfer.AutoOpen.isXiaomi)
+                    "Opens the catch camera the moment you pinch on your PC. Turn on “Display over other apps”, then in Other permissions “Open new windows while running in the background”."
+                else "Opens the catch camera the moment you pinch on your PC, even while you use another app. Android calls this “Display over other apps”.",
+                autoOpen, askAutoOpen,
+            )
+            if (com.pinchdrop.companion.transfer.AutoOpen.isXiaomi && autoOpen == PermState.GRANTED) {
+                SecondaryButton(
+                    "Xiaomi: allow background windows",
+                    onClick = { com.pinchdrop.companion.transfer.AutoOpen.requestXiaomiBackgroundWindows(context) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             PermissionRow(
                 Icons.Filled.Folder, "Saving files",
                 if (storagePerm == null) "No permission needed — files go to Gallery and Downloads/PinchDrop."

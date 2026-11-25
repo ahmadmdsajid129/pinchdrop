@@ -30,6 +30,11 @@
         android:maxSdkVersion="28" />
     <!-- "Stay connected in background": asks Android not to put PinchDrop to sleep. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- "Open Catch by itself": lets PinchDrop bring the Catch camera up when the PC holds
+         something, even while another app is on screen. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- ...and over the lock screen (like an incoming call). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { File, Folder, Hand } from 'lucide-react';
+import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useVelocity } from 'framer-motion';
+import { Hand } from 'lucide-react';
+import { ItemPreview } from '../shared/ItemPreview';
+import type { ItemPreviewData } from '../shared/types';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
   GrabMachine,
@@ -36,9 +38,47 @@ interface Grabbed {
   partial: boolean;
   texts?: string[];
   openOnArrival?: boolean;
+  preview?: ItemPreviewData;
 }
 
+/**
+ * Display-rate pointer. The camera delivers 30–60 positions a second; the screen draws 60–144
+ * frames. Between camera frames we keep gliding along the hand's current velocity (for at most
+ * one frame's worth, so a stop never overshoots), and ease toward that point with a critically
+ * damped follow. Result: one fluid motion instead of small steps at camera rate.
+ */
+interface Track {
+  tx: number; // last camera target (px)
+  ty: number;
+  vx: number; // smoothed velocity (px/s)
+  vy: number;
+  t: number; // when the target arrived (ms)
+  x: number; // drawn position (px)
+  y: number;
+  live: boolean;
+}
+/** Easing time constant of the follow: lower = tighter. */
+const FOLLOW_TAU_S = 0.028;
+/** Never extrapolate further ahead than this past the last camera frame. */
+const MAX_GLIDE_S = 0.045;
+
 type Card = { items: Grabbed; phase: 'held' | 'flying' | 'dropped' };
+
+/** Older Rust builds (or text) without a preview: a plain tile from what we know. */
+function fallbackPreview(g: Grabbed): ItemPreviewData {
+  const ext = g.paths[0]?.split('.').pop()?.toUpperCase() ?? '';
+  return {
+    kind: g.fileCount === 0 ? 'note' : g.isFolder ? 'folder' : 'file',
+    width: 0,
+    height: 0,
+    lines: g.texts ?? [],
+    ext: g.isFolder ? '' : ext,
+    children: [],
+    childCount: 0,
+    host: '',
+    thumb: null,
+  };
+}
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const core = await import('@tauri-apps/api/core');
@@ -106,18 +146,58 @@ export function Overlay() {
   // something visible changes (hand appears/disappears, pinch starts/ends).
   const W = typeof window !== 'undefined' ? window.innerWidth : 1920;
   const H = typeof window !== 'undefined' ? window.innerHeight : 1080;
-  const rawX = useMotionValue(W / 2);
-  const rawY = useMotionValue(H / 2);
-  // Near-instant spring: it only fills the gaps between camera frames (30-60 fps) on 60-144 Hz screens.
-  // All real smoothing happens once, in the pointer filter below — no double smoothing, no trailing card.
-  const springCfg = { stiffness: 2600, damping: 90, mass: 0.25 };
-  const hx = useSpring(rawX, springCfg);
-  const hy = useSpring(rawY, springCfg);
+  // The ring sits exactly on the fingers (drawn every display frame by the Track loop).
+  const hx = useMotionValue(W / 2);
+  const hy = useMotionValue(H / 2);
+  const track = useRef<Track>({ tx: W / 2, ty: H / 2, vx: 0, vy: 0, t: 0, x: W / 2, y: H / 2, live: false });
+  /** New camera position (px). `jump` places it there at once (first sighting). */
+  const feed = (x: number, y: number, now: number, jump = false) => {
+    const k = track.current;
+    if (jump || !k.live) {
+      Object.assign(k, { tx: x, ty: y, x, y, vx: 0, vy: 0, t: now, live: true });
+      hx.set(x);
+      hy.set(y);
+      return;
+    }
+    const dt = Math.max(1, now - k.t) / 1000;
+    // Smoothed velocity: responsive, but one noisy frame can't fling the card.
+    k.vx = k.vx * 0.55 + ((x - k.tx) / dt) * 0.45;
+    k.vy = k.vy * 0.55 + ((y - k.ty) / dt) * 0.45;
+    k.tx = x;
+    k.ty = y;
+    k.t = now;
+  };
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    const paint = (now: number) => {
+      raf = requestAnimationFrame(paint);
+      const k = track.current;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (!k.live) return;
+      const ahead = Math.min(MAX_GLIDE_S, Math.max(0, (now - k.t) / 1000));
+      const gx = k.tx + k.vx * ahead;
+      const gy = k.ty + k.vy * ahead;
+      const a = 1 - Math.exp(-dt / FOLLOW_TAU_S);
+      k.x += (gx - k.x) * a;
+      k.y += (gy - k.y) * a;
+      hx.set(k.x);
+      hy.set(k.y);
+    };
+    raf = requestAnimationFrame(paint);
+    return () => cancelAnimationFrame(raf);
+  }, [hx, hy]);
   const ringX = useTransform(hx, (v) => v - 22);
   const ringY = useTransform(hy, (v) => v - 22);
-  const cardX = useTransform(hx, (v) => v + 18);
-  const cardY = useTransform(hy, (v) => v + 18);
-  const toastY = useTransform(hy, (v) => v - 8);
+  // The card is "carried": a soft, critically damped follow (no wobble) and a gentle tilt with
+  // the direction of travel, like a photo held between two fingers.
+  const carried = { stiffness: 420, damping: 40, mass: 0.6 };
+  const cardX = useSpring(useTransform(hx, (v) => v + 22), carried);
+  const cardY = useSpring(useTransform(hy, (v) => v + 22), carried);
+  const tilt = useSpring(useTransform(useVelocity(hx), [-2500, 0, 2500], [-7, 0, 7], { clamp: true }), { stiffness: 260, damping: 30 });
+  const toastY = useTransform(hy, (v) => v + 14);
+  const toastX = useTransform(hx, (v) => v + 22);
   const [hand, setHand] = useState<{ pinched: boolean } | null>(null);
   const handRef = useRef<{ pinched: boolean } | null>(null);
   const setHandIfChanged = (next: { pinched: boolean } | null) => {
@@ -149,14 +229,8 @@ export function Overlay() {
       if (d.type === 'arm') setArm(d.arm as ArmState);
       else if (d.type === 'hand') {
         const h = d.hand as { x: number; y: number; pinched: boolean } | null;
-        if (h) {
-          if (!handRef.current) {
-            hx.jump(h.x * window.innerWidth);
-            hy.jump(h.y * window.innerHeight);
-          }
-          rawX.set(h.x * window.innerWidth);
-          rawY.set(h.y * window.innerHeight);
-        }
+        if (h) feed(h.x * window.innerWidth, h.y * window.innerHeight, performance.now(), !handRef.current);
+        else track.current.live = false;
         setHandIfChanged(h ? { pinched: h.pinched } : null);
       } else if (d.type === 'card') setCard(d.card as Card | null);
       else if (d.type === 'sendfx') setFx(d.fx as SendFxEvent);
@@ -183,12 +257,12 @@ export function Overlay() {
     const machine = new GrabMachine(grabConfigFor(arm.sensitivity));
     // Pointer filter: steady when the hand is still, almost no lag when it moves fast (high beta).
     // Gesture classification uses the raw landmarks — its thresholds, dwell and hysteresis are the stabiliser.
-    const POINTER = { minCutoff: 1.6, beta: 0.06, dCutoff: 1.0 };
+    const POINTER = { minCutoff: 1.2, beta: 0.05, dCutoff: 1.0 };
     let fx = new OneEuroFilter(POINTER);
     let fy = new OneEuroFilter(POINTER);
     let prev: { x: number; y: number; t: number } | null = null;
     /** Lead the pointer by ~1 camera frame to cancel capture + inference delay. */
-    const LEAD_S = 0.035;
+    const LEAD_S = 0.02;
     let lastVideoTime = -1;
     let busy = false;
 
@@ -312,6 +386,7 @@ export function Overlay() {
           fx = new OneEuroFilter(POINTER);
           fy = new OneEuroFilter(POINTER);
           prev = null;
+          track.current.live = false;
           setHandIfChanged(null);
           const ev = machine.step(now, null);
           if (ev?.type === 'cancel') onCancel();
@@ -354,12 +429,7 @@ export function Overlay() {
         const tracked = machine.ignored !== 'far' && machine.ignored !== 'unsure';
         if (tracked) {
           // First sighting: jump there instead of sliding in from the last spot.
-          if (!handRef.current) {
-            hx.jump(p.x * window.innerWidth);
-            hy.jump(p.y * window.innerHeight);
-          }
-          rawX.set(p.x * window.innerWidth);
-          rawY.set(p.y * window.innerHeight);
+          feed(p.x * window.innerWidth, p.y * window.innerHeight, now, !handRef.current);
         }
         setHandIfChanged(tracked ? { pinched: machine.holding || machine.state === 'PINCHING' } : null);
         // Holding something counts as activity, so the camera never switches off mid-move.
@@ -413,20 +483,21 @@ export function Overlay() {
         {card && (
           <motion.div
             key="card"
-            className="absolute left-0 top-0 flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#141B34]/95 border border-[#7C5CFF] shadow-[0_18px_50px_rgba(124,92,255,0.45)] text-[#E8ECFF]"
+            className="absolute left-0 top-0"
             // While held, the card rides the hand's motion values (no re-renders). When it flies to the
             // pill or drops, animate() takes over from where it is.
-            style={card.phase === 'held' ? { x: cardX, y: cardY, willChange: 'transform' } : { willChange: 'transform' }}
-            initial={{ scale: 0.6, opacity: 0 }}
+            style={card.phase === 'held' ? { x: cardX, y: cardY, rotate: tilt, willChange: 'transform' } : { willChange: 'transform' }}
+            initial={{ scale: 0.55, opacity: 0 }}
             animate={
               card.phase === 'flying'
                 ? {
                     // Keyframes start where the hand left the card, so it never jumps.
                     x: [cardX.get(), cardTarget.x],
                     y: [cardY.get(), cardTarget.y],
-                    scale: 0.35,
+                    scale: 0.2,
+                    rotate: 0,
                     opacity: 0,
-                    transition: { duration: 0.55, ease: [0.4, 0, 0.2, 1] },
+                    transition: { duration: 0.6, ease: [0.32, 0, 0.12, 1] },
                   }
                 : card.phase === 'dropped'
                   ? { x: cardX.get(), y: [cardY.get(), cardY.get() + 120], opacity: 0, rotate: 8, transition: { duration: 0.45, ease: [0.4, 0, 1, 1] } }
@@ -435,16 +506,16 @@ export function Overlay() {
             exit={{ opacity: 0 }}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           >
-            {card.items.isFolder ? <Folder size={28} className="text-[#FBBF24]" fill="#FBBF24" /> : <File size={28} className="text-[#22D3EE]" />}
-            <div className="min-w-0">
-              <div className="font-semibold text-[15px] max-w-[220px] truncate">{card.items.label}</div>
-              <div className="text-[12px] text-[#8B94B8]">
-                {card.items.fileCount === 0
+            <ItemPreview
+              p={card.items.preview ?? fallbackPreview(card.items)}
+              title={card.items.label}
+              subtitle={
+                card.items.fileCount === 0
                   ? 'From your clipboard'
-                  : `${card.items.fileCount} file${card.items.fileCount === 1 ? '' : 's'}${card.items.partial ? '+' : ''} · ${formatBytes(card.items.totalBytes)}`}{' '}
-                · open your hand to drop
-              </div>
-            </div>
+                  : `${card.items.fileCount} file${card.items.fileCount === 1 ? '' : 's'}${card.items.partial ? '+' : ''} · ${formatBytes(card.items.totalBytes)}`
+              }
+              hint="Open your hand to drop"
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -454,7 +525,7 @@ export function Overlay() {
           <motion.div
             key={toast}
             className="absolute left-0 top-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-[#0B1020]/90 text-[13px] text-[#E8ECFF] border border-white/10"
-            style={{ x: cardX, y: toastY }}
+            style={{ x: toastX, y: toastY }}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}

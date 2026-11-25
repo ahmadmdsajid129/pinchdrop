@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
         if (savedInstanceState == null) pendingRoute = intent?.getStringExtra(Notifications.EXTRA_OPEN)
+        wakeForCatch(intent)
 
         setContent {
             val settings by vm.settings.collectAsStateWithLifecycle()
@@ -60,5 +61,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra(Notifications.EXTRA_OPEN)?.let { pendingRoute = it }
+        wakeForCatch(intent)
+    }
+
+    /** Catch opened by itself: show over the lock screen and turn the display on, like a call. */
+    private fun wakeForCatch(intent: Intent?) {
+        val catching = intent?.getStringExtra(Notifications.EXTRA_OPEN) == Notifications.ROUTE_CATCH
+        if (android.os.Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(catching)
+            setTurnScreenOn(catching)
+        }
     }
 }

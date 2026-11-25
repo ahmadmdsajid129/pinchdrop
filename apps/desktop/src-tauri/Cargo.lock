@@ -2866,6 +2866,7 @@ dependencies = [
  "hmac",
  "if-addrs",
  "mdns-sd",
+ "png",
  "qrcode",
  "rand",
  "rcgen",

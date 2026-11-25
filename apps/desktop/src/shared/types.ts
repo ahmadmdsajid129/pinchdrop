@@ -128,6 +128,19 @@ export interface SessionView {
 }
 
 /** Something grabbed by pinch and held, counting down on the Island. Mirrors grab::HoldView. */
+/** Mirrors preview::Preview: what a grabbed item looks like. */
+export interface ItemPreviewData {
+  kind: string;
+  thumb?: string | null;
+  width: number;
+  height: number;
+  lines: string[];
+  ext: string;
+  children: string[];
+  childCount: number;
+  host: string;
+}
+
 export interface HoldView {
   id: string;
   label: string;
@@ -137,6 +150,7 @@ export interface HoldView {
   expiresInMs: number;
   totalMs: number;
   phoneName: string | null;
+  preview?: ItemPreviewData;
 }
 
 export interface PathInfo {
