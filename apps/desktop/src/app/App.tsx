@@ -12,6 +12,9 @@ import { Devices } from './screens/Devices';
 import { Pair } from './screens/Pair';
 import { SettingsScreen } from './screens/Settings';
 import { Profile } from './screens/Profile';
+import { Messages } from './screens/Messages';
+import { Contacts } from './screens/Contacts';
+import { PhoneNotifications } from './screens/PhoneNotifications';
 
 export function App() {
   const { route, go, settings, addPaths } = useApp();
@@ -43,6 +46,9 @@ export function App() {
     home: <Home />,
     send: <Send />,
     transfers: <Transfers />,
+    messages: <Messages />,
+    contacts: <Contacts />,
+    notifications: <PhoneNotifications />,
     devices: <Devices />,
     pair: <Pair />,
     settings: <SettingsScreen />,
