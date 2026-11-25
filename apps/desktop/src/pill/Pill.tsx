@@ -57,27 +57,38 @@ export function Pill() {
     transfers.find((t) => t.id === shownDone) ??
     null;
   const seenActive = useRef<Set<string>>(new Set());
+  /** When the current lift-off animation ends (the Island opens then). */
+  const fxEndAt = useRef(0);
   useEffect(() => {
     for (const t of transfers) {
       const active = t.state === 'sending' || t.state === 'offered' || t.state === 'paused';
       if (active && !seenActive.current.has(t.id)) {
-        // A new send started (caught by the phone or sent from the app): play the lift-off and open the Island on it.
+        // A new send started (caught by the phone or dropped on the app). First the lift-off plays
+        // on its own, showing the item itself; when it lands at the top, the Island opens on the
+        // live progress (already some % in) and carries on from there.
         seenActive.current.add(t.id);
-        setExpanded(true);
-        void api.playSendFx({ kind: 'launch', ...fxInfo(t) });
+        if (!holdRef.current) setExpanded(false);
+        const fxMs = reduced ? 600 : 1550;
+        fxEndAt.current = Date.now() + fxMs + 400;
+        void api.transferPreview(t.id).then(async (preview) => {
+          await api.playSendFx({ kind: 'launch', ...fxInfo(t), preview });
+          fxEndAt.current = Date.now() + fxMs;
+          window.setTimeout(() => setExpanded(true), fxMs);
+        });
       } else if (!active && seenActive.current.has(t.id)) {
         seenActive.current.delete(t.id);
         // Big sends get a "landed" burst at the Island.
         if (t.state === 'done' && t.totalBytes >= 50 * 1024 * 1024) void api.playSendFx({ kind: 'landed', ...fxInfo(t) });
         setShownDone(t.id);
         const id = t.id;
+        // A quick send may finish during the lift-off: still show "Delivered" for a moment after it.
         window.setTimeout(() => {
           setShownDone((cur) => (cur === id ? null : cur));
           if (!holdRef.current && !sessionRef.current) setExpanded(false);
-        }, 2600);
+        }, Math.max(2600, fxEndAt.current - Date.now() + 2200));
       }
     }
-  }, [transfers]);
+  }, [transfers]); // eslint-disable-line react-hooks/exhaustive-deps
   const holdRef = useRef<HoldView | null>(null);
   holdRef.current = hold;
   const [session, setSession] = useState<SessionView | null>(null);

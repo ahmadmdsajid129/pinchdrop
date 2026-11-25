@@ -241,10 +241,10 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
                 background, askBackground,
             )
             PermissionRow(
-                Icons.Filled.PanTool, "Open Catch by itself",
+                Icons.Filled.PanTool, "Open PinchDrop by itself",
                 if (com.pinchdrop.companion.transfer.AutoOpen.isXiaomi)
-                    "Opens the catch camera the moment you pinch on your PC. Turn on “Display over other apps”, then in Other permissions “Open new windows while running in the background”."
-                else "Opens the catch camera the moment you pinch on your PC, even while you use another app. Android calls this “Display over other apps”.",
+                    "Opens the catch camera the moment you pinch on your PC, and shows files as they arrive. Turn on “Display over other apps”, then in Other permissions “Open new windows while running in the background”."
+                else "Opens the catch camera the moment you pinch on your PC and shows files as they arrive, even while you use another app. Android calls this “Display over other apps”.",
                 autoOpen, askAutoOpen,
             )
             if (com.pinchdrop.companion.transfer.AutoOpen.isXiaomi && autoOpen == PermState.GRANTED) {

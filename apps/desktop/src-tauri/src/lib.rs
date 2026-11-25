@@ -314,6 +314,32 @@ fn list_transfers(app: AppHandle) -> Vec<link::transfer::TransferView> {
         .unwrap_or_default()
 }
 
+/// The look of a send (thumbnail, folder, link…) for its lift-off animation.
+#[tauri::command]
+async fn transfer_preview(app: AppHandle, id: String) -> Option<preview::Preview> {
+    let (paths, texts) = link_of(&app)?.transfer_items(&id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        if !paths.is_empty() {
+            Some(preview::for_paths(&paths))
+        } else {
+            let t = texts.first()?;
+            Some(if clip::is_link(t) {
+                let host = t
+                    .split("://")
+                    .nth(1)
+                    .and_then(|r| r.split('/').next())
+                    .unwrap_or("Link");
+                preview::for_link(t, host)
+            } else {
+                preview::for_note(t)
+            })
+        }
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
 #[tauri::command]
 fn cancel_transfer(app: AppHandle, id: String) {
     if let Some(l) = link_of(&app) {
@@ -778,6 +804,7 @@ pub fn run() {
             send_items,
             list_transfers,
             cancel_transfer,
+            transfer_preview,
             clear_transfer_history,
             grab_arm_state,
             grab_selection,

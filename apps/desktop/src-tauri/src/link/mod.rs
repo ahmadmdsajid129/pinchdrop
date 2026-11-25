@@ -1028,6 +1028,13 @@ impl Link {
         }
     }
 
+    /// What a send is made of (for its animation's preview): the picked items, or its texts.
+    pub fn transfer_items(&self, id: &str) -> Option<(Vec<String>, Vec<String>)> {
+        let ts = self.transfers.lock().ok()?;
+        let t = ts.iter().find(|t| t.id == id)?;
+        Some((t.roots.clone(), t.texts.clone()))
+    }
+
     pub fn transfers_view(&self) -> Vec<TransferView> {
         let mut v: Vec<TransferView> = self
             .transfers

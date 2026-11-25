@@ -25,7 +25,7 @@ const KIND_TINT: Record<string, string> = {
 };
 
 /** The big visual on the floating card: the item itself, in its own shape. */
-function Visual({ p, max }: { p: ItemPreviewData; max: number }) {
+function Visual({ p, max, compact = false }: { p: ItemPreviewData; max: number; compact?: boolean }) {
   const base = p.kind.replace(/^multi:/, '');
   const tint = KIND_TINT[base] ?? '#8E8E93';
 
@@ -79,7 +79,7 @@ function Visual({ p, max }: { p: ItemPreviewData; max: number }) {
           <rect x="48" y="34" width="110" height="60" rx="5" fill="#F2F2F7" transform="rotate(3 103 64)" />
           <path d="M8 50a10 10 0 0 1 10-10h154a10 10 0 0 1 10 10v66a10 10 0 0 1-10 10H18a10 10 0 0 1-10-10z" fill="url(#pd-fold-front)" />
         </svg>
-        {p.children.length > 0 && (
+        {!compact && p.children.length > 0 && (
           <ul className="flex flex-col gap-0.5 text-[11.5px] text-[#3A3A3C]">
             {p.children.slice(0, 4).map((c) => (
               <li key={c} className="flex items-center gap-1.5 min-w-0">
@@ -155,13 +155,46 @@ export function ItemPreview({
   title,
   subtitle,
   hint,
+  size = 'icon',
 }: {
   p: ItemPreviewData;
   title: string;
   subtitle: string;
   hint?: string;
+  /** icon: about the size of a desktop icon (the card under your fingers). big: the send animation. */
+  size?: 'icon' | 'big';
 }) {
   const multi = p.kind.startsWith('multi:');
+  if (size === 'icon') {
+    // Drawn at full size, then zoomed down so every kind keeps its proportions at icon scale.
+    return (
+      <div className="relative w-[112px]">
+        {multi && (
+          <>
+            <div className="absolute inset-0 rounded-[14px] bg-white/90 shadow-[0_6px_16px_rgba(0,0,0,0.18)] -rotate-[6deg]" />
+            <div className="absolute inset-0 rounded-[14px] bg-[#F5F5F7] shadow-[0_6px_16px_rgba(0,0,0,0.14)] rotate-[5deg]" />
+          </>
+        )}
+        <div className="relative rounded-[14px] bg-white/95 p-1.5 pb-1 shadow-[0_12px_30px_rgba(0,0,0,0.28),0_1px_4px_rgba(0,0,0,0.12)] ring-1 ring-black/5 flex flex-col items-center">
+          <div className="h-[64px] flex items-center justify-center overflow-hidden">
+            <div style={{ zoom: 64 / 200 }}>
+              <Visual p={p} max={200} compact />
+            </div>
+          </div>
+          <div className="w-full pt-1 text-center leading-tight">
+            <div className="text-[11.5px] font-semibold text-[#1D1D1F] truncate">{title}</div>
+            <div className="text-[10px] text-[#6C6C70] truncate">{subtitle}</div>
+          </div>
+          {multi && (
+            <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#007AFF] text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white">
+              {p.childCount}
+            </span>
+          )}
+        </div>
+        {hint && <div className="mt-1 text-center text-[10px] font-medium text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">{hint}</div>}
+      </div>
+    );
+  }
   return (
     <div className="relative">
       {multi && (

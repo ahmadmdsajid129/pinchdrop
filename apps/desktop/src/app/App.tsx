@@ -51,7 +51,7 @@ export function App() {
   }[route];
 
   return (
-    <div className="h-full flex bg-bg text-text">
+    <div className="h-screen flex overflow-hidden bg-bg text-text">
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-y-auto [scrollbar-gutter:stable]">
         <AnimatePresence mode="wait" initial={false}>

@@ -18,12 +18,15 @@ import com.pinchdrop.companion.Notifications
 object AutoOpen {
     fun allowed(context: Context): Boolean = Settings.canDrawOverlays(context)
 
-    fun openCatch(context: Context) {
+    fun openCatch(context: Context) = open(context, Notifications.ROUTE_CATCH)
+
+    /** Brings PinchDrop to the front on `route` (catch, or the receive sheet). */
+    fun open(context: Context, route: String) {
         runCatching {
             context.startActivity(
                 Intent(context, MainActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                    .putExtra(Notifications.EXTRA_OPEN, Notifications.ROUTE_CATCH),
+                    .putExtra(Notifications.EXTRA_OPEN, route),
             )
         }
     }

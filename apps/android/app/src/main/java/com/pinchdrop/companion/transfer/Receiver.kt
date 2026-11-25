@@ -321,10 +321,20 @@ object Receiver {
 
     // ------------------------------------------------------------ receiving
 
+    private var lastAutoOpened: String? = null
+
     @Synchronized
     private fun ensureRunning() {
         if (!connected || runner?.isActive == true || jobs.isEmpty()) return
         LinkService.setBusy(app, true)
+        // Something is arriving: bring PinchDrop up so its receive sheet shows the progress
+        // (only when the user allowed "Open PinchDrop by itself").
+        jobs.firstOrNull()?.offer?.id?.let { id ->
+            if (!foreground && id != lastAutoOpened && AutoOpen.allowed(app)) {
+                lastAutoOpened = id
+                AutoOpen.open(app, com.pinchdrop.companion.Notifications.ROUTE_RECEIVING)
+            }
+        }
         runner = scope.launch {
             try {
                 while (true) {

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, File, Folder, Link2 } from 'lucide-react';
 import { formatBytes } from '../shared/api';
+import { ItemPreview } from '../shared/ItemPreview';
+import type { ItemPreviewData } from '../shared/types';
 
 /** A send that just started (or a big one that just landed), shown full screen. Mirrors the pill's payload. */
 export interface SendFxEvent {
@@ -13,6 +15,8 @@ export interface SendFxEvent {
   /** Where the Island is, in screen (CSS) pixels. */
   target: { x: number; y: number };
   reduced?: boolean;
+  /** The item's real look (photo, folder, first lines…) when known. */
+  preview?: ItemPreviewData | null;
 }
 
 const PARTICLES = 14;
@@ -126,10 +130,10 @@ export function SendFx({ ev, onDone }: { ev: SendFxEvent | null; onDone: () => v
           />
         )}
       </AnimatePresence>
-      {/* the card */}
+      {/* the card: the item itself (photo, video frame, folder, text…) rising, then flying to the Island */}
       <motion.div
-        className="absolute flex items-center gap-4 pl-4 pr-6 py-4 rounded-[24px] bg-white/[0.96] text-[#1D1D1F] shadow-[0_30px_80px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.08)] ring-1 ring-black/5"
-        style={{ left: cx - 170, top: cy - 44, width: 340 }}
+        className="absolute"
+        style={{ left: cx, top: cy }}
         initial={{ opacity: 0, scale: 0.7, y: 40 }}
         animate={
           fly
@@ -137,14 +141,27 @@ export function SendFx({ ev, onDone }: { ev: SendFxEvent | null; onDone: () => v
             : { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 26 } }
         }
       >
-        <div className="w-14 h-14 rounded-[18px] bg-gradient-to-br from-[#0A84FF] to-[#5E5CE6] text-white flex items-center justify-center shrink-0 shadow-[0_8px_20px_rgba(10,132,255,0.35)]">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <div className="text-[17px] font-semibold tracking-[-0.01em] truncate">{ev.label}</div>
-          <div className="text-[13px] text-[#6E6E73]">
-            {ev.fileCount > 0 ? `${ev.fileCount} file${ev.fileCount === 1 ? '' : 's'} · ${formatBytes(ev.totalBytes)}` : 'Text'} · sending…
-          </div>
+        <div className="-translate-x-1/2 -translate-y-1/2">
+          {ev.preview ? (
+            <ItemPreview
+              size="big"
+              p={ev.preview}
+              title={ev.label}
+              subtitle={`${ev.fileCount > 0 ? `${ev.fileCount} file${ev.fileCount === 1 ? '' : 's'} · ${formatBytes(ev.totalBytes)}` : 'Text'} · sending…`}
+            />
+          ) : (
+            <div className="flex items-center gap-4 pl-4 pr-6 py-4 w-[340px] rounded-[24px] bg-white/[0.96] text-[#1D1D1F] shadow-[0_30px_80px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.08)] ring-1 ring-black/5">
+              <div className="w-14 h-14 rounded-[18px] bg-gradient-to-br from-[#0A84FF] to-[#5E5CE6] text-white flex items-center justify-center shrink-0 shadow-[0_8px_20px_rgba(10,132,255,0.35)]">
+                {icon}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[17px] font-semibold tracking-[-0.01em] truncate">{ev.label}</div>
+                <div className="text-[13px] text-[#6E6E73]">
+                  {ev.fileCount > 0 ? `${ev.fileCount} file${ev.fileCount === 1 ? '' : 's'} · ${formatBytes(ev.totalBytes)}` : 'Text'} · sending…
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

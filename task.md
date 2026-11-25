@@ -102,6 +102,10 @@ Pairing, live battery and sending were confirmed working on a POCO F7 + HP lapto
 - [x] Phone opens the Catch camera by itself when the PC holds something ("Open Catch by itself" = Display over other apps; Xiaomi also needs "Open new windows while running in the background"); over the lock screen like a call.
 - [x] Drag drawn at display rate (glide between camera frames + critically damped follow); the card is "carried" with a slight tilt.
 - [x] Real previews on the floating card and Island: Explorer thumbnails in their own shape (photos, video frames, PDFs, Office), folder contents, first lines of text, link card, stacked multi-select.
+- [x] Drag card is desktop-icon sized; the send animation shows the item itself (photo, folder, text…).
+- [x] Send order: the lift-off plays alone, then the Island opens on the live progress and carries on from there.
+- [x] Phone: receive bottom sheet with live progress, then a green tick; it brings PinchDrop up when "Open PinchDrop by itself" is allowed.
+- [x] App sidebar fits short windows and collapses to icons when narrow; the profile is always visible.
 - [ ] Founder check of v1.1 on the real laptop + phone (feel of the drag, colours, Island).
 
 ## 🚀 v2 backlog (agreed 2026-11-25, not started)

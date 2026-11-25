@@ -415,12 +415,20 @@ mod windows_tests {
         let dir = std::env::temp_dir().join(format!("pd-th-{}", crate::link::proto::random_id()));
         std::fs::create_dir_all(&dir).unwrap();
         let (w, h) = (400u32, 200u32);
-        let px: Vec<u8> = (0..w * h).flat_map(|i| [(i % 255) as u8, 90, 200, 255]).collect();
+        let px: Vec<u8> = (0..w * h)
+            .flat_map(|i| [(i % 255) as u8, 90, 200, 255])
+            .collect();
         let file = dir.join("wide.png");
         std::fs::write(&file, encode_png(&px, w, h).unwrap()).unwrap();
         let pv = for_paths(&[file.to_string_lossy().into_owned()]);
         assert_eq!(pv.kind, "image");
-        assert!(pv.thumb.as_deref().unwrap_or("").starts_with("data:image/png;base64,"), "{pv:?}");
+        assert!(
+            pv.thumb
+                .as_deref()
+                .unwrap_or("")
+                .starts_with("data:image/png;base64,"),
+            "{pv:?}"
+        );
         assert_eq!((pv.width, pv.height), (256, 128));
         let _ = std::fs::remove_dir_all(dir);
     }

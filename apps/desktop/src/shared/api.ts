@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { DeepPartial, DeviceView, HoldView, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
+import type { DeepPartial, DeviceView, HoldView, ItemPreviewData, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -146,6 +146,10 @@ export const api = {
     // Give the just-shown overlay a frame to wake up before it starts animating.
     window.setTimeout(() => void emitTo('overlay', 'send-fx', detail), 140);
   },
+
+  /** The look of a send (thumbnail, folder…) for its lift-off animation. */
+  transferPreview: (id: string): Promise<ItemPreviewData | null> =>
+    inTauri ? invoke<ItemPreviewData | null>('transfer_preview', { id }).catch(() => null) : Promise.resolve(null),
 
   // Phase 5 grab-and-hold.
   holdState: (): Promise<HoldView | null> => (inTauri ? invoke('hold_state') : Promise.resolve(null)),

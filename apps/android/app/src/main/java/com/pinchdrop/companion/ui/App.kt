@@ -114,28 +114,38 @@ fun PinchDropApp(
         LaunchedEffect(hold?.id) {
             if (hold != null && settings.onboarded && route != Route.CATCH) route = Route.CATCH
         }
-        var shownTransfer by rememberSaveable { mutableStateOf<String?>(null) }
 
-        // When a transfer starts, show the Receiving screen once (unless the user is mid-setup).
-        LaunchedEffect(progress?.id, progress?.paused) {
-            val p = progress ?: return@LaunchedEffect
-            if (!p.paused && p.id != shownTransfer && settings.onboarded && (route.tab || route == Route.ARRIVED)) {
-                shownTransfer = p.id
-                route = Route.RECEIVING
-            }
-        }
+        // Receiving shows as a bottom sheet over whatever screen is open: live progress, then a
+        // green tick when it lands. "Hide" (or a tap outside) tucks it away; the send carries on.
+        var hiddenTransfer by rememberSaveable { mutableStateOf<String?>(null) }
+        var landed by remember { mutableStateOf<Receiver.Arrived?>(null) }
+        val context = androidx.compose.ui.platform.LocalContext.current
         LaunchedEffect(Unit) {
             Receiver.arrivals.collect { a ->
                 if (settings.onboarded) {
                     arrived = a
-                    route = Route.ARRIVED
+                    landed = a
+                    if (a.openFirst && a.uri != null) openUri(context, a.uri)
                 }
             }
+        }
+        LaunchedEffect(landed) {
+            if (landed != null) {
+                kotlinx.coroutines.delay(4500)
+                landed = null
+            }
+        }
+        val sheet: SheetState? = when {
+            !settings.onboarded -> null
+            landed != null -> SheetState.Done(landed!!)
+            progress != null && progress?.paused == false && progress?.id != hiddenTransfer -> SheetState.Receiving(progress!!)
+            else -> null
         }
 
         LaunchedEffect(pendingRoute) {
             when (pendingRoute) {
-                Notifications.ROUTE_RECEIVING -> if (settings.onboarded) route = if (Receiver.progress.value != null) Route.RECEIVING else Route.HOME
+                // The receive sheet shows over the current screen; just make sure it isn't hidden.
+                Notifications.ROUTE_RECEIVING -> if (settings.onboarded) { hiddenTransfer = null; if (!route.tab) route = Route.HOME }
                 Notifications.ROUTE_RECEIVED -> if (settings.onboarded) route = Route.RECEIVED
                 Notifications.ROUTE_CATCH -> if (settings.onboarded) route = if (Receiver.hold.value != null) Route.CATCH else Route.HOME
                 Notifications.ROUTE_CATCH_DEMO -> { demoReturn = if (route.tab) route else Route.HOME; route = Route.CATCH_DEMO }
@@ -160,6 +170,7 @@ fun PinchDropApp(
         }
         val openDemo: (Route) -> Unit = { r -> demoReturn = Route.SETTINGS; route = r }
 
+        Box(Modifier.fillMaxSize()) {
         Scaffold(
             containerColor = c.bg,
             bottomBar = { if (route.tab) BottomBar(route, go) },
@@ -244,6 +255,14 @@ fun PinchDropApp(
                     }
                 }
             }
+        }
+        ReceiveSheet(
+            state = sheet,
+            onHide = {
+                if (landed != null) landed = null else hiddenTransfer = progress?.id
+            },
+            onCancel = { Receiver.cancelCurrent() },
+        )
         }
     }
 }
