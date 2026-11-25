@@ -18,9 +18,9 @@ Status: 🟢 agreed with the founder · 🔵 proposed (needs a yes before we bui
 | # | Feature | Status |
 |---|---|---|
 | 1 | Phone → PC with gestures (**built in v2.0**) | 🟢 |
-| 2 | Phone notifications on the PC (in the Island) | 🟢 |
-| 3 | SMS: read and reply from the PC | 🟢 |
-| 4 | Contacts on the PC | 🟢 |
+| 2 | Phone notifications on the PC (in the Island) (**built in v2.0**) | 🟢 |
+| 3 | SMS: read and reply from the PC (**built in v2.0**) | 🟢 |
+| 4 | Contacts on the PC (**built in v2.0**) | 🟢 |
 | 5 | Calls: see who's calling, answer or reject with your hand | 🟢 |
 | 6 | Fast mode for big files | 🟢 |
 | 7 | Proximity-sensor catch (no camera needed) | 🟢 |
