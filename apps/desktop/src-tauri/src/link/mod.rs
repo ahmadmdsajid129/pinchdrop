@@ -4,6 +4,7 @@
 //! phones (QR or 6-digit code) and keeps a session per connected phone so the
 //! pill can show its real name and battery.
 
+pub mod lift;
 pub mod proto;
 pub mod store;
 pub mod transfer;
@@ -204,6 +205,14 @@ impl Link {
         for t in transfers.iter_mut().filter(|t| t.state == "sending") {
             t.state = "paused".into();
         }
+        // Lifts from the phone can't resume (LINK-v1 §6.5).
+        for t in transfers
+            .iter_mut()
+            .filter(|t| t.direction == "in" && t.is_active())
+        {
+            t.state = "failed".into();
+            t.error = Some("Interrupted when PinchDrop closed.".into());
+        }
         Ok(Arc::new(Self {
             app,
             identity,
@@ -370,6 +379,13 @@ impl Link {
             let text = match msg {
                 Message::Text(t) => t,
                 Message::Close(_) => break,
+                Message::Binary(b) => {
+                    // Lift data from the phone (§6.5); only from an authenticated phone.
+                    if let Some(dev) = authed.lock().ok().and_then(|g| g.clone()) {
+                        self.on_lift_chunk(&dev, &b);
+                    }
+                    continue;
+                }
                 _ => continue, // pings/pongs keep the timeout fresh
             };
             let Some(env) = parse(&text) else { continue };
@@ -411,6 +427,8 @@ impl Link {
                     kind @ ("push.accept" | "push.decline" | "file.done" | "transfer.complete"
                     | "transfer.cancel"),
                 ) => self.on_transfer_msg(&dev, kind, &env.payload),
+                (Some(dev), "lift.offer") => self.on_lift_offer(&dev, &env.payload),
+                (Some(dev), "lift.cancel") => self.on_lift_cancel(&dev, &env.payload),
                 (Some(dev), "unpair") => {
                     self.forget(&dev, false);
                     break;
@@ -818,6 +836,7 @@ impl Link {
             self.emit_pair_result("phone_left", &name);
         }
         let Some(dev) = device else { return };
+        self.lift_device_gone(&dev);
         self.pause_transfers_of(&dev);
         let removed = self
             .sessions
@@ -1194,6 +1213,7 @@ impl Link {
             files_done: 0,
             bytes_done: 0,
             moved: false,
+            direction: "out".into(),
         };
         let id = t.id.clone();
         let msg = offer_message(&t);
