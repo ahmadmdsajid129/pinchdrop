@@ -5,12 +5,16 @@ import { PointerRing } from './components/PointerRing';
 import { UndoToast } from './components/UndoToast';
 import { GestureGym } from './components/GestureGym';
 import { PrivacyDashboard } from './components/PrivacyDashboard';
-import { Smartphone, ShieldCheck, Folder, Globe, Award } from 'lucide-react';
+import { soundEngine } from './utils/audio';
+import { useMotionPreference } from './hooks/useMotionPreference';
+import { Smartphone, ShieldCheck, Folder, Globe, Award, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { GestureStateMachine, ThrowDetector } from '@pinchdrop/gesture-core';
 
 export default function App() {
   const fsmRef = useRef<GestureStateMachine>(new GestureStateMachine());
   const throwDetectorRef = useRef<ThrowDetector>(new ThrowDetector(0.60));
+  const { reducedMotion, toggleReducedMotion } = useMotionPreference();
+  const [isMuted, setIsMuted] = useState(soundEngine.isMuted());
 
   // Workspace Files (including URLs and text notes)
   const [files, setFiles] = useState<FileCardData[]>([
@@ -77,6 +81,7 @@ export default function App() {
     const handleMouseDown = () => {
       setIsGrabbing(true);
       throwDetectorRef.current.reset();
+      soundEngine.playGrabPop();
     };
 
     const handleMouseUp = () => {
@@ -84,6 +89,7 @@ export default function App() {
       const throwResult = throwDetectorRef.current.evaluateRelease(now);
 
       if (throwResult.isThrow && grabbedCardId) {
+        soundEngine.playThrowWhoosh();
         const thrownFile = files.find((f) => f.id === grabbedCardId);
         if (thrownFile) {
           const target = throwResult.direction === 'LEFT_PHONE' ? 'Phone' : 'Inbox';
@@ -95,6 +101,8 @@ export default function App() {
             file: thrownFile,
           });
         }
+      } else {
+        soundEngine.playDropClick();
       }
 
       setIsGrabbing(false);
@@ -117,6 +125,7 @@ export default function App() {
       const droppedFile = files.find((f) => f.id === grabbedCardId);
 
       if (activeZone === 'trash' && droppedFile) {
+        soundEngine.playTrashThud();
         setFiles((prev) => prev.filter((f) => f.id !== grabbedCardId));
         setUndoToast({
           visible: true,
@@ -125,6 +134,7 @@ export default function App() {
           file: droppedFile,
         });
       } else if (activeZone === 'phone' && droppedFile) {
+        soundEngine.playCatchSuccess();
         if (droppedFile.name.startsWith('http')) {
           alert(`Pushed URL "${droppedFile.name}" to Phone Clipboard!`);
         } else {
@@ -153,12 +163,14 @@ export default function App() {
 
   const handleUndo = () => {
     if (undoToast.file) {
+      soundEngine.playDropClick();
       setFiles((prev) => [undoToast.file!, ...prev]);
       setUndoToast((prev) => ({ ...prev, visible: false }));
     }
   };
 
   const triggerPhoneGrab = () => {
+    soundEngine.playCatchSuccess();
     setPhoneArmed(true);
     setArmedCountdown(30);
     fsmRef.current.transition({
@@ -171,7 +183,12 @@ export default function App() {
   return (
     <div className="relative w-screen h-screen bg-[#0B1020] text-[#E8ECFF] flex flex-col justify-between p-6 overflow-hidden">
       {/* Dynamic Pointer Ring */}
-      <PointerRing x={pointerPos.x} y={pointerPos.y} isGrabbing={isGrabbing} />
+      <PointerRing
+        x={pointerPos.x}
+        y={pointerPos.y}
+        isGrabbing={isGrabbing}
+        reducedMotion={reducedMotion}
+      />
 
       {/* Header Bar */}
       <header className="flex items-center justify-between z-10 bg-[#141B34]/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-[#1C2547]">
@@ -180,7 +197,7 @@ export default function App() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#34D399] animate-pulse" />
             <span className="text-sm font-semibold text-[#22D3EE]">PinchDrop Air Workspace</span>
           </div>
-          <span className="text-xs text-[#8B94B8]">Stage 9 · Gesture Gym &amp; Privacy Dashboard</span>
+          <span className="text-xs text-[#8B94B8]">Stage 10 · 60fps Springs &amp; Spatial Audio</span>
         </div>
 
         {/* Center Breadcrumb */}
@@ -190,7 +207,46 @@ export default function App() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5">
+          {/* Reduced Motion Toggle */}
+          <button
+            onClick={() => {
+              toggleReducedMotion();
+              soundEngine.playHoverTick();
+            }}
+            title={
+              reducedMotion
+                ? 'Reduced Motion Active (Click for 60fps Springs)'
+                : '60fps Springs Active (Click for Reduced Motion)'
+            }
+            className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
+              reducedMotion
+                ? 'bg-[#1C2547] text-[#8B94B8] border-[#1C2547]'
+                : 'bg-[#7C5CFF]/20 text-[#A78BFA] border-[#7C5CFF]/40 hover:bg-[#7C5CFF]/30'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{reducedMotion ? 'Reduced Motion' : '60fps Springs'}</span>
+          </button>
+
+          {/* Sound Mute Toggle */}
+          <button
+            onClick={() => {
+              const next = !isMuted;
+              soundEngine.setMuted(next);
+              setIsMuted(next);
+              if (!next) soundEngine.playHoverTick();
+            }}
+            title={isMuted ? 'Unmute Audio Feedback' : 'Mute Audio Feedback'}
+            className={`p-2 rounded-xl border transition ${
+              isMuted
+                ? 'bg-[#1C2547] text-[#8B94B8] border-[#1C2547]'
+                : 'bg-[#1C2547] text-[#22D3EE] border-[#22D3EE]/30 hover:bg-[#25325E]'
+            }`}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+
           <button
             onClick={() => setIsGymOpen(true)}
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#7C5CFF]/20 text-[#A78BFA] border border-[#7C5CFF]/40 hover:bg-[#7C5CFF]/30 transition"
@@ -253,6 +309,7 @@ export default function App() {
                   file={file}
                   isHovered={false}
                   isGrabbed={isCardGrabbed}
+                  reducedMotion={reducedMotion}
                 />
               </div>
             );
