@@ -35,6 +35,8 @@ object Notifications {
     private const val ID_PROGRESS = 1003
     private const val ID_HOLD = 1004
     const val ROUTE_CATCH = "catch"
+    /** v2: Share → PinchDrop opened the Lift screen. */
+    const val ROUTE_LIFT = "lift"
     private var nextArrivedId = 1100
 
     fun ensureChannels(context: Context) {
