@@ -17,7 +17,7 @@ Status: 🟢 agreed with the founder · 🔵 proposed (needs a yes before we bui
 
 | # | Feature | Status |
 |---|---|---|
-| 1 | Phone → PC with gestures | 🟢 |
+| 1 | Phone → PC with gestures (**built in v2.0**) | 🟢 |
 | 2 | Phone notifications on the PC (in the Island) | 🟢 |
 | 3 | SMS: read and reply from the PC | 🟢 |
 | 4 | Contacts on the PC | 🟢 |
