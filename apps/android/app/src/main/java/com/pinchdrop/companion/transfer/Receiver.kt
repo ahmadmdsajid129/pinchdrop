@@ -36,8 +36,12 @@ import java.util.UUID
  * records everything in [History]. One transfer runs at a time; others queue.
  */
 object Receiver {
-    private const val CHUNK = 524_288
-    private const val WINDOW = 4
+    private const val CHUNK_NORMAL = 524_288
+    /** v2 fast mode: bigger chunks and more in flight when the PC supports it (LINK-v1 §6.7). */
+    private const val CHUNK_FAST = 2_097_152
+    @Volatile var fast = false
+    private val CHUNK get() = if (fast) CHUNK_FAST else CHUNK_NORMAL
+    private val WINDOW get() = if (fast) 6 else 4
     private const val CHUNK_TIMEOUT_MS = 30_000L
 
     data class OfferFile(val index: Int, val segments: List<String>, val size: Long)
@@ -195,6 +199,7 @@ object Receiver {
             totalSecs = secs,
         )
         _hold.value = h
+        startProximity()
         // On screen: the app switches to Catch by itself. In the background: open Catch straight
         // away when "Open Catch by itself" is allowed; the alert stays as a fallback (and opens it
         // over the lock screen, like a call).
@@ -208,7 +213,24 @@ object Receiver {
         }
     }
 
+    /** v2: a hand hovering over the phone catches too (no camera, works with the screen off). */
+    private var proximity: com.pinchdrop.companion.vision.ProximityWatcher? = null
+
+    private fun startProximity() {
+        scope.launch {
+            val on = settings.settings.first().proximityCatch
+            if (!on) return@launch
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                val w = proximity ?: com.pinchdrop.companion.vision.ProximityWatcher(app) {
+                    if (_hold.value != null) catchHold()
+                }.also { proximity = it }
+                if (_hold.value != null) w.start()
+            }
+        }
+    }
+
     private fun clearHold() {
+        scope.launch(kotlinx.coroutines.Dispatchers.Main) { proximity?.stop() }
         _hold.value = null
         Notifications.cancelHold(app)
     }
