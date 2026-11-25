@@ -1,34 +1,40 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Smartphone, Folder, Camera, Wifi, Check, Sparkles, MoveRight, ArrowDown } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Smartphone, Folder, Camera, Wifi, Check, Sparkles, ArrowDown, Maximize2, Minimize2 } from 'lucide-react';
+import { soundEngine } from '../utils/audio';
 
 interface DynamicIslandProps {
-  isArmed: boolean;
+  isArmed?: boolean;
   heldItemName?: string | null;
   onDropToPhone?: () => void;
+  isIslandOnly: boolean;
+  onToggleMode: () => void;
 }
 
 export const DynamicIsland: React.FC<DynamicIslandProps> = ({
-  isArmed,
   heldItemName = 'CPP (Folder)',
   onDropToPhone,
+  isIslandOnly,
+  onToggleMode,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [simulatedGrab, setSimulatedGrab] = useState(false);
   const [transferred, setTransferred] = useState(false);
 
   const handlePinchGrab = () => {
+    soundEngine.playGrabPop();
     setSimulatedGrab(true);
     setTransferred(false);
   };
 
   const handleDrop = () => {
+    soundEngine.playCatchSuccess();
     setTransferred(true);
     setTimeout(() => {
       setSimulatedGrab(false);
       setTransferred(false);
       if (onDropToPhone) onDropToPhone();
-    }, 2500);
+    }, 2200);
   };
 
   return (
@@ -41,8 +47,8 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({
         animate={{
           y: 0,
           opacity: 1,
-          width: simulatedGrab ? 520 : isHovered ? 440 : 360,
-          height: simulatedGrab ? 84 : 44,
+          width: simulatedGrab ? 540 : isHovered ? 470 : 400,
+          height: simulatedGrab ? 88 : 46,
         }}
         transition={{ type: 'spring', stiffness: 400, damping: 28 }}
         className="bg-[#0B1020]/95 backdrop-blur-2xl border border-[#7C5CFF]/50 rounded-full px-5 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center justify-between overflow-hidden"
@@ -76,7 +82,7 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({
               {transferred ? (
                 <div className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-[#34D399]/20 text-[#34D399] border border-[#34D399]/40 text-xs font-bold">
                   <Check className="w-4 h-4" />
-                  <span>Dropped to Pixel 9!</span>
+                  <span>Dropped to Phone!</span>
                 </div>
               ) : (
                 <button
@@ -104,19 +110,29 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({
             {/* Middle: Phone Connection */}
             <div className="flex items-center space-x-1.5 text-[11px] text-[#22D3EE] bg-[#141B34] px-2.5 py-1 rounded-full border border-[#1C2547]">
               <Smartphone className="w-3 h-3" />
-              <span>Pixel 9 Pro Connected</span>
+              <span>Pixel 9 Pro</span>
               <Wifi className="w-3 h-3 text-[#34D399]" />
             </div>
 
-            {/* Right: Quick Grab Trigger */}
-            <button
-              onClick={handlePinchGrab}
-              title="Click to simulate selecting CPP folder on Desktop & pinching in air"
-              className="flex items-center space-x-1 text-[10px] font-semibold text-[#A78BFA] hover:text-white bg-[#7C5CFF]/20 hover:bg-[#7C5CFF]/30 px-2 py-1 rounded-lg border border-[#7C5CFF]/30 transition"
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Pinch "CPP"</span>
-            </button>
+            {/* Right: Quick Grab Trigger & Mode Toggle */}
+            <div className="flex items-center space-x-1.5">
+              <button
+                onClick={handlePinchGrab}
+                title="Simulate selecting CPP folder on Desktop & pinching in air"
+                className="flex items-center space-x-1 text-[10px] font-semibold text-[#A78BFA] hover:text-white bg-[#7C5CFF]/20 hover:bg-[#7C5CFF]/30 px-2 py-1 rounded-lg border border-[#7C5CFF]/30 transition"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Pinch "CPP"</span>
+              </button>
+
+              <button
+                onClick={onToggleMode}
+                title={isIslandOnly ? 'Expand to Full Workspace' : 'Collapse to Island Only'}
+                className="p-1 rounded-lg bg-[#1C2547] text-[#8B94B8] hover:text-[#E8ECFF] transition"
+              >
+                {isIslandOnly ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
         )}
       </motion.div>
