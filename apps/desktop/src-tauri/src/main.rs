@@ -3,6 +3,7 @@
 mod allowlist;
 mod clipboard;
 mod journal;
+mod license;
 mod pairing;
 mod server;
 mod stage_tray;
@@ -12,6 +13,7 @@ mod trash_ops;
 use allowlist::AllowList;
 use clipboard::{AirClipboardManager, ClipboardPayload};
 use journal::{FileOpType, UndoJournal};
+use license::{LicenseInfo, LicenseManager};
 use pairing::{KeyStore, PairedDevice, QrPairingPayload};
 use server::{LanServer, ServerConfig};
 use stage_tray::{StageItem, StageTrayManager};
@@ -25,6 +27,7 @@ struct AppState {
     lan_server: Mutex<LanServer>,
     stage_tray: Mutex<StageTrayManager>,
     clipboard: Mutex<AirClipboardManager>,
+    license: Mutex<LicenseManager>,
 }
 
 #[tauri::command]
@@ -146,18 +149,40 @@ fn safe_recycle_file(
     Ok(undo_id)
 }
 
+#[tauri::command]
+fn get_license_info(state: tauri::State<AppState>) -> LicenseInfo {
+    let lic = state.license.lock().unwrap();
+    lic.get_info()
+}
+
+#[tauri::command]
+fn activate_license_key(
+    key: String,
+    state: tauri::State<AppState>,
+) -> Result<LicenseInfo, String> {
+    let mut lic = state.license.lock().unwrap();
+    lic.activate(&key)
+}
+
+#[tauri::command]
+fn deactivate_license(state: tauri::State<AppState>) -> Result<LicenseInfo, String> {
+    let mut lic = state.license.lock().unwrap();
+    lic.deactivate()
+}
+
 fn main() {
     let home = std::env::var("USERPROFILE")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("."));
 
     let state = AppState {
-        allow_list: AllowList::new(vec![home]),
+        allow_list: AllowList::new(vec![home.clone()]),
         undo_journal: Mutex::new(UndoJournal::new(100)),
         key_store: Mutex::new(KeyStore::new()),
         lan_server: Mutex::new(LanServer::new(ServerConfig::default())),
         stage_tray: Mutex::new(StageTrayManager::new()),
         clipboard: Mutex::new(AirClipboardManager::new()),
+        license: Mutex::new(LicenseManager::new(home.join(".pinchdrop"))),
     };
 
     tauri::Builder::default()
@@ -170,7 +195,10 @@ fn main() {
             simulate_phone_grab,
             catch_held_item,
             push_clipboard_text,
-            open_in_browser
+            open_in_browser,
+            get_license_info,
+            activate_license_key,
+            deactivate_license
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
