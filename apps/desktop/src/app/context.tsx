@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { api, onEvent, usePhone, useSettings } from '../shared/api';
 import type { DeepPartial, PathInfo, PhoneStatus, Settings } from '../shared/types';
 
-export type Route = 'onboarding' | 'home' | 'send' | 'transfers' | 'devices' | 'pair' | 'settings' | 'profile';
-const ROUTES: Route[] = ['onboarding', 'home', 'send', 'transfers', 'devices', 'pair', 'settings', 'profile'];
+export type Route = 'onboarding' | 'home' | 'send' | 'transfers' | 'messages' | 'contacts' | 'notifications' | 'devices' | 'pair' | 'settings' | 'profile';
+const ROUTES: Route[] = ['onboarding', 'home', 'send', 'transfers', 'messages', 'contacts', 'notifications', 'devices', 'pair', 'settings', 'profile'];
 
 export interface QueueItem {
   id: string;
