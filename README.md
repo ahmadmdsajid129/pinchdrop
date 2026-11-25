@@ -126,7 +126,7 @@ PinchDrop is styled in a futuristic, calm, dark-first **aurora glass** theme:
 | **S4** | **File Ops & Safety Engine (Rust + Trash + Undo)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S5** | **LAN Server & Pairing (TLS 1.3 + mDNS)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S6** | **Android App v0 (Compose + MediaStore)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
-| **S7** | **Grab → Catch & Stage Tray (End-to-End)** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
+| **S7** | **Grab → Catch & Stage Tray (End-to-End)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S8–S13** | **Clipboard, Gym, Polish, Store Packaging, Launch** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
 
 ---
