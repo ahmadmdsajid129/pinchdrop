@@ -131,7 +131,8 @@ PinchDrop is styled in a futuristic, calm, dark-first **aurora glass** theme:
 | **S9** | **Gesture Gym & Settings (Calibration + Privacy)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S10** | **Polish Pass & Audio/Haptics (60fps Springs & Web Audio)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S11** | **Beta Packaging & Installers (Windows MSI/NSIS & Play AAB)**| 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
-| **S12–S13** | **Pro Tier Licensing & Public Launch** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
+| **S12** | **Pro & Monetization (Offline Licensing & ProModal)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
+| **S13** | **Public Launch & Distribution (v1.0 Release)** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
 
 ---
 
