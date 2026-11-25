@@ -130,6 +130,29 @@ export function Overlay() {
   const cardRef = useRef<Card | null>(null);
   cardRef.current = card;
 
+  // Design preview only (plain browser, driven by showcase.html): simulated hand + card, no camera.
+  useEffect(() => {
+    if (inTauri) return;
+    const on = (e: Event) => {
+      const d = (e as CustomEvent).detail as { type: string; [k: string]: unknown };
+      if (d.type === 'arm') setArm(d.arm as ArmState);
+      else if (d.type === 'hand') {
+        const h = d.hand as { x: number; y: number; pinched: boolean } | null;
+        if (h) {
+          if (!handRef.current) {
+            hx.jump(h.x * window.innerWidth);
+            hy.jump(h.y * window.innerHeight);
+          }
+          rawX.set(h.x * window.innerWidth);
+          rawY.set(h.y * window.innerHeight);
+        }
+        setHandIfChanged(h ? { pinched: h.pinched } : null);
+      } else if (d.type === 'card') setCard(d.card as Card | null);
+    };
+    window.addEventListener('pd-demo', on);
+    return () => window.removeEventListener('pd-demo', on);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!inTauri) return;
     void invoke<ArmState | null>('grab_arm_state').then((a) => a && setArm(a));
@@ -140,7 +163,7 @@ export function Overlay() {
   const armed = !!arm?.armed;
 
   useEffect(() => {
-    if (!armed || !arm) return;
+    if (!armed || !arm || !inTauri) return;
     let stopped = false;
     let stream: MediaStream | null = null;
     let raf = 0;
