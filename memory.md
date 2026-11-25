@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 6 (Android Companion App v0)** — Completed. Kotlin + Jetpack Compose companion app scaffold, Gradle build setup (BOM 2024.10.01), Android 15 `dataSync` compliant `FileDownloadWorker` via WorkManager, `PairingManager` with certificate pinning, and aurora glass Material3 home screen.
+- **Current Stage:** **Stage 7 (Grab Sources, Stage Tray & Quick Catch)** — Completed. Android Share Sheet target (`ACTION_SEND` and `ACTION_SEND_MULTIPLE`), Quick Settings `GrabTileService`, PC `StageTrayManager` with 30s ARMED state Quick Catch, and IPC command bridge.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 7 (Grab Sources, Stage Tray & Quick Catch)** — End-to-end integration: Android Share Sheet target (`ACTION_SEND`), Quick Settings tiles, in-app capture, PC ARMED 30s Quick Catch, and Stage Tray sync.
+- **Next Stage:** **Stage 8 (Air Clipboard & Open-on-Device)** — Bi-directional text/URL synchronization, "Open on other device" actions, and ballistic Throw gesture triggers.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (testbed built), `apps/desktop` (production bundle built + Rust core safe file ops & LAN server), `apps/android` (Kotlin/Compose companion app)
+  - Workspace packages: `@pinchdrop/gesture-core` (7 passing vitest tests), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server & Stage Tray), `apps/android` (Kotlin/Compose companion app with Share target & Quick Settings tile)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
