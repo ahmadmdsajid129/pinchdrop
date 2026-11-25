@@ -29,7 +29,7 @@ function RecentRow({ t }: { t: TransferView }) {
   const pct = t.totalBytes > 0 ? Math.floor((t.bytesDone / t.totalBytes) * 100) : 0;
   const detail = [
     t.fileCount ? `${t.fileCount} file${t.fileCount === 1 ? '' : 's'} · ${formatBytes(t.totalBytes)}` : `${t.textCount} note${t.textCount === 1 ? '' : 's'}`,
-    t.state === 'sending' ? `${pct}%` : t.state === 'done' ? `to ${t.deviceName}` : t.state,
+    t.state === 'sending' ? `${pct}%` : t.state === 'done' ? `${t.direction === 'in' ? 'from' : 'to'} ${t.deviceName}` : t.state,
   ].join(' · ');
   return (
     <li className="flex items-center gap-3 py-2.5 border-b border-line/70 last:border-0">
