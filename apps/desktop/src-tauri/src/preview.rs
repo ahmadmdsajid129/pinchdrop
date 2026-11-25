@@ -336,7 +336,7 @@ fn bgra_to_rgba(mut px: Vec<u8>) -> Vec<u8> {
     px
 }
 
-fn encode_png(rgba: &[u8], w: u32, h: u32) -> Option<Vec<u8>> {
+pub(crate) fn encode_png(rgba: &[u8], w: u32, h: u32) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     {
         let mut enc = png::Encoder::new(&mut out, w, h);
