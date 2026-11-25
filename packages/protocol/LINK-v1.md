@@ -169,6 +169,41 @@ The other direction. On the phone the user taps **Share → PinchDrop** and **pi
 - Lifts are not resumed in v2.0. If the link drops mid-way, the lift fails and the partial file is removed.
 - The PC turns its webcam on for a lift only while one is in the air (at most `expiresInSecs`). The camera rules of §6.4 apply: frames are never stored or sent.
 
+## 6.6 The phone's notifications, messages and contacts (v2)
+
+These all travel inside the authenticated session. The PC keeps them **in memory only**: nothing is written to disk, and everything is forgotten when the phone disconnects or PinchDrop closes. The phone only sends what the user has allowed on the phone, through Android's own permission switches.
+
+### Requests and replies
+The PC asks; the phone answers once.
+- PC → phone: `<kind>` with a `reqId` in its payload.
+- Phone → PC: `phone.reply` `{ reqId, ok: true, data }` or `{ reqId, ok: false, error }`.
+- The PC gives up after 15 s.
+- `error` is one of:
+  - `"no_permission"`: the user hasn't allowed this on the phone
+  - `"failed"`: it was allowed but didn't work
+  - `"unknown"`: the request kind isn't recognised
+
+| Request | Payload | `data` in the reply |
+|---|---|---|
+| `sms.threads` | `{ reqId, limit ≤ 100 }` | `{ threads: [ { threadId, address, name?, snippet, date, unread, outgoing } ] }`, newest first |
+| `sms.thread` | `{ reqId, threadId, limit ≤ 300 }` | `{ threadId, address, name?, messages: [ { id, body, date, outgoing, status } ] }`, oldest first. `status` is `"received" \| "sent" \| "sending" \| "failed"` |
+| `sms.send` | `{ reqId, address, text }` | `{}` once Android has accepted the message for sending |
+| `contacts.list` | `{ reqId }` | `{ contacts: [ { id, name, numbers: [ { number, label } ], starred } ] }`, sorted by name, at most 5000 |
+| `call.dial` | `{ reqId, number }` | `{}`: the phone starts the call (or opens its dialer if calling isn't allowed) |
+| `notif.dismiss` | `{ reqId, key }` | `{}`: the notification is cleared on the phone too |
+| `notif.reply` | `{ reqId, key, text }` | `{}`: sent with the notification's own Reply action |
+
+Dates are milliseconds since 1970 (UTC). Phone numbers are passed exactly as the phone stores them.
+
+### Events from the phone
+- `notif.posted` `{ key, pkg, app, title, text, time, canReply, icon? }`
+  - Sent for a new or updated notification.
+  - Ongoing, silent and group-summary notifications, and the phone's own PinchDrop notifications, are not sent.
+  - `icon` is the app's icon as `data:image/png;base64,…` (≤ 16 KB). It's sent the first time that app appears in a session.
+- `notif.removed` `{ key }`: the notification was cleared on the phone.
+- `notif.sync` `{ items: [ notif.posted payloads ] }`: everything currently showing, sent on connect (up to 30).
+- `sms.new` `{ threadId?, address, name?, body, date }`: a text message just arrived.
+
 ## 7. Storage
 
 | Where | What |
