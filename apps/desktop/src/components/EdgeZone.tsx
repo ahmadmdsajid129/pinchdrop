@@ -8,7 +8,7 @@ interface ZoneProps {
   label: string;
   sublabel: string;
   isHovered: boolean;
-  isActive: boolean;
+  isActive?: boolean;
   holdProgress?: number; // 0.0 to 1.0
 }
 
@@ -17,6 +17,7 @@ export const EdgeZone: React.FC<ZoneProps> = ({
   label,
   sublabel,
   isHovered,
+  isActive: _isActive = false,
   holdProgress = 0,
 }) => {
   const getZoneStyles = () => {
