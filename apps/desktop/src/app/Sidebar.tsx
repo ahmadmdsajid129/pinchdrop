@@ -1,4 +1,4 @@
-import { Clock, Hand, Home, SlidersHorizontal, Smartphone, Upload } from 'lucide-react';
+import { Bell, Clock, Hand, Home, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useApp } from './context';
 import type { Route } from './context';
@@ -8,6 +8,9 @@ const NAV: { route: Route; label: string; icon: ReactNode }[] = [
   { route: 'home', label: 'Home', icon: <Home size={18} aria-hidden="true" /> },
   { route: 'send', label: 'Send', icon: <Upload size={18} aria-hidden="true" /> },
   { route: 'transfers', label: 'Transfers', icon: <Clock size={18} aria-hidden="true" /> },
+  { route: 'messages', label: 'Messages', icon: <MessageSquare size={18} aria-hidden="true" /> },
+  { route: 'contacts', label: 'Contacts', icon: <Users size={18} aria-hidden="true" /> },
+  { route: 'notifications', label: 'Notifications', icon: <Bell size={18} aria-hidden="true" /> },
   { route: 'devices', label: 'Devices', icon: <Smartphone size={18} aria-hidden="true" /> },
   { route: 'settings', label: 'Settings', icon: <SlidersHorizontal size={18} aria-hidden="true" /> },
 ];
