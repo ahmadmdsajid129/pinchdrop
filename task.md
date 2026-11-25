@@ -113,7 +113,7 @@ Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](
 
 | # | Feature | Notes |
 |---|---|---|
-| 1 | Phone → PC with gestures | Share → PinchDrop on the phone (camera sees the pinch while it's on screen), open hand at the laptop webcam; opens on the PC (photo, link, note) |
+| 1 | Phone → PC with gestures — 🟢 **built (v2.0), founder check open** | Share → PinchDrop → pinch at the phone → open hand at the laptop webcam (or Take it) → saved in Downloads\PinchDrop and opened; links open in the browser, notes go to the clipboard. LINK-v1 §6.5. Not yet: drop onto a pointed-at Explorer folder |
 | 2 | Phone notifications on the PC | Shown in the Island (NotificationListenerService) |
 | 3 | SMS read + reply from the PC | Fine for direct APK installs; Play Store allows it only for default SMS apps |
 | 4 | Contacts on the PC | |
