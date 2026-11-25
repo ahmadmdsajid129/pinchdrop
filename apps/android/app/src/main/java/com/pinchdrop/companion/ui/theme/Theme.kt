@@ -11,7 +11,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.pinchdrop.companion.data.ThemeMode
 
-/** Aurora palette: the same tokens as the desktop theme.css (design.md). */
+/** PinchDrop palette, matching the desktop app (theme.css): Apple-style light by default. */
 @Immutable
 data class PdColors(
     val bg: Color,
@@ -30,18 +30,20 @@ data class PdColors(
     val isDark: Boolean,
 )
 
+/** Dark: iOS true black with graphite surfaces. */
 val DarkPd = PdColors(
-    bg = Color(0xFF0B1020), bg2 = Color(0xFF0E1428), surface = Color(0xFF141B34), surface2 = Color(0xFF1C2547),
-    line = Color(0xFF24324F), primary = Color(0xFF7C5CFF), accent = Color(0xFF22D3EE), success = Color(0xFF34D399),
-    warn = Color(0xFFFBBF24), danger = Color(0xFFFB7185), text = Color(0xFFE8ECFF), soft = Color(0xFFC7CEEA),
-    muted = Color(0xFF8B94B8), isDark = true,
+    bg = Color(0xFF000000), bg2 = Color(0xFF1C1C1E), surface = Color(0xFF1C1C1E), surface2 = Color(0xFF2C2C2E),
+    line = Color(0xFF38383A), primary = Color(0xFF0A84FF), accent = Color(0xFF0A84FF), success = Color(0xFF30D158),
+    warn = Color(0xFFFFD60A), danger = Color(0xFFFF453A), text = Color(0xFFFFFFFF), soft = Color(0xFFD1D1D6),
+    muted = Color(0xFF98989F), isDark = true,
 )
 
+/** Light (default): iOS grouped look — soft grey ground, white cards, one confident blue. */
 val LightPd = PdColors(
-    bg = Color(0xFFF5F7FF), bg2 = Color(0xFFECEFFB), surface = Color(0xFFFFFFFF), surface2 = Color(0xFFE6EAF8),
-    line = Color(0xFFD5DBEE), primary = Color(0xFF6A4BF5), accent = Color(0xFF0891B2), success = Color(0xFF059669),
-    warn = Color(0xFFB45309), danger = Color(0xFFE11D48), text = Color(0xFF111833), soft = Color(0xFF39425F),
-    muted = Color(0xFF5E6787), isDark = false,
+    bg = Color(0xFFF2F2F7), bg2 = Color(0xFFE9E9EE), surface = Color(0xFFFFFFFF), surface2 = Color(0xFFEFEFF4),
+    line = Color(0xFFE5E5EA), primary = Color(0xFF007AFF), accent = Color(0xFF007AFF), success = Color(0xFF248A3D),
+    warn = Color(0xFFB26A00), danger = Color(0xFFFF3B30), text = Color(0xFF1C1C1E), soft = Color(0xFF3A3A3C),
+    muted = Color(0xFF6C6C70), isDark = false,
 )
 
 val LocalPd = staticCompositionLocalOf { DarkPd }
@@ -71,6 +73,15 @@ fun PinchDropTheme(mode: ThemeMode, content: @Composable () -> Unit) {
             onPrimary = Color.White, secondary = pd.accent, error = pd.danger, onBackground = pd.text,
             onSurface = pd.text, onSurfaceVariant = pd.muted, outline = pd.line,
         )
+    }
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            val bars = androidx.core.view.WindowCompat.getInsetsController(window, view)
+            bars.isAppearanceLightStatusBars = !dark
+            bars.isAppearanceLightNavigationBars = !dark
+        }
     }
     CompositionLocalProvider(LocalPd provides pd) {
         MaterialTheme(colorScheme = scheme, content = content)

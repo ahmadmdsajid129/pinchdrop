@@ -1,5 +1,6 @@
 package com.pinchdrop.companion.ui
 
+import androidx.compose.ui.unit.dp
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -89,7 +90,7 @@ fun PinchDropApp(
     notice: String? = null,
     clearNotice: () -> Unit = {},
 ) {
-    PinchDropTheme(settings?.theme ?: ThemeMode.DARK) {
+    PinchDropTheme(settings?.theme ?: ThemeMode.LIGHT) {
         val c = Pd.colors
         if (settings == null) {
             Box(Modifier.fillMaxSize().background(c.bg))
@@ -250,7 +251,7 @@ fun PinchDropApp(
 @Composable
 private fun BottomBar(route: Route, go: (Route) -> Unit) {
     val c = Pd.colors
-    NavigationBar(containerColor = c.bg2) {
+    NavigationBar(containerColor = c.surface, tonalElevation = 0.dp) {
         val items: List<Triple<Route, String, ImageVector>> = listOf(
             Triple(Route.HOME, "Home", Icons.Filled.Home),
             Triple(Route.RECEIVED, "Received", Icons.Filled.Inventory2),

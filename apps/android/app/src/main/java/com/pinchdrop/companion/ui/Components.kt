@@ -1,6 +1,5 @@
 package com.pinchdrop.companion.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -48,9 +46,10 @@ fun PdCard(modifier: Modifier = Modifier, borderColor: Color? = null, content: @
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(c.surface)
-            .border(1.dp, borderColor ?: c.line, RoundedCornerShape(18.dp)),
+            // Light: borderless white cards on the grey ground (iOS grouped). Dark: a hairline.
+            .border(1.dp, borderColor ?: if (c.isDark) c.line else Color.Transparent, RoundedCornerShape(20.dp)),
         content = content,
     )
 }
@@ -73,21 +72,23 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 52.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = CircleShape,
         colors = ButtonDefaults.buttonColors(containerColor = Pd.colors.primary, contentColor = Color.White),
-    ) { Text(text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
+    ) { Text(text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold) }
 }
 
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, danger: Boolean = false) {
     val c = Pd.colors
-    OutlinedButton(
+    // iOS "tinted" button: soft colour fill, coloured label.
+    val tint = if (danger) c.danger else c.primary
+    Button(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, if (danger) c.danger.copy(alpha = 0.6f) else c.line),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (danger) c.danger else c.text),
-    ) { Text(text, fontSize = 15.sp, fontWeight = FontWeight.Medium) }
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(containerColor = tint.copy(alpha = if (c.isDark) 0.22f else 0.12f), contentColor = tint),
+        elevation = null,
+    ) { Text(text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
 }
 
 @Composable

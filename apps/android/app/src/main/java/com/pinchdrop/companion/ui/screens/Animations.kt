@@ -203,6 +203,7 @@ fun CatchScreen(
                     }
                     Text(
                         if (hold == null) "from $pcName · ${DemoItem.FILES} files · ${DemoItem.MB} MB"
+                        else if (hold.fileCount == 0L) "from ${hold.pcName} · link or note"
                         else "from ${hold.pcName} · ${hold.fileCount} file${if (hold.fileCount == 1L) "" else "s"} · ${formatBytes(hold.totalBytes)}",
                         color = Color(0xFFC7CEEA), fontSize = 13.sp,
                     )

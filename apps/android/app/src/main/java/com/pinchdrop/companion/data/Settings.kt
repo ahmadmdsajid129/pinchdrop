@@ -18,7 +18,7 @@ enum class NameClash { KEEP_BOTH, REPLACE }
 /** Everything the phone remembers. Lives only on this phone (DataStore). */
 data class AppSettings(
     val onboarded: Boolean = false,
-    val theme: ThemeMode = ThemeMode.DARK,
+    val theme: ThemeMode = ThemeMode.LIGHT,
     val phoneName: String = "",
     val demoPc: Boolean = false,
     val stayConnected: Boolean = true,
@@ -46,6 +46,8 @@ private object Keys {
     val arrivalAnimation = booleanPreferencesKey("arrival_animation")
     val arrivalSound = booleanPreferencesKey("arrival_sound")
     val vibrate = booleanPreferencesKey("vibrate")
+    /** 2 = the white Apple-style look; older installs switch to it once. */
+    val uiVersion = androidx.datastore.preferences.core.intPreferencesKey("ui_version")
 }
 
 /** Reads an enum by name, falling back to [default] for unknown or missing values (e.g. after a downgrade). */
@@ -60,7 +62,7 @@ class SettingsStore(private val context: Context) {
     private fun decode(p: Preferences): AppSettings =
         AppSettings(
             onboarded = p[Keys.onboarded] ?: d.onboarded,
-            theme = enumOr(p[Keys.theme], d.theme),
+            theme = if ((p[Keys.uiVersion] ?: 0) < 2) ThemeMode.LIGHT else enumOr(p[Keys.theme], d.theme),
             phoneName = p[Keys.phoneName] ?: DeviceInfo.defaultName(context),
             demoPc = p[Keys.demoPc] ?: d.demoPc,
             stayConnected = p[Keys.stayConnected] ?: d.stayConnected,
@@ -89,6 +91,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.arrivalAnimation] = s.arrivalAnimation
             p[Keys.arrivalSound] = s.arrivalSound
             p[Keys.vibrate] = s.vibrate
+            p[Keys.uiVersion] = 2
         }
     }
 

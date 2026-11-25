@@ -296,8 +296,21 @@ object Receiver {
         }
         if (o.files.isEmpty()) {
             val t = o.texts.last()
-            _arrivals.tryEmit(Arrived(if (o.texts.size == 1) "Note" else "${o.texts.size} notes", ItemKind.TEXT, t.length.toLong(), o.texts.size, o.pcName, "Copied to clipboard", null, t, false))
-            if (!foreground) Notifications.postArrived(app, "Text from ${o.pcName} copied", t.take(80))
+            val link = o.texts.size == 1 && Regex("^https?://\\S+$", RegexOption.IGNORE_CASE).matches(t.trim())
+            _arrivals.tryEmit(Arrived(if (link) "Link" else if (o.texts.size == 1) "Note" else "${o.texts.size} notes", ItemKind.TEXT, t.length.toLong(), o.texts.size, o.pcName, "Copied to clipboard", null, t, false))
+            if (link) {
+                // Open it now if PinchDrop is on screen (Android blocks this from the background);
+                // otherwise one tap on the notification opens it.
+                if (foreground) {
+                    runCatching {
+                        app.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(t.trim())).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                } else {
+                    Notifications.postLink(app, o.pcName, t.trim())
+                }
+            } else if (!foreground) {
+                Notifications.postArrived(app, "Text from ${o.pcName} copied", t.take(80))
+            }
         }
     }
 

@@ -117,12 +117,30 @@ object Notifications {
 
     fun cancelOffer(context: Context) = NotificationManagerCompat.from(context).cancel(ID_OFFER)
 
+    /** A link arrived while PinchDrop wasn't on screen: one tap opens it. */
+    fun postLink(context: Context, pcName: String, url: String) {
+        val open = PendingIntent.getActivity(
+            context, url.hashCode(), Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        post(context, nextArrivedId++, NotificationCompat.Builder(context, CH_ARRIVED)
+            .setSmallIcon(R.drawable.ic_stat_pinchdrop)
+            .setContentTitle("Link from $pcName — tap to open")
+            .setContentText(url)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build())
+    }
+
     /** The PC is holding something for this phone: tap to open the Catch screen. */
     fun postHold(context: Context, pcName: String, label: String, files: Long, bytes: Long, secs: Int) {
         post(context, ID_HOLD, NotificationCompat.Builder(context, CH_INCOMING)
             .setSmallIcon(R.drawable.ic_stat_pinchdrop)
             .setContentTitle("“$label” is in the air")
-            .setContentText("$pcName is holding $files file${if (files == 1L) "" else "s"} · ${com.pinchdrop.companion.data.formatBytes(bytes)}. Catch it within $secs s.")
+            .setContentText(
+                if (files == 0L) "$pcName is holding a link or note. Catch it within $secs s."
+                else "$pcName is holding $files file${if (files == 1L) "" else "s"} · ${com.pinchdrop.companion.data.formatBytes(bytes)}. Catch it within $secs s.",
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
