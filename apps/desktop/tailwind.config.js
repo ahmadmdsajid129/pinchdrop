@@ -23,7 +23,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'Segoe UI', 'sans-serif'],
-        display: ['Poppins', 'Segoe UI', 'sans-serif'],
+        display: ['Inter', 'Segoe UI', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
       },
     },

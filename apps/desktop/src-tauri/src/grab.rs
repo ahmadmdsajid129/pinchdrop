@@ -105,10 +105,6 @@ fn label_for(paths: &[String]) -> String {
 }
 
 impl Grab {
-    pub fn hotkey_pressed(&self, app: &AppHandle) {
-        let _ = self.session_start(app);
-    }
-
     // ------------------------------------------------------------ camera session (click / hotkey)
 
     pub fn session_view(&self) -> SessionView {
@@ -469,33 +465,24 @@ pub fn set_overlay_visible(app: &AppHandle, visible: bool) {
     }
 }
 
-/// Watches Ctrl+Shift+Space while camera mode is "hotkey" (registered only then, so it isn't taken from other apps).
+/// Ctrl+Shift+Space opens / closes the Island from anywhere (Settings → Pill & Island → Shortcut).
+/// Registered only while that setting is on, so the keys stay free for other apps otherwise.
 pub fn spawn_hotkey_thread(app: AppHandle) {
     #[cfg(windows)]
     std::thread::Builder::new()
         .name("pinchdrop-hotkey".into())
         .spawn(move || {
-            use windows::Win32::UI::Input::KeyboardAndMouse::{
-                RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_SPACE,
-            };
-            use windows::Win32::UI::WindowsAndMessaging::{
-                PeekMessageW, MSG, PM_REMOVE, WM_HOTKEY,
-            };
+            use windows::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_SPACE};
+            use windows::Win32::UI::WindowsAndMessaging::{PeekMessageW, MSG, PM_REMOVE, WM_HOTKEY};
             const ID: i32 = 0x5044; // "PD"
             let mut registered = false;
             loop {
                 let s = crate::current_settings(&app);
-                let want = s.gestures.enabled && s.gestures.camera_mode == "hotkey";
+                let want = s.pill.shortcut && s.pill.visible;
                 // SAFETY: hotkey registered and messages read on this same thread.
                 unsafe {
                     if want && !registered {
-                        registered = RegisterHotKey(
-                            None,
-                            ID,
-                            MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT,
-                            VK_SPACE.0 as u32,
-                        )
-                        .is_ok();
+                        registered = RegisterHotKey(None, ID, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_SPACE.0 as u32).is_ok();
                     } else if !want && registered {
                         let _ = UnregisterHotKey(None, ID);
                         registered = false;
@@ -503,10 +490,7 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
                     let mut msg = MSG::default();
                     while PeekMessageW(&mut msg, None, WM_HOTKEY, WM_HOTKEY, PM_REMOVE).as_bool() {
                         if msg.message == WM_HOTKEY && msg.wParam.0 as i32 == ID {
-                            if let Some(g) = app.try_state::<Grab>() {
-                                g.hotkey_pressed(&app);
-                                let _ = app.emit_to("pill", "island-open", ());
-                            }
+                            let _ = app.emit_to("pill", "island-toggle", ());
                         }
                     }
                 }

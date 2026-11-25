@@ -162,8 +162,11 @@ export function Pill() {
   const expand = useCallback(() => {
     setExpanded(true);
     if (settings?.gestures.sounds) sound.open();
-    startCamera();
-  }, [settings?.gestures.sounds, startCamera]);
+    // "auto": camera starts with the Island. "button": the Island shows Start gestures instead.
+    if (settings?.gestures.islandCamera !== 'button') startCamera();
+  }, [settings?.gestures.sounds, settings?.gestures.islandCamera, startCamera]);
+  const expandedRef = useRef(false);
+  expandedRef.current = expanded;
 
   // ---- design preview only (plain browser, showcase.html drives these); inert inside the app
   useEffect(() => {
@@ -192,9 +195,11 @@ export function Pill() {
         if (!h) setExpanded(false);
       }),
       onEvent<null>('island-open', () => {
-        // Opened by Rust (hotkey / hold): the session, if any, was started there.
+        // Opened by Rust for a hold: just show it.
         setExpanded(true);
       }),
+      // Ctrl+Shift+Space from anywhere: open (camera per setting) or close the Island.
+      onEvent<null>('island-toggle', () => (expandedRef.current ? collapseRef.current() : expandRef.current())),
       onEvent<SessionView>('gesture-session', (v) => {
         setSession(v);
         // 30 s with nothing happening: camera off and back to the pill.
@@ -205,6 +210,10 @@ export function Pill() {
     void api.gestureSessionState().then((v) => v && setSession(v));
     return () => offs.forEach((p) => void p.then((u) => u()));
   }, [showError]);
+  const expandRef = useRef(expand);
+  expandRef.current = expand;
+  const collapseRef = useRef(collapse);
+  collapseRef.current = collapse;
 
   // ---- auto-close after N seconds when the pointer isn't on the Island
   useEffect(() => {
@@ -337,7 +346,7 @@ export function Pill() {
   const morph = reduced ? { duration: 0.12, ease: 'easeOut' as const } : { type: 'spring' as const, stiffness: 520, damping: 42, mass: 0.9 };
   const fade = reduced ? { duration: 0.08 } : { duration: 0.18, ease: [0.2, 0, 0, 1] as const };
   const collapsed = !expanded;
-  const borderClass = hold ? 'border-primary/70' : collapsed && phone.state === 'none' ? 'border-dashed border-muted/60' : 'border-line';
+  const ringClass = hold ? 'ring-primary/70' : collapsed && phone.state === 'none' ? 'ring-white/25' : 'ring-white/[0.09]';
   // Content sits on the anchored edge and stays put while the shell grows/shrinks around it.
   // (Flex alignment, not a CSS translate: the fade/scale animation owns `transform`.)
   const contentPos = `${anchorV === 'bottom' ? 'bottom-0' : 'top-0'} inset-x-0 flex ${justify}`;
@@ -345,9 +354,9 @@ export function Pill() {
   return (
     <div className={`flex ${justify} ${align} w-screen h-screen`} style={{ padding: PAD }}>
       <motion.div
-        className={`relative overflow-hidden bg-bg/[0.97] border ${borderClass} shadow-[0_4px_12px_rgba(0,0,0,0.5)] ring-1 ring-inset ring-white/[0.04]`}
+        className={`relative overflow-hidden bg-black ring-1 ring-inset ${ringClass}`}
         initial={false}
-        animate={shell ? { width: shell.w + 2, height: shell.h + 2, borderRadius: collapsed ? (shell.h + 2) / 2 : 26 } : undefined}
+        animate={shell ? { width: shell.w, height: shell.h, borderRadius: collapsed ? shell.h / 2 : 30 } : undefined}
         transition={sizedOnce.current ? morph : { duration: 0 }}
         onAnimationComplete={onMorphDone}
         style={{ transformOrigin: origin, willChange: 'width, height' }}
@@ -510,23 +519,23 @@ function Island({
     <section
       aria-label="PinchDrop Island"
       style={{ width: ISLAND_W }}
-      className="p-4 flex flex-col gap-3 text-text"
+      className="p-5 flex flex-col gap-4 text-text"
     >
       {/* header row doubles as a drag handle */}
       <div className="flex items-center gap-3" onPointerDown={onDragStart} onPointerMove={onDragMove}>
-        <div className={`w-11 h-11 rounded-2xl bg-surface2 flex items-center justify-center ${connected ? 'text-accent' : 'text-muted'}`}>
+        <div className={`w-12 h-12 rounded-[16px] bg-white/[0.08] flex items-center justify-center ${connected ? 'text-accent' : 'text-muted'}`}>
           <Smartphone size={22} aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
           {phone.state === 'none' ? (
             <>
-              <div className="font-display font-semibold text-[16px]">No phone paired yet</div>
+              <div className="font-display font-semibold text-[18px]">No phone paired yet</div>
               <div className="text-[12px] text-muted">Pair your Android phone to send to it</div>
             </>
           ) : (
             <>
               <div className="flex items-center gap-2">
-                <span className="font-display font-semibold text-[16px] truncate">{phone.name}</span>
+                <span className="font-display font-semibold text-[18px] truncate">{phone.name}</span>
                 {phone.isDemo && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-warn/20 text-warn">DEMO</span>
                 )}
@@ -539,16 +548,16 @@ function Island({
         </div>
         {connected && phone.battery != null && (
           <div className="text-right">
-            <div className={`text-[16px] font-bold ${phone.battery < 20 && !phone.charging ? 'text-warn' : 'text-success'}`}>{phone.battery}%</div>
+            <div className={`text-[20px] font-semibold tabular-nums ${phone.battery < 20 && !phone.charging ? 'text-warn' : 'text-success'}`}>{phone.battery}%</div>
             <div className="text-[11px] text-muted">{phone.charging ? 'Charging' : 'Battery'}</div>
           </div>
         )}
       </div>
 
       {connected && phone.battery != null && (
-        <div className="h-1.5 rounded-full bg-surface2 overflow-hidden" role="progressbar" aria-label="Phone battery" aria-valuenow={phone.battery} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-1 rounded-full bg-white/10 overflow-hidden" role="progressbar" aria-label="Phone battery" aria-valuenow={phone.battery} aria-valuemin={0} aria-valuemax={100}>
           <div
-            className={`h-1.5 w-full origin-left transition-transform duration-500 ease-out ${phone.battery < 20 && !phone.charging ? 'bg-warn' : 'bg-success'}`}
+            className={`h-1 w-full origin-left transition-transform duration-500 ease-out ${phone.battery < 20 && !phone.charging ? 'bg-warn' : 'bg-success'}`}
             style={{ transform: `scaleX(${phone.battery / 100})` }}
           />
         </div>
@@ -561,7 +570,7 @@ function Island({
           <button
             type="button"
             onClick={() => void api.openMain('pair')}
-            className="flex-1 h-9 rounded-xl bg-primary text-white text-[13px] font-semibold hover:brightness-110"
+            className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold hover:brightness-110 transition active:scale-[0.97]"
           >
             Pair a phone
           </button>
@@ -569,7 +578,7 @@ function Island({
           <button
             type="button"
             onClick={() => void api.openMain('send')}
-            className="flex-1 h-9 rounded-xl bg-primary text-white text-[13px] font-semibold hover:brightness-110 inline-flex items-center justify-center gap-1.5"
+            className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold hover:brightness-110 inline-flex items-center justify-center gap-1.5 transition active:scale-[0.97]"
           >
             <Upload size={15} aria-hidden="true" /> Send files…
           </button>
@@ -578,8 +587,8 @@ function Island({
           type="button"
           aria-pressed={gesturesOn}
           onClick={() => void update({ gestures: { enabled: !gesturesOn } })}
-          className={`flex-1 h-9 rounded-xl border text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 ${
-            gesturesOn ? 'border-line bg-surface text-text' : 'border-line bg-surface text-muted'
+          className={`flex-1 h-10 rounded-full text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 bg-white/[0.08] hover:bg-white/[0.12] transition active:scale-[0.97] ${
+            gesturesOn ? 'text-text' : 'text-muted'
           }`}
         >
           <Hand size={15} aria-hidden="true" /> Gestures: {gesturesOn ? 'On' : 'Paused'}
@@ -589,7 +598,7 @@ function Island({
           aria-label="Open PinchDrop"
           title="Open PinchDrop"
           onClick={() => void api.openMain('home')}
-          className="w-9 h-9 rounded-xl border border-line bg-surface text-soft inline-flex items-center justify-center hover:text-text"
+          className="w-10 h-10 rounded-full bg-white/[0.08] text-soft inline-flex items-center justify-center hover:text-text hover:bg-white/[0.12] transition active:scale-[0.95]"
         >
           <LayoutGrid size={16} aria-hidden="true" />
         </button>
@@ -598,7 +607,7 @@ function Island({
           aria-label="Collapse"
           title="Collapse"
           onClick={onCollapse}
-          className="w-9 h-9 rounded-xl border border-line bg-surface text-soft inline-flex items-center justify-center hover:text-text"
+          className="w-10 h-10 rounded-full bg-white/[0.08] text-soft inline-flex items-center justify-center hover:text-text hover:bg-white/[0.12] transition active:scale-[0.95]"
         >
           <ChevronUp size={16} aria-hidden="true" />
         </button>

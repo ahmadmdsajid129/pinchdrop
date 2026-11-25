@@ -1,11 +1,52 @@
-import { Clock, Hand, Smartphone, Upload } from 'lucide-react';
+import { CheckCircle2, Clock, File, Folder, Hand, Link2, PauseCircle, Smartphone, Upload, XCircle } from 'lucide-react';
+import { formatBytes, useTransfers } from '../../shared/api';
+import type { TransferView } from '../../shared/types';
 import { useApp } from '../context';
 import { Battery } from '../../shared/Battery';
-import { Button, Card, PageTitle, PhaseBadge, Toggle } from '../ui';
+import { Button, Card, PageTitle, Toggle } from '../ui';
 import { pickFiles, pickFolder } from '../pickers';
+
+const ACTIVE = new Set<TransferView['state']>(['offered', 'sending', 'paused']);
+
+function ago(secs: number) {
+  const d = Math.max(0, Math.floor(Date.now() / 1000) - secs);
+  if (d < 60) return 'just now';
+  if (d < 3600) return `${Math.floor(d / 60)} min ago`;
+  if (d < 86400) return `${Math.floor(d / 3600)} h ago`;
+  return new Date(secs * 1000).toLocaleDateString();
+}
+
+/** One line in Recent: what, where to, and how it went. */
+function RecentRow({ t }: { t: TransferView }) {
+  const icon =
+    t.state === 'done' ? <CheckCircle2 size={18} className="text-success" aria-hidden="true" />
+    : t.state === 'paused' ? <PauseCircle size={18} className="text-warn" aria-hidden="true" />
+    : ACTIVE.has(t.state) ? <Clock size={18} className="text-accent" aria-hidden="true" />
+    : <XCircle size={18} className="text-danger" aria-hidden="true" />;
+  const kind = t.fileCount > 1 ? <Folder size={18} className="text-muted" aria-hidden="true" />
+    : t.fileCount === 1 ? <File size={18} className="text-muted" aria-hidden="true" />
+    : <Link2 size={18} className="text-muted" aria-hidden="true" />;
+  const pct = t.totalBytes > 0 ? Math.floor((t.bytesDone / t.totalBytes) * 100) : 0;
+  const detail = [
+    t.fileCount ? `${t.fileCount} file${t.fileCount === 1 ? '' : 's'} · ${formatBytes(t.totalBytes)}` : `${t.textCount} note${t.textCount === 1 ? '' : 's'}`,
+    t.state === 'sending' ? `${pct}%` : t.state === 'done' ? `to ${t.deviceName}` : t.state,
+  ].join(' · ');
+  return (
+    <li className="flex items-center gap-3 py-2.5 border-b border-line/70 last:border-0">
+      {kind}
+      <div className="flex-1 min-w-0">
+        <div className="text-[14px] font-semibold truncate">{t.label}</div>
+        <div className="text-[12px] text-muted truncate">{detail}</div>
+      </div>
+      <span className="text-[12px] text-muted shrink-0">{ago(t.finishedAt ?? t.createdAt)}</span>
+      {icon}
+    </li>
+  );
+}
 
 export function Home() {
   const { phone, go, settings, update, addPaths } = useApp();
+  const recent = useTransfers().slice(0, 4);
   const connected = phone.state === 'connected';
   const target = connected ? phone.name : 'your phone';
 
@@ -103,9 +144,8 @@ export function Home() {
             <Toggle label="Air gestures" checked={settings.gestures.enabled} onChange={(v) => void update({ gestures: { enabled: v } })} />
           </div>
           <p className="m-0 text-[13px] text-muted leading-relaxed">
-            Select a file in File Explorer → pinch in front of your webcam → open your hand over your phone.
+            Click the pill (or press Ctrl + Shift + Space) → select a file or folder → pinch in front of your webcam → open your hand over your phone.
           </p>
-          <div><PhaseBadge phase={5} /></div>
         </Card>
 
         <Card className="flex-[999_1_420px] min-w-0 p-5 flex flex-col gap-2">
@@ -113,9 +153,15 @@ export function Home() {
             <span className="font-semibold">Recent</span>
             <button type="button" className="text-[13px] font-semibold text-accent hover:underline" onClick={() => go('transfers')}>See all</button>
           </div>
-          <div className="flex items-center gap-3 text-[14px] text-muted py-6 justify-center">
-            <Clock size={18} aria-hidden="true" /> Nothing sent yet. Your sends will show up here.
-          </div>
+          {recent.length === 0 ? (
+            <div className="flex items-center gap-3 text-[14px] text-muted py-6 justify-center">
+              <Clock size={18} aria-hidden="true" /> Nothing sent yet. Your sends will show up here.
+            </div>
+          ) : (
+            <ul className="m-0 p-0 list-none">
+              {recent.map((t) => <RecentRow key={t.id} t={t} />)}
+            </ul>
+          )}
         </Card>
       </div>
     </>

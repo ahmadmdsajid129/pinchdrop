@@ -23,7 +23,7 @@ export function SendingIsland({ t, width, reduced }: { t: TransferView; width: n
   else line = `${t.filesDone} of ${t.fileCount} files · ${formatBytes(t.bytesDone)} of ${formatBytes(t.totalBytes)}`;
 
   return (
-    <section aria-label={`Sending ${t.label}`} style={{ width }} className="p-4 flex flex-col gap-3 text-text">
+    <section aria-label={`Sending ${t.label}`} style={{ width }} className="p-5 flex flex-col gap-4 text-text">
       <div className="flex items-center gap-3">
         <motion.div
           className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
@@ -56,7 +56,7 @@ export function SendingIsland({ t, width, reduced }: { t: TransferView; width: n
         {!done && !failed && <div className="text-[18px] font-bold tabular-nums">{pct}%</div>}
       </div>
       {!failed && (
-        <div className="h-1.5 rounded-full bg-surface2 overflow-hidden" role="progressbar" aria-label={`${t.label} progress`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-1 rounded-full bg-white/10 overflow-hidden" role="progressbar" aria-label={`${t.label} progress`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
           <div
             className={`h-full w-full origin-left transition-transform duration-300 ease-out ${done ? 'bg-success' : paused ? 'bg-warn' : 'bg-gradient-to-r from-primary to-accent'}`}
             style={{ transform: `scaleX(${frac})` }}
@@ -68,7 +68,7 @@ export function SendingIsland({ t, width, reduced }: { t: TransferView; width: n
           <button
             type="button"
             onClick={() => void api.cancelTransfer(t.id)}
-            className="h-7 px-3 rounded-lg border border-line bg-surface text-[12px] font-semibold text-soft hover:text-text transition-colors"
+            className="h-8 px-4 rounded-full bg-white/[0.08] hover:bg-white/[0.12] text-[12px] font-semibold text-soft hover:text-text transition-colors"
           >
             Cancel
           </button>

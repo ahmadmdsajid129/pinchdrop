@@ -10,13 +10,17 @@ export interface PillSettings {
   size: 's' | 'm' | 'l';
   islandAutoCloseSecs: number;
   hideInFullscreen: boolean;
+  /** Ctrl+Shift+Space opens / closes the Island. */
+  shortcut: boolean;
 }
 
 export interface GestureSettings {
   enabled: boolean;
   cameraId: string | null;
-  /** on_click: camera only after clicking the pill, off after 30 s idle (default). */
-  cameraMode: 'on_click' | 'hotkey' | 'on_select';
+  /** on_click: camera only after clicking the pill / the shortcut, off after 30 s idle (default). */
+  cameraMode: 'on_click' | 'on_select';
+  /** When the Island opens: start the camera right away, or wait for Start gestures. */
+  islandCamera: 'auto' | 'button';
   sensitivity: number;
   catchSecs: number;
   showHandRing: boolean;
@@ -34,6 +38,7 @@ export interface Settings {
   onboarded: boolean;
   keepRunningOnClose: boolean;
   theme: 'dark' | 'light' | 'system';
+  uiVersion: number;
   motion: 'system' | 'full' | 'reduced';
   pill: PillSettings;
   gestures: GestureSettings;
@@ -150,7 +155,8 @@ export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartia
 export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   keepRunningOnClose: true,
-  theme: 'dark',
+  theme: 'light',
+  uiVersion: 2,
   motion: 'system',
   pill: {
     visible: true,
@@ -162,11 +168,13 @@ export const DEFAULT_SETTINGS: Settings = {
     size: 'm',
     islandAutoCloseSecs: 4,
     hideInFullscreen: true,
+    shortcut: true,
   },
   gestures: {
     enabled: true,
     cameraId: null,
     cameraMode: 'on_click',
+    islandCamera: 'auto',
     sensitivity: 55,
     catchSecs: 30,
     showHandRing: true,

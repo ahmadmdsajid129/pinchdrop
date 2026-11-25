@@ -22,6 +22,8 @@ pub struct PillSettings {
     pub size: String,                // "s" | "m" | "l"
     pub island_auto_close_secs: u32, // 0 = never
     pub hide_in_fullscreen: bool,
+    /// Ctrl+Shift+Space opens / closes the Island from anywhere.
+    pub shortcut: bool,
 }
 
 impl Default for PillSettings {
@@ -36,6 +38,7 @@ impl Default for PillSettings {
             size: "m".into(),
             island_auto_close_secs: 4,
             hide_in_fullscreen: true,
+            shortcut: true,
         }
     }
 }
@@ -45,11 +48,13 @@ impl Default for PillSettings {
 pub struct GestureSettings {
     pub enabled: bool,
     pub camera_id: Option<String>,
-    pub camera_mode: String, // "on_click" (default) | "hotkey" | "on_select"
+    pub camera_mode: String, // "on_click" (default: pill click / shortcut) | "on_select"
     pub sensitivity: u8,     // 0..=100
     pub catch_secs: u32,
     pub show_hand_ring: bool,
     pub sounds: bool,
+    /// When the Island opens: "auto" starts the camera right away, "button" waits for Start gestures.
+    pub island_camera: String,
 }
 
 impl Default for GestureSettings {
@@ -62,6 +67,7 @@ impl Default for GestureSettings {
             catch_secs: 30,
             show_hand_ring: true,
             sounds: true,
+            island_camera: "auto".into(),
         }
     }
 }
@@ -128,6 +134,10 @@ pub struct Settings {
     pub onboarded: bool,
     pub keep_running_on_close: bool,
     pub theme: String,  // "dark" | "light" | "system"
+    /// Bumped when a new default look ships; v2 = the white Apple-style palette.
+    /// Missing in older files → 0 (not the struct default), so the one-time switch runs.
+    #[serde(default)]
+    pub ui_version: u32,
     pub motion: String, // "system" | "full" | "reduced"
     pub pill: PillSettings,
     pub gestures: GestureSettings,
@@ -145,7 +155,8 @@ impl Default for Settings {
         Self {
             onboarded: false,
             keep_running_on_close: true,
-            theme: "dark".into(),
+            theme: "light".into(),
+            ui_version: 2,
             motion: "system".into(),
             pill: PillSettings::default(),
             gestures: GestureSettings::default(),
@@ -164,10 +175,21 @@ pub fn settings_path(config_dir: &Path) -> PathBuf {
 
 /// Loads settings; a missing or unreadable file yields defaults.
 pub fn load(path: &Path) -> Settings {
-    fs::read_to_string(path)
+    let mut s: Settings = fs::read_to_string(path)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    migrate(&mut s);
+    s
+}
+
+/// One-time look updates for existing installs.
+fn migrate(s: &mut Settings) {
+    if s.ui_version < 2 {
+        // v2: the fresh white palette replaces the old navy dark default.
+        s.theme = "light".into();
+        s.ui_version = 2;
+    }
 }
 
 /// Writes atomically (temp file + rename) so a crash never leaves half a file.
@@ -203,6 +225,20 @@ pub fn apply_patch(current: &Settings, patch: &Value) -> Result<Settings, String
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn old_files_switch_to_the_light_look_once() {
+        let mut old: Settings = serde_json::from_str(r#"{"theme":"dark","onboarded":true}"#).unwrap();
+        assert_eq!(old.ui_version, 0);
+        migrate(&mut old);
+        assert_eq!(old.theme, "light");
+        assert!(old.onboarded);
+        // Choosing dark again afterwards sticks.
+        let mut later = old.clone();
+        later.theme = "dark".into();
+        migrate(&mut later);
+        assert_eq!(later.theme, "dark");
+    }
+
     use super::*;
     use serde_json::json;
 

@@ -3,9 +3,8 @@ import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from
 import { File, Folder, Hand } from 'lucide-react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
-  GESTURE_CONFIG,
   GrabMachine,
-  LandmarkSmoother,
+  OneEuroFilter,
   calculatePinchRatio,
   cameraToScreen,
   extendedFingers,
@@ -105,7 +104,9 @@ export function Overlay() {
   const H = typeof window !== 'undefined' ? window.innerHeight : 1080;
   const rawX = useMotionValue(W / 2);
   const rawY = useMotionValue(H / 2);
-  const springCfg = { stiffness: 900, damping: 55, mass: 0.35 };
+  // Near-instant spring: it only fills the gaps between camera frames (30-60 fps) on 60-144 Hz screens.
+  // All real smoothing happens once, in the pointer filter below — no double smoothing, no trailing card.
+  const springCfg = { stiffness: 2600, damping: 90, mass: 0.25 };
   const hx = useSpring(rawX, springCfg);
   const hy = useSpring(rawY, springCfg);
   const ringX = useTransform(hx, (v) => v - 22);
@@ -124,8 +125,8 @@ export function Overlay() {
   };
   const [card, setCard] = useState<Card | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
+  // Camera problems are reported to the Island (gesture_error); kept here only to stop retries.
+  const [, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRef = useRef<Card | null>(null);
   cardRef.current = card;
@@ -167,8 +168,16 @@ export function Overlay() {
     let stopped = false;
     let stream: MediaStream | null = null;
     let raf = 0;
+    let cancelFrame = () => cancelAnimationFrame(raf);
     const machine = new GrabMachine(grabConfigFor(arm.sensitivity));
-    const smoother = new LandmarkSmoother(GESTURE_CONFIG.ONE_EURO);
+    // Pointer filter: steady when the hand is still, almost no lag when it moves fast (high beta).
+    // Gesture classification uses the raw landmarks — its thresholds, dwell and hysteresis are the stabiliser.
+    const POINTER = { minCutoff: 1.6, beta: 0.06, dCutoff: 1.0 };
+    let fx = new OneEuroFilter(POINTER);
+    let fy = new OneEuroFilter(POINTER);
+    let prev: { x: number; y: number; t: number } | null = null;
+    /** Lead the pointer by ~1 camera frame to cancel capture + inference delay. */
+    const LEAD_S = 0.035;
     let lastVideoTime = -1;
     let busy = false;
 
@@ -179,6 +188,7 @@ export function Overlay() {
     const activity = () => void invoke('gesture_activity').catch(() => undefined);
     let lastActivity = 0;
     let farSince = 0;
+    let hintShown = false;
     let frameErrors = 0;
 
     async function onGrab() {
@@ -228,9 +238,10 @@ export function Overlay() {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             deviceId: arm?.cameraId ? { exact: arm.cameraId } : undefined,
+            // Smaller frames → faster inference; hands are big enough at 640×360.
             width: { ideal: 640 },
-            height: { ideal: 480 },
-            frameRate: { ideal: 30 },
+            height: { ideal: 360 },
+            frameRate: { ideal: 60, min: 24 },
           },
           audio: false,
         });
@@ -261,9 +272,18 @@ export function Overlay() {
         return;
       }
 
+      // Run exactly once per new camera frame (no polling jitter). Falls back to rAF where unsupported.
+      type VFC = HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number; cancelVideoFrameCallback?: (h: number) => void };
+      const v = video as VFC;
+      const schedule = () => {
+        if (stopped) return;
+        if (v.requestVideoFrameCallback) raf = v.requestVideoFrameCallback(loop);
+        else raf = requestAnimationFrame(loop);
+      };
+      cancelFrame = () => (v.cancelVideoFrameCallback ? v.cancelVideoFrameCallback(raf) : cancelAnimationFrame(raf));
       const loop = () => {
         if (stopped) return;
-        raf = requestAnimationFrame(loop);
+        schedule();
         if (video.readyState < 2 || video.currentTime === lastVideoTime) return;
         lastVideoTime = video.currentTime;
         const now = performance.now();
@@ -278,16 +298,29 @@ export function Overlay() {
         }
         const raw = res.landmarks?.[0];
         if (!raw || raw.length < 21) {
-          smoother.reset();
+          fx = new OneEuroFilter(POINTER);
+          fy = new OneEuroFilter(POINTER);
+          prev = null;
           setHandIfChanged(null);
-          setHint((h) => (h === null ? h : null));
           const ev = machine.step(now, null);
           if (ev?.type === 'cancel') onCancel();
           return;
         }
-        const lm = smoother.smooth(raw, now);
+        const lm = raw;
         const mid = { x: (lm[4].x + lm[8].x) / 2, y: (lm[4].y + lm[8].y) / 2 };
-        const p = cameraToScreen(mid.x, mid.y);
+        const target = cameraToScreen(mid.x, mid.y);
+        const sx = fx.filter(target.x, now);
+        const sy = fy.filter(target.y, now);
+        // Velocity-based lead so the card sits under the fingers, not behind them.
+        let px = sx;
+        let py = sy;
+        if (prev && now > prev.t) {
+          const dt = (now - prev.t) / 1000;
+          px = Math.min(1, Math.max(0, sx + ((sx - prev.x) / dt) * LEAD_S));
+          py = Math.min(1, Math.max(0, sy + ((sy - prev.y) / dt) * LEAD_S));
+        }
+        prev = { x: sx, y: sy, t: now };
+        const p = { x: px, y: py };
         if (busy) return;
         const ev = machine.step(now, {
           x: p.x,
@@ -300,10 +333,12 @@ export function Overlay() {
         // Only gentle hints; ignored gestures never do anything.
         if (machine.ignored === 'far') {
           if (!farSince) farSince = now;
-          if (now - farSince > 1200) setHint((h) => h ?? 'Move your hand a little closer to the camera');
+          if (now - farSince > 1200 && !hintShown) {
+            hintShown = true;
+            flash('Move your hand a little closer to the camera');
+          }
         } else {
           farSince = 0;
-          setHint((h) => (h === null ? h : null));
         }
         const tracked = machine.ignored !== 'far' && machine.ignored !== 'unsure';
         if (tracked) {
@@ -325,13 +360,13 @@ export function Overlay() {
         else if (ev?.type === 'release') void onRelease();
         else if (ev?.type === 'cancel') onCancel();
       };
-      raf = requestAnimationFrame(loop);
+      schedule();
     }
 
     void start();
     return () => {
       stopped = true;
-      cancelAnimationFrame(raf);
+      cancelFrame();
       stream?.getTracks().forEach((t) => t.stop());
       if (videoRef.current) videoRef.current.srcObject = null;
       setHand(null);
@@ -345,12 +380,6 @@ export function Overlay() {
       {/* Never shown: the camera feeds MediaPipe directly. */}
       <video ref={videoRef} className="hidden" muted playsInline />
 
-      {armed && (
-        <div className="absolute right-4 bottom-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0B1020]/85 text-[12px] text-[#E8ECFF] border border-white/10">
-          <span className={`w-2 h-2 rounded-full ${cameraError ? 'bg-[#FBBF24]' : 'bg-[#34D399]'}`} />
-          {cameraError ?? hint ?? (arm?.label ? `Camera on · pinch to grab “${arm.label}”` : 'Camera on · select something, then pinch')}
-        </div>
-      )}
 
       {armed && hand && arm?.showRing && (
         <motion.div

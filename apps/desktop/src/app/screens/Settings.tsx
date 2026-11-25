@@ -106,6 +106,9 @@ export function SettingsScreen() {
           <Select label="Island auto-close" value={p.islandAutoCloseSecs} onChange={(v) => void update({ pill: { islandAutoCloseSecs: v } })}
             options={[{ value: 4, label: '4 seconds' }, { value: 8, label: '8 seconds' }, { value: 0, label: 'Never' }]} />
         </Row>
+        <Row title="Keyboard shortcut" description="Ctrl + Shift + Space opens and closes the Island from anywhere">
+          <Toggle label="Keyboard shortcut" checked={p.shortcut ?? true} onChange={(v) => void update({ pill: { shortcut: v } })} />
+        </Row>
         <Row title="Hide the pill in full-screen apps" description="Games, videos and slideshows" last>
           <Toggle label="Hide in full-screen apps" checked={p.hideInFullscreen} onChange={(v) => void update({ pill: { hideInFullscreen: v } })} />
         </Row>
@@ -128,11 +131,8 @@ export function SettingsScreen() {
         {preview && <div className="py-3"><CameraPreview deviceId={g.cameraId} onClose={() => setPreview(false)} /></div>}
         <fieldset className="border-0 m-0 py-3.5 border-b border-surface2 flex flex-col gap-2">
           <legend className="text-[14px] mb-2">Turn the camera on</legend>
-          <Radio name="cam" checked={g.cameraMode !== 'hotkey' && g.cameraMode !== 'on_select'} onChange={() => void update({ gestures: { cameraMode: 'on_click' } })}>
-            When I click the pill — turns off by itself after 30 seconds with nothing happening (recommended)
-          </Radio>
-          <Radio name="cam" checked={g.cameraMode === 'hotkey'} onChange={() => void update({ gestures: { cameraMode: 'hotkey' } })}>
-            When I press Ctrl + Shift + Space — same 30-second rule
+          <Radio name="cam" checked={g.cameraMode !== 'on_select'} onChange={() => void update({ gestures: { cameraMode: 'on_click' } })}>
+            When I open the Island (click the pill or press Ctrl + Shift + Space) — turns off by itself after 30 seconds with nothing happening (recommended)
           </Radio>
           <Radio name="cam" checked={g.cameraMode === 'on_select'} onChange={() => void update({ gestures: { cameraMode: 'on_select' } })}>
             Whenever a file or folder is selected in Explorer or on the Desktop
@@ -141,6 +141,10 @@ export function SettingsScreen() {
             The camera never runs on its own in the background. Only a pinch (grab) and an open hand (drop) do anything; other hand movements are ignored.
           </p>
         </fieldset>
+        <Row title="When the Island opens" description="Start watching right away, or show a Start gestures button first">
+          <Segmented label="When the Island opens" value={g.islandCamera ?? 'auto'} onChange={(v) => void update({ gestures: { islandCamera: v } })}
+            options={[{ value: 'auto', label: 'Start camera' }, { value: 'button', label: 'Show button' }]} />
+        </Row>
         <Row title={<label htmlFor="sens">Pinch sensitivity</label>}>
           <span className="text-[12px] text-muted">Relaxed</span>
           <input id="sens" type="range" min={0} max={100} value={g.sensitivity}

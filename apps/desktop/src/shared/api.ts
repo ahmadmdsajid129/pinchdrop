@@ -247,7 +247,7 @@ export function useTheme(theme: Settings['theme'] | undefined, force?: 'dark' | 
     }
     const mq = window.matchMedia('(prefers-color-scheme: light)');
     const apply = () => {
-      root.dataset.theme = theme === 'system' ? (mq.matches ? 'light' : 'dark') : theme ?? 'dark';
+      root.dataset.theme = theme === 'system' ? (mq.matches ? 'light' : 'dark') : theme ?? 'light';
     };
     apply();
     mq.addEventListener('change', apply);

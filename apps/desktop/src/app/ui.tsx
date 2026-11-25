@@ -3,7 +3,7 @@ import { useId } from 'react';
 
 export function Card({ children, className = '', as: Tag = 'section', ...rest }: { children: ReactNode; className?: string; as?: 'section' | 'div' } & Record<string, unknown>) {
   return (
-    <Tag className={`rounded-[20px] bg-surface border border-line ${className}`} {...rest}>
+    <Tag className={`rounded-[22px] bg-surface border border-line/70 shadow-[var(--shadow)] ${className}`} {...rest}>
       {children}
     </Tag>
   );
@@ -12,8 +12,8 @@ export function Card({ children, className = '', as: Tag = 'section', ...rest }:
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-white hover:brightness-110 disabled:opacity-50',
-  secondary: 'bg-surface2 text-text border border-line hover:border-primary/60 disabled:opacity-50',
+  primary: 'bg-primary text-white hover:brightness-110 shadow-[0_1px_2px_rgba(0,0,0,0.08)] disabled:opacity-50',
+  secondary: 'bg-surface2 text-text hover:bg-line/70 disabled:opacity-50',
   ghost: 'bg-transparent text-soft hover:text-text hover:bg-surface2 disabled:opacity-50',
   danger: 'bg-transparent text-danger border border-danger/40 hover:bg-danger/10 disabled:opacity-50',
 };
@@ -29,7 +29,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold select-none transition-[background-color,border-color,color,transform,filter] duration-150 ease-out active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed ${sz} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold select-none transition-[background-color,border-color,color,transform,filter] duration-150 ease-out active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed ${sz} ${VARIANTS[variant]} ${className}`}
       {...rest}
     >
       {children}

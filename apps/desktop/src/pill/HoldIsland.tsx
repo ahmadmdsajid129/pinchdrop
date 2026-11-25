@@ -39,7 +39,7 @@ export function HoldIsland({ hold, width }: { hold: HoldView; width: number }) {
     <section
       aria-label="Holding grabbed items"
       style={{ width }}
-      className="p-4 flex flex-col gap-3 text-text"
+      className="p-5 flex flex-col gap-4 text-text"
     >
       <div className="flex items-center gap-3">
         <div className="relative w-[54px] h-[54px] shrink-0" role="timer" aria-label={`${secs} seconds left to catch`}>
@@ -84,14 +84,14 @@ export function HoldIsland({ hold, width }: { hold: HoldView; width: number }) {
           type="button"
           disabled={sending}
           onClick={() => void sendNow()}
-          className="flex-1 h-9 rounded-xl bg-primary text-white text-[13px] font-semibold hover:brightness-110 disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+          className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold hover:brightness-110 disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
         >
           <Upload size={15} aria-hidden="true" /> {sending ? 'Sending…' : 'Send now'}
         </button>
         <button
           type="button"
           onClick={() => void api.holdCancel()}
-          className="flex-1 h-9 rounded-xl border border-line bg-surface text-[13px] font-semibold text-soft hover:text-text"
+          className="flex-1 h-10 rounded-full bg-white/[0.08] hover:bg-white/[0.12] text-[13px] font-semibold text-soft hover:text-text"
         >
           Drop it
         </button>
