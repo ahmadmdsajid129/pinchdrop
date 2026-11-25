@@ -10,11 +10,34 @@
 | **Source of Truth For** | Roadmap tracking (S0–S13), sprint tasks, and backlog |
 
 > [!NOTE]
-> Overall Project Progress: `▰▰▰▰▰▰▰▰▰▰ 93%` (Stages 0–12 Complete)
+> **v1 rebuild in progress — Phase P1 of 7.** The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
 
 ---
 
-## 🗺️ Canonical Roadmap (S0–S13)
+## 🚀 v1 Build Phases (P1–P7) — PC → phone
+
+Approved 2026-11-25 together with the full screen design (see [memory.md](memory.md) → Design reference). Each phase ends with something the founder can run.
+
+| Phase | Name | You test | Status |
+|---|---|---|---|
+| **P1** | **Desktop shell** — pill, Dynamic Island, main window screens, tray, start with Windows, settings | Run the `.exe` | 🟡 In progress |
+| **P2** | **Android app shell** — every phone screen, permission flow, settings | Install the APK | ⚪ Pending |
+| **P3** | **Real connection** — discovery, QR + 6-digit pairing, encrypted link, live phone name + battery | Pair your phone | ⚪ Pending |
+| **P4** | **Manual send** — files, folders, text; Gallery / Downloads saving; receive animations; history; resume | Send real files | ⚪ Pending |
+| **P5** | **Grab on PC** — Explorer/Desktop selection, webcam pinch, floating card, Island countdown | Pinch a folder | ⚪ Pending |
+| **P6** | **Catch on phone** — incoming alert, camera open-hand detection, full gesture loop | The whole thing | ⚪ Pending |
+| **P7** | **Polish & installers** — sounds, haptics, error states, Windows installer, release APK | Install fresh | ⚪ Pending |
+
+### P1 · Desktop shell
+- [x] `P1.1` Tauri 2 shell rebuilt: `main` + `pill` windows, single instance, tray menu (Open, Send, Show pill, Settings, Quit).
+- [x] `P1.2` Persistent settings (`settings.json` in the app config folder) shared live between windows.
+- [x] `P1.3` Pill: always on top, click → Island, double-click → app, drag anywhere with edge snapping + remembered position, right-click menu, sizes S/M/L, hide in full-screen apps, hide for 1 hour.
+- [x] `P1.4` Dynamic Island: phone name, battery, network, Send files, gestures on/off, open app, auto-close.
+- [x] `P1.5` Main window: first-run setup, Home (drop area + connected phone panel), Send (real file/folder picking and drag-drop with sizes), Transfers, Devices, Pair, Settings (every option), Profile.
+- [x] `P1.6` Start with Windows, light/dark theme, reduced motion, demo-phone preview.
+- [ ] `P1.7` Founder check on a real Windows desktop (multi-monitor, high-DPI).
+
+## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 
 *Estimates based on solo part-time development (15–20 hours/week):*
 

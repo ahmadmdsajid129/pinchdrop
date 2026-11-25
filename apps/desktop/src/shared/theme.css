@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Colour tokens as RGB triplets so Tailwind can add opacity (bg-primary/20). */
+:root,
+[data-theme='dark'] {
+  --bg: 11 16 32;
+  --bg2: 14 20 40;
+  --surface: 20 27 52;
+  --surface2: 28 37 71;
+  --line: 42 53 102;
+  --primary: 124 92 255;
+  --primary-ink: 165 148 255;
+  --accent: 34 211 238;
+  --success: 52 211 153;
+  --warn: 251 191 36;
+  --danger: 251 113 133;
+  --text: 232 236 255;
+  --soft: 199 206 234;
+  --muted: 139 148 184;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: 248 250 252;
+  --bg2: 241 245 249;
+  --surface: 255 255 255;
+  --surface2: 238 242 247;
+  --line: 203 213 225;
+  --primary: 99 102 241;
+  --primary-ink: 79 70 229;
+  --accent: 14 116 144;
+  --success: 4 120 87;
+  --warn: 161 98 7;
+  --danger: 190 18 60;
+  --text: 15 23 42;
+  --soft: 51 65 85;
+  --muted: 71 85 105;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
+  font-family: Inter, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+/* The pill window is see-through around the pill itself. */
+.pill-page,
+.pill-page body,
+.pill-page #root {
+  background: transparent;
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--line));
+  border-radius: 5px;
+  border: 2px solid rgb(var(--bg));
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -115,7 +115,11 @@ PinchDrop is styled in a futuristic, calm, dark-first **aurora glass** theme:
 
 ---
 
-## 🚀 Development Roadmap (S0–S13)
+## 🚀 Development Roadmap
+
+> **v1 is being rebuilt in 7 phases (P1–P7), PC → phone first.** See [task.md](task.md) for the live phase table. The stage table below is the earlier prototype history.
+
+### Prototype stages (S0–S13)
 
 | Stage | Focus Area | Status | Progress |
 |---|---|---|---|

@@ -1,0 +1,415 @@
+//! PinchDrop for Windows — Phase 1 shell.
+//! Two windows: `pill` (always-on-top pill / Dynamic Island) and `main`
+//! (the full app). A tray icon, start-with-Windows, single instance and
+//! persistent settings tie them together.
+
+mod fs_info;
+mod phone;
+mod pill;
+mod settings;
+
+use phone::PhoneStatus;
+use serde::Serialize;
+use serde_json::Value;
+use settings::Settings;
+use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WindowEvent, Wry};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_opener::OpenerExt;
+
+pub struct AppState {
+    settings: Mutex<Settings>,
+    settings_path: PathBuf,
+    config_dir: PathBuf,
+    /// "Hide pill for 1 hour" deadline.
+    hidden_until: Mutex<Option<Instant>>,
+    tray_show_pill: Mutex<Option<CheckMenuItem<Wry>>>,
+}
+
+impl AppState {
+    fn snapshot(&self) -> Settings {
+        self.settings.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+}
+
+fn pill_window(app: &AppHandle) -> Option<WebviewWindow> {
+    app.get_webview_window("pill")
+}
+
+fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
+    app.get_webview_window("main")
+}
+
+/// Replaces the stored settings, saves them and tells every window.
+fn commit_settings(app: &AppHandle, next: Settings) -> Result<Settings, String> {
+    let state = app.state::<AppState>();
+    let previous = {
+        let mut guard = state.settings.lock().map_err(|_| "settings lock poisoned")?;
+        let prev = guard.clone();
+        *guard = next.clone();
+        prev
+    };
+    settings::save(&state.settings_path, &next)?;
+    let _ = app.emit("settings-changed", &next);
+    if previous.demo_phone != next.demo_phone {
+        let _ = app.emit("phone-status", PhoneStatus::current(next.demo_phone));
+    }
+    if previous.pill.visible != next.pill.visible {
+        if let Ok(guard) = state.tray_show_pill.lock() {
+            if let Some(item) = guard.as_ref() {
+                let _ = item.set_checked(next.pill.visible);
+            }
+        }
+    }
+    refresh_pill_visibility(app);
+    Ok(next)
+}
+
+fn patch_settings(app: &AppHandle, patch: Value) -> Result<Settings, String> {
+    let current = app.state::<AppState>().snapshot();
+    let next = settings::apply_patch(&current, &patch)?;
+    commit_settings(app, next)
+}
+
+/// Shows or hides the pill according to settings, "hide for 1 hour" and
+/// whether a full-screen app is in front.
+fn refresh_pill_visibility(app: &AppHandle) {
+    let Some(win) = pill_window(app) else { return };
+    let state = app.state::<AppState>();
+    let s = state.snapshot();
+    let snoozed = state
+        .hidden_until
+        .lock()
+        .ok()
+        .and_then(|g| *g)
+        .map(|until| Instant::now() < until)
+        .unwrap_or(false);
+    let fullscreen = s.pill.hide_in_fullscreen && pill::fullscreen_app_active();
+    let want = s.pill.visible && !snoozed && !fullscreen;
+    let is = win.is_visible().unwrap_or(false);
+    if want && !is {
+        let _ = win.show();
+        let _ = win.set_always_on_top(true);
+    } else if !want && is {
+        let _ = win.hide();
+    }
+}
+
+fn place_pill_initially(app: &AppHandle) {
+    let Some(win) = pill_window(app) else { return };
+    let Some(rect) = pill::outer_rect(&win) else { return };
+    let s = app.state::<AppState>().snapshot();
+    let monitors = win.available_monitors().unwrap_or_default();
+    let saved_on_screen = match (s.pill.x, s.pill.y) {
+        (Some(x), Some(y)) => monitors.iter().any(|m| {
+            let wa = m.work_area();
+            x >= wa.position.x
+                && y >= wa.position.y
+                && x < wa.position.x + wa.size.width as i32
+                && y < wa.position.y + wa.size.height as i32
+        }),
+        _ => false,
+    };
+    if saved_on_screen {
+        pill::set_rect(&win, s.pill.x.unwrap_or(0), s.pill.y.unwrap_or(0), rect.w, rect.h);
+    } else if let Some(work) = win
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| {
+            let wa = m.work_area();
+            pill::Rect { x: wa.position.x, y: wa.position.y, w: wa.size.width as i32, h: wa.size.height as i32 }
+        })
+    {
+        let (x, y) = pill::default_position(work, rect.w, rect.h);
+        pill::set_rect(&win, x, y, rect.w, rect.h);
+    }
+}
+
+fn open_main_at(app: &AppHandle, route: &str) {
+    if let Some(win) = main_window(app) {
+        let _ = win.unminimize();
+        let _ = win.show();
+        let _ = win.set_focus();
+        let _ = win.emit("navigate", route);
+    }
+}
+
+// ---------------------------------------------------------------- commands
+
+#[tauri::command]
+fn get_settings(state: State<AppState>) -> Settings {
+    state.snapshot()
+}
+
+#[tauri::command]
+fn update_settings(app: AppHandle, patch: Value) -> Result<Settings, String> {
+    patch_settings(&app, patch)
+}
+
+#[tauri::command]
+fn get_phone_status(state: State<AppState>) -> PhoneStatus {
+    PhoneStatus::current(state.snapshot().demo_phone)
+}
+
+#[tauri::command]
+fn get_autostart(app: AppHandle) -> bool {
+    app.autolaunch().is_enabled().unwrap_or(false)
+}
+
+#[tauri::command]
+fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool, String> {
+    let launcher = app.autolaunch();
+    let result = if enabled { launcher.enable() } else { launcher.disable() };
+    result.map_err(|e| format!("Couldn't change start-with-Windows: {e}"))?;
+    Ok(launcher.is_enabled().unwrap_or(enabled))
+}
+
+/// Resize the pill window to fit its content (CSS px), keeping the anchored side still.
+#[tauri::command]
+fn pill_resize(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
+    let win = pill_window(&app).ok_or("pill window missing")?;
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let w = (width * scale).round() as i32;
+    let h = (height * scale).round() as i32;
+    let old = pill::outer_rect(&win).ok_or("pill rect unavailable")?;
+    if old.w == w && old.h == h {
+        return Ok(());
+    }
+    let s = app.state::<AppState>().snapshot();
+    let (x, y) = pill::anchored_position(old, w, h, &s.pill.anchor_h, &s.pill.anchor_v);
+    let (x, y) = match pill::work_area(&win) {
+        Some(work) => pill::clamp_into(work, x, y, w, h),
+        None => (x, y),
+    };
+    pill::set_rect(&win, x, y, w, h);
+    Ok(())
+}
+
+/// Called when a drag of the pill ends: snap to nearby edges and remember the spot.
+#[tauri::command]
+fn pill_drag_end(app: AppHandle) -> Result<(), String> {
+    let win = pill_window(&app).ok_or("pill window missing")?;
+    let r = pill::outer_rect(&win).ok_or("pill rect unavailable")?;
+    let work = pill::work_area(&win).ok_or("no monitor")?;
+    let (x, y, ah, av) = pill::snap(work, r);
+    pill::set_rect(&win, x, y, r.w, r.h);
+    patch_settings(
+        &app,
+        serde_json::json!({"pill": {"x": x, "y": y, "anchorH": ah, "anchorV": av}}),
+    )?;
+    Ok(())
+}
+
+#[tauri::command]
+fn pill_reset_position(app: AppHandle) -> Result<(), String> {
+    let win = pill_window(&app).ok_or("pill window missing")?;
+    let r = pill::outer_rect(&win).ok_or("pill rect unavailable")?;
+    let work = win
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| {
+            let wa = m.work_area();
+            pill::Rect { x: wa.position.x, y: wa.position.y, w: wa.size.width as i32, h: wa.size.height as i32 }
+        })
+        .ok_or("no monitor")?;
+    let (x, y) = pill::default_position(work, r.w, r.h);
+    pill::set_rect(&win, x, y, r.w, r.h);
+    patch_settings(
+        &app,
+        serde_json::json!({"pill": {"x": x, "y": y, "anchorH": "center", "anchorV": "top"}}),
+    )?;
+    Ok(())
+}
+
+#[tauri::command]
+fn pill_hide_for(app: AppHandle, minutes: u64) {
+    if let Ok(mut g) = app.state::<AppState>().hidden_until.lock() {
+        *g = Some(Instant::now() + Duration::from_secs(minutes * 60));
+    }
+    refresh_pill_visibility(&app);
+}
+
+#[tauri::command]
+fn open_main(app: AppHandle, route: Option<String>) {
+    open_main_at(&app, route.as_deref().unwrap_or("home"));
+}
+
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppInfo {
+    version: String,
+    config_dir: String,
+}
+
+#[tauri::command]
+fn get_app_info(app: AppHandle, state: State<AppState>) -> AppInfo {
+    AppInfo {
+        version: app.package_info().version.to_string(),
+        config_dir: state.config_dir.to_string_lossy().into_owned(),
+    }
+}
+
+#[tauri::command]
+fn open_config_folder(app: AppHandle, state: State<AppState>) -> Result<(), String> {
+    std::fs::create_dir_all(&state.config_dir).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_path(state.config_dir.to_string_lossy(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
+/// Sizes and file counts for paths picked in the Send screen. Runs off the UI thread.
+#[tauri::command]
+async fn inspect_paths(paths: Vec<String>) -> Vec<fs_info::PathInfo> {
+    tauri::async_runtime::spawn_blocking(move || paths.iter().map(|p| fs_info::inspect(p)).collect())
+        .await
+        .unwrap_or_default()
+}
+
+/// Resets everything to first-run defaults (keeps no pairing data — none exists yet).
+#[tauri::command]
+fn reset_app(app: AppHandle) -> Result<Settings, String> {
+    commit_settings(&app, Settings::default())
+}
+
+// ---------------------------------------------------------------- tray
+
+fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+    let open = MenuItem::with_id(app, "open", "Open PinchDrop", true, None::<&str>)?;
+    let send = MenuItem::with_id(app, "send", "Send files…", true, None::<&str>)?;
+    let visible = app.state::<AppState>().snapshot().pill.visible;
+    let show_pill = CheckMenuItem::with_id(app, "toggle_pill", "Show pill", true, visible, None::<&str>)?;
+    let settings_item = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit PinchDrop", true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(app, &[&open, &send, &show_pill, &settings_item, &sep, &quit])?;
+
+    if let Ok(mut g) = app.state::<AppState>().tray_show_pill.lock() {
+        *g = Some(show_pill.clone());
+    }
+
+    let mut builder = TrayIconBuilder::with_id("pinchdrop")
+        .tooltip("PinchDrop")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "open" => open_main_at(app, "home"),
+            "send" => open_main_at(app, "send"),
+            "settings" => open_main_at(app, "settings"),
+            "toggle_pill" => {
+                let visible = app.state::<AppState>().snapshot().pill.visible;
+                let _ = patch_settings(app, serde_json::json!({"pill": {"visible": !visible}}));
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                open_main_at(tray.app_handle(), "home");
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- run
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            open_main_at(app, "home");
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]),
+        ))
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            let config_dir = app
+                .path()
+                .app_config_dir()
+                .unwrap_or_else(|_| std::env::temp_dir().join("PinchDrop"));
+            let settings_path = settings::settings_path(&config_dir);
+            let loaded = settings::load(&settings_path);
+            let first_run = !loaded.onboarded;
+            app.manage(AppState {
+                settings: Mutex::new(loaded),
+                settings_path,
+                config_dir,
+                hidden_until: Mutex::new(None),
+                tray_show_pill: Mutex::new(None),
+            });
+
+            let handle = app.handle().clone();
+            build_tray(&handle)?;
+            place_pill_initially(&handle);
+            refresh_pill_visibility(&handle);
+
+            if let Some(main) = main_window(&handle) {
+                let h = handle.clone();
+                main.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        if h.state::<AppState>().snapshot().keep_running_on_close {
+                            api.prevent_close();
+                            if let Some(w) = main_window(&h) {
+                                let _ = w.hide();
+                            }
+                        } else {
+                            h.exit(0);
+                        }
+                    }
+                });
+            }
+
+            if first_run {
+                open_main_at(&handle, "onboarding");
+            }
+
+            // Re-check every 1.5 s whether the pill should hide for a full-screen app.
+            let watcher = handle.clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(Duration::from_millis(1500));
+                refresh_pill_visibility(&watcher);
+            });
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_settings,
+            update_settings,
+            get_phone_status,
+            get_autostart,
+            set_autostart,
+            pill_resize,
+            pill_drag_end,
+            pill_reset_position,
+            pill_hide_for,
+            open_main,
+            quit_app,
+            get_app_info,
+            open_config_folder,
+            inspect_paths,
+            reset_app
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running PinchDrop");
+}

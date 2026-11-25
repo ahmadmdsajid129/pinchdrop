@@ -1,30 +1,32 @@
 /** @type {import('tailwindcss').Config} */
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './pill.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        bg: '#0B1020',
-        surface: '#141B34',
-        surface2: '#1C2547',
-        primary: '#7C5CFF',
-        accent: '#22D3EE',
-        success: '#34D399',
-        warn: '#FBBF24',
-        danger: '#FB7185',
-        text: '#E8ECFF',
-        muted: '#8B94B8',
+        bg: v('bg'),
+        bg2: v('bg2'),
+        surface: v('surface'),
+        surface2: v('surface2'),
+        line: v('line'),
+        primary: v('primary'),
+        'primary-ink': v('primary-ink'),
+        accent: v('accent'),
+        success: v('success'),
+        warn: v('warn'),
+        danger: v('danger'),
+        text: v('text'),
+        soft: v('soft'),
+        muted: v('muted'),
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Poppins', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'Segoe UI', 'sans-serif'],
+        display: ['Poppins', 'Segoe UI', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
       },
     },
   },
   plugins: [],
-}
-
+};

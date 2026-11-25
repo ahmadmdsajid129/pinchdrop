@@ -16,12 +16,15 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 12 (Pro & Monetization Engine)** — Completed. Offline cryptographic licensing engine (`license.rs`), `useLicense` React hook, `ProModal` aurora upgrade showcase, and unit tests (`tests/license_engine.rs`).
+- **Current Phase:** **v1 rebuild — Phase P1 (Desktop shell)**. The earlier S3–S12 "done" stages were UI prototypes with mocked data (fake pairing, fake LAN server, prefix-only licence). On 2026-11-25 the founder approved a full v1 design (PC → phone only) and a 7-phase rebuild (P1–P7, see [task.md](task.md)).
+- **Design reference:** "PinchDrop — Desktop & Mobile App Design" canvas (claude.ai artifact, private to the founder): every desktop + phone screen, pill/Island states, send animations, and the "How it works" spec.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 13 (Public Launch & Distribution)** — Final store release prep, demo recordings, landing page assets, and v1.0 public release documentation.
+- **Next Phase:** **P2 — Android app shell** (all phone screens, permission flow, settings).
 - **Current Stack Status:**
-  - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard, Gesture Gym, Web Audio, NSIS/MSI installers, and Pro licensing engine), `apps/android` (Kotlin/Compose companion app with Release signing config, R8 shrinker & WorkManager)
+  - Node.js `v20.19.5`, pnpm `12.18.0`, Rust `1.100` (MSVC), Tauri `2.x`
+  - `apps/desktop`: Tauri 2 shell rebuilt in P1 — pill + Dynamic Island window, main window (onboarding, Home, Send, Transfers, Devices, Pair, Settings, Profile), tray, start-with-Windows, persistent settings. No phone connection yet (P3); "demo phone" preview setting stands in.
+  - `@pinchdrop/gesture-core` (10 vitest tests) and `tools/gesture-lab` kept for P5.
+  - `apps/android`: prototype code, to be rebuilt in P2.
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
@@ -42,6 +45,9 @@
 | **DEC-0010** | 2026-11-25 | Procedural Web Audio API for Zero-Asset Sound Design | Synthesize tactile audio cues (pop, click, whoosh, thud, chime) directly in Web Audio without shipping heavy audio files. | Bundling static WAV/MP3 audio assets — increases bundle size and incurs decode latency. | [Design Spec](design.md) |
 | **DEC-0011** | 2026-11-25 | Minisign Ed25519 & Dual Windows Installers (NSIS + MSI) | Dual-installer strategy guarantees consumer ease (NSIS setup wizard) and enterprise IT compatibility (silent MSI deployment). | MSI-only or Portable ZIP only — limits consumer adoption and IT administration. | [Services Guide](docs/services.md) |
 | **DEC-0012** | 2026-11-25 | Offline-First Zero-Phone-Home Licensing Verification | Enforce Pro tier unlocks via local signature parsing and persistent JSON state without cloud DRM telemetry. | Server-backed cloud licensing / DRM — violates zero-telemetry privacy promise. | [Monetization Spec](docs/monetization.md) |
+| **DEC-0013** | 2026-11-25 | v1 = PC → phone only, rebuilt in 7 phases (P1 shell → P7 installers) | Earlier stages were mock-ups; a real end-to-end path beats breadth. Phone → PC, Throw, rename/lock gestures and Pro come after v1. | Keep extending the prototype code — rejected: fake pairing/server/licence could not be built on. | [task.md](task.md) |
+| **DEC-0014** | 2026-11-25 | Pill is its own always-on-top window that resizes to its content | Transparent areas of a WebView2 window still swallow clicks, so the window must be exactly pill- or Island-sized; Rust keeps the anchored edge fixed while resizing. | One large transparent overlay window — rejected: blocks clicks on apps underneath. | [task.md](task.md) |
+| **DEC-0015** | 2026-11-25 | Default send mode is copy; "move" recycles the PC file only after the phone confirms | Never lose a file to a dropped connection; still no permanent deletes. | Move by default — rejected as risky. | [task.md](task.md) |
 
 ---
 
@@ -67,6 +73,8 @@
 4. **Windows Reserved File Characters:** Paths containing `< > : " / \ | ? *` or reserved names (`CON`, `PRN`, `AUX`, `NUL`) must be sanitized before disk writes.
 5. **SmartScreen & Code Signing:** Unsigned Windows binaries encounter severe SmartScreen warnings. Stage 11 must introduce valid code signing certificates.
 6. **No-CDN Policy:** All MediaPipe WASM binaries and HandLandmarker `.task` model files must be bundled inside the desktop package.
+7. **Android camera from background:** Android does not let an app start the camera while it is in the background, so the phone "catch" needs the app on screen — a high-priority notification brings up the Catch screen, with "Accept without gesture" as a fallback.
+8. **Transparent WebView2 windows still capture clicks** in their transparent parts — keep the pill window sized to its content.
 
 ---
 
