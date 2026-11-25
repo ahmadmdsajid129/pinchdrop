@@ -60,6 +60,25 @@ textarea {
   user-select: text;
 }
 
+@keyframes pd-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Smooth font rendering everywhere; no tap-highlight flashes. */
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* The pill window is see-through around the pill itself. */
 .pill-page,
 .overlay-page,

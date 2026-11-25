@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { File, Folder, Hand } from 'lucide-react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
@@ -98,7 +98,30 @@ function loadLandmarker(): Promise<HandLandmarker> {
  */
 export function Overlay() {
   const [arm, setArm] = useState<ArmState | null>(null);
-  const [hand, setHand] = useState<{ x: number; y: number; pinched: boolean } | null>(null);
+  // Hand position lives in motion values, updated straight from the camera loop: the ring and
+  // card move on the GPU every frame without React re-rendering. React state changes only when
+  // something visible changes (hand appears/disappears, pinch starts/ends).
+  const W = typeof window !== 'undefined' ? window.innerWidth : 1920;
+  const H = typeof window !== 'undefined' ? window.innerHeight : 1080;
+  const rawX = useMotionValue(W / 2);
+  const rawY = useMotionValue(H / 2);
+  const springCfg = { stiffness: 900, damping: 55, mass: 0.35 };
+  const hx = useSpring(rawX, springCfg);
+  const hy = useSpring(rawY, springCfg);
+  const ringX = useTransform(hx, (v) => v - 22);
+  const ringY = useTransform(hy, (v) => v - 22);
+  const cardX = useTransform(hx, (v) => v + 18);
+  const cardY = useTransform(hy, (v) => v + 18);
+  const toastY = useTransform(hy, (v) => v - 8);
+  const [hand, setHand] = useState<{ pinched: boolean } | null>(null);
+  const handRef = useRef<{ pinched: boolean } | null>(null);
+  const setHandIfChanged = (next: { pinched: boolean } | null) => {
+    const cur = handRef.current;
+    if ((cur === null) !== (next === null) || (cur && next && cur.pinched !== next.pinched)) {
+      handRef.current = next;
+      setHand(next);
+    }
+  };
   const [card, setCard] = useState<Card | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -233,8 +256,8 @@ export function Overlay() {
         const raw = res.landmarks?.[0];
         if (!raw || raw.length < 21) {
           smoother.reset();
-          setHand(null);
-          setHint(null);
+          setHandIfChanged(null);
+          setHint((h) => (h === null ? h : null));
           const ev = machine.step(now, null);
           if (ev?.type === 'cancel') onCancel();
           return;
@@ -254,13 +277,22 @@ export function Overlay() {
         // Only gentle hints; ignored gestures never do anything.
         if (machine.ignored === 'far') {
           if (!farSince) farSince = now;
-          if (now - farSince > 1200) setHint('Move your hand a little closer to the camera');
+          if (now - farSince > 1200) setHint((h) => h ?? 'Move your hand a little closer to the camera');
         } else {
           farSince = 0;
-          setHint(null);
+          setHint((h) => (h === null ? h : null));
         }
         const tracked = machine.ignored !== 'far' && machine.ignored !== 'unsure';
-        setHand(tracked ? { x: p.x, y: p.y, pinched: machine.holding || machine.state === 'PINCHING' } : null);
+        if (tracked) {
+          // First sighting: jump there instead of sliding in from the last spot.
+          if (!handRef.current) {
+            hx.jump(p.x * window.innerWidth);
+            hy.jump(p.y * window.innerHeight);
+          }
+          rawX.set(p.x * window.innerWidth);
+          rawY.set(p.y * window.innerHeight);
+        }
+        setHandIfChanged(tracked ? { pinched: machine.holding || machine.state === 'PINCHING' } : null);
         // Holding something counts as activity, so the camera never switches off mid-move.
         if (machine.holding && now - lastActivity > 3000) {
           lastActivity = now;
@@ -283,10 +315,7 @@ export function Overlay() {
     };
   }, [armed, arm?.cameraId, arm?.sensitivity]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const W = typeof window !== 'undefined' ? window.innerWidth : 1920;
-  const H = typeof window !== 'undefined' ? window.innerHeight : 1080;
-  const hx = (hand?.x ?? 0.5) * W;
-  const hy = (hand?.y ?? 0.5) * H;
+  const cardTarget = { x: W / 2 - 110, y: 8 };
 
   return (
     <div className="fixed inset-0 pointer-events-none select-none overflow-hidden">
@@ -302,18 +331,16 @@ export function Overlay() {
 
       {armed && hand && arm?.showRing && (
         <motion.div
-          className="absolute rounded-full border-[3px]"
-          style={{ left: 0, top: 0 }}
+          className="absolute left-0 top-0 w-11 h-11 rounded-full border-[3px]"
+          style={{ x: ringX, y: ringY, willChange: 'transform' }}
+          initial={{ opacity: 0, scale: 0.6 }}
           animate={{
-            x: hx - 22,
-            y: hy - 22,
-            width: 44,
-            height: 44,
+            opacity: 1,
             scale: hand.pinched ? 0.7 : 1,
             borderColor: hand.pinched ? '#22D3EE' : 'rgba(232,236,255,0.85)',
             backgroundColor: hand.pinched ? 'rgba(34,211,238,0.25)' : 'rgba(124,92,255,0.12)',
           }}
-          transition={{ type: 'spring', stiffness: 900, damping: 50, mass: 0.4 }}
+          transition={{ type: 'spring', stiffness: 700, damping: 34 }}
         />
       )}
 
@@ -321,15 +348,24 @@ export function Overlay() {
         {card && (
           <motion.div
             key="card"
-            className="absolute flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#141B34]/95 border border-[#7C5CFF] shadow-[0_18px_50px_rgba(124,92,255,0.45)] text-[#E8ECFF]"
-            style={{ left: 0, top: 0 }}
-            initial={{ x: hx + 18, y: hy + 18, scale: 0.6, opacity: 0 }}
+            className="absolute left-0 top-0 flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#141B34]/95 border border-[#7C5CFF] shadow-[0_18px_50px_rgba(124,92,255,0.45)] text-[#E8ECFF]"
+            // While held, the card rides the hand's motion values (no re-renders). When it flies to the
+            // pill or drops, animate() takes over from where it is.
+            style={card.phase === 'held' ? { x: cardX, y: cardY, willChange: 'transform' } : { willChange: 'transform' }}
+            initial={{ scale: 0.6, opacity: 0 }}
             animate={
               card.phase === 'flying'
-                ? { x: W / 2 - 110, y: 8, scale: 0.35, opacity: 0, transition: { duration: 0.55, ease: [0.4, 0, 0.2, 1] } }
+                ? {
+                    // Keyframes start where the hand left the card, so it never jumps.
+                    x: [cardX.get(), cardTarget.x],
+                    y: [cardY.get(), cardTarget.y],
+                    scale: 0.35,
+                    opacity: 0,
+                    transition: { duration: 0.55, ease: [0.4, 0, 0.2, 1] },
+                  }
                 : card.phase === 'dropped'
-                  ? { y: hy + 120, opacity: 0, rotate: 8, transition: { duration: 0.45 } }
-                  : { x: hx + 18, y: hy + 18, scale: 1, opacity: 1, rotate: 0 }
+                  ? { x: cardX.get(), y: [cardY.get(), cardY.get() + 120], opacity: 0, rotate: 8, transition: { duration: 0.45, ease: [0.4, 0, 1, 1] } }
+                  : { scale: 1, opacity: 1, rotate: 0 }
             }
             exit={{ opacity: 0 }}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
@@ -350,10 +386,10 @@ export function Overlay() {
         {toast && armed && (
           <motion.div
             key={toast}
-            className="absolute flex items-center gap-2 px-3 py-2 rounded-xl bg-[#0B1020]/90 text-[13px] text-[#E8ECFF] border border-white/10"
-            style={{ left: 0, top: 0 }}
-            initial={{ x: hx + 24, y: hy - 8, opacity: 0 }}
-            animate={{ x: hx + 24, y: hy - 8, opacity: 1 }}
+            className="absolute left-0 top-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-[#0B1020]/90 text-[13px] text-[#E8ECFF] border border-white/10"
+            style={{ x: cardX, y: toastY }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
           >
             <Hand size={14} /> {toast}

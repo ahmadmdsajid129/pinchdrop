@@ -1,5 +1,9 @@
 package com.pinchdrop.companion.ui
 
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import com.pinchdrop.companion.ui.screens.LiveReceivingScreen
 import com.pinchdrop.companion.data.formatBytes
 import com.pinchdrop.companion.transfer.Receiver
@@ -177,7 +181,19 @@ fun PinchDropApp(
                 )
             }
             Box(Modifier.fillMaxSize().padding(pad).consumeWindowInsets(pad).imePadding()) {
-                AnimatedContent(targetState = route, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "route") { r ->
+                AnimatedContent(
+                    targetState = route,
+                    transitionSpec = {
+                        if (initialState.tab && targetState.tab) {
+                            fadeIn(tween(160, easing = LinearOutSlowInEasing)) togetherWith fadeOut(tween(90))
+                        } else {
+                            (fadeIn(tween(200, delayMillis = 40, easing = LinearOutSlowInEasing)) +
+                                scaleIn(tween(240, easing = FastOutSlowInEasing), initialScale = 0.985f)) togetherWith
+                                fadeOut(tween(90))
+                        }
+                    },
+                    label = "route",
+                ) { r ->
                     Column(Modifier.fillMaxSize().background(c.bg)) {
                         when (r) {
                             Route.WELCOME -> WelcomeScreen(onStart = { go(Route.PERMISSIONS) })

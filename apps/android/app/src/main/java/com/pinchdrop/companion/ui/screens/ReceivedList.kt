@@ -47,7 +47,7 @@ import com.pinchdrop.companion.data.formatBytes
 import com.pinchdrop.companion.transfer.History
 import com.pinchdrop.companion.transfer.ReceivedItem
 import com.pinchdrop.companion.ui.isLink
-import com.pinchdrop.companion.ui.loadThumbnail
+import com.pinchdrop.companion.ui.rememberThumbnail
 import com.pinchdrop.companion.ui.openUri
 import com.pinchdrop.companion.ui.shareText
 import com.pinchdrop.companion.ui.shareUri
@@ -81,7 +81,7 @@ fun ReceivedRow(item: ReceivedItem) {
     val c = Pd.colors
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
-    val thumb = remember(item.uri) { item.uri?.takeIf { item.kind == ItemKind.PHOTO }?.let { loadThumbnail(context, it, 160) } }
+    val thumb = rememberThumbnail(item.uri?.takeIf { item.kind == ItemKind.PHOTO }, 160)
     val open: () -> Unit = {
         when {
             item.uri != null -> openUri(context, item.uri)

@@ -83,6 +83,7 @@
 10. **Slow first builds on the dev PC:** the first Gradle and MSVC builds download hundreds of MB to GB; on the founder's connection that took over an hour. Later builds are offline from caches.
 11. **Windows Firewall:** the first time PinchDrop opens port 47821, Windows asks; it must be allowed on *private* networks or phones can't connect.
 12. **Explorer selection:** read via Shell COM (`IShellWindows` → `IShellBrowser` → `IFolderView::Items(SVGIO_SELECTION)`). Windows 11 tabs share one top-level HWND, so only the tab whose view window is visible counts. Desktop = `FindWindowSW(CSIDL_DESKTOP, SWC_DESKTOP)`.
+13. **Smooth pill/Island:** measure the content with `offsetWidth/offsetHeight` (layout size), never `getBoundingClientRect` (includes animation transforms → an OS window resize on every frame = stutter). The window grows once before the morph and shrinks once after it. Hand ring/card move via framer-motion motion values set from the camera loop, not React state.
 
 ---
 

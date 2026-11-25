@@ -66,8 +66,8 @@ export function Home() {
                       {phone.battery}%{phone.charging ? ' · charging' : ''}
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-surface2">
-                    <div className="h-1.5 rounded-full bg-success" style={{ width: `${phone.battery}%` }} />
+                  <div className="h-1.5 rounded-full bg-surface2 overflow-hidden">
+                    <div className="h-1.5 w-full bg-success origin-left transition-transform duration-500 ease-out" style={{ transform: `scaleX(${phone.battery / 100})` }} />
                   </div>
                 </div>
               )}

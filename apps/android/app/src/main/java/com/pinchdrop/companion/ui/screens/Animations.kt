@@ -1,5 +1,11 @@
 package com.pinchdrop.companion.ui.screens
 
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.animateFloatAsState
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,7 +29,7 @@ import com.pinchdrop.companion.data.ItemKind
 import com.pinchdrop.companion.data.formatBytes
 import com.pinchdrop.companion.transfer.Receiver
 import com.pinchdrop.companion.ui.isLink
-import com.pinchdrop.companion.ui.loadThumbnail
+import com.pinchdrop.companion.ui.rememberThumbnail
 import com.pinchdrop.companion.ui.openUri
 import com.pinchdrop.companion.ui.shareUri
 import android.content.Context
@@ -326,7 +332,12 @@ fun ReceivingView(info: ReceivingInfo, onHide: () -> Unit, onCancel: () -> Unit)
     val fall = rememberInfiniteTransition(label = "fall")
     val t by fall.animateFloat(0f, 1f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing)), label = "t")
     val breath by fall.animateFloat(1f, 1.06f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "breath")
-    val p = info.fraction.coerceIn(0f, 1f)
+    // Progress arrives in steps (every ~200 ms); glide between them so the ring never jumps.
+    val p by animateFloatAsState(
+        targetValue = info.fraction.coerceIn(0f, 1f),
+        animationSpec = if (info.isDemo) snap() else tween(durationMillis = 260, easing = LinearEasing),
+        label = "progress",
+    )
     val pct = (p * 100).toInt()
     var confirmCancel by remember { mutableStateOf(false) }
 
@@ -409,7 +420,8 @@ fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit, ar
     val animate = settings.arrivalAnimation && !remember { context.animationsOff() }
     var run by remember { mutableIntStateOf(0) }
     val isDemo = arrived == null
-    val thumb = remember(arrived?.uri) { arrived?.takeIf { it.kind == ItemKind.PHOTO }?.uri?.let { loadThumbnail(context, it) } }
+    val thumb = rememberThumbnail(arrived?.takeIf { it.kind == ItemKind.PHOTO }?.uri, 720)
+    val thumbNow = rememberUpdatedState(thumb)
 
     val y = remember { Animatable(0f) }
     val scale = remember { Animatable(1f) }
@@ -428,6 +440,8 @@ fun ArrivedScreen(settings: AppSettings, pcName: String, onClose: () -> Unit, ar
             return@LaunchedEffect
         }
         y.snapTo(-520f); scale.snapTo(0.45f); squash.snapTo(1f); blur.snapTo(8f); badge.snapTo(0f); text.snapTo(0f); glowAlpha = 0f
+        // Give the real photo a moment to decode so it drops in as itself, not as a placeholder.
+        if (arrived?.kind == ItemKind.PHOTO) withTimeoutOrNull(500) { snapshotFlow { thumbNow.value }.first { it != null } }
         launch { scale.animateTo(0.55f, tween(500)) }
         y.animateTo(0f, tween(520, easing = FastOutSlowInEasing))
         if (settings.vibrate) haptics.performHapticFeedback(HapticFeedbackType.Confirm)

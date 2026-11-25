@@ -61,24 +61,59 @@ export function Pill() {
   const dragging = useRef(false);
   const dragTimer = useRef<number | null>(null);
 
-  // ---- keep the OS window exactly as big as the content (+ shadow margin)
+  // ---- one shell morphs between pill and Island (Dynamic-Island style)
+  // The content's *layout* size (offsetWidth/Height — unaffected by animation transforms) drives
+  // both the shell's spring and the OS window. The window grows once, up front, and shrinks once,
+  // after the shell has finished shrinking — never on every animation frame.
+  const [shell, setShell] = useState<{ w: number; h: number } | null>(null);
+  const windowSize = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+  const pendingShrink = useRef<{ w: number; h: number } | null>(null);
+  /** The very first size is applied instantly (no grow-from-nothing on startup). */
+  const sizedOnce = useRef(false);
+
+  const sizeWindow = useCallback((w: number, h: number) => {
+    const next = { w: w + PAD * 2, h: h + PAD * 2 };
+    const cur = windowSize.current;
+    if (next.w >= cur.w && next.h >= cur.h) {
+      pendingShrink.current = null;
+      windowSize.current = next;
+      void api.pillResize(next.w, next.h);
+    } else {
+      // Grow whichever side needs it now; shrink the rest when the morph ends.
+      const grow = { w: Math.max(cur.w, next.w), h: Math.max(cur.h, next.h) };
+      if (grow.w !== cur.w || grow.h !== cur.h) {
+        windowSize.current = grow;
+        void api.pillResize(grow.w, grow.h);
+      }
+      pendingShrink.current = next;
+    }
+  }, []);
+
+  const onMorphDone = useCallback(() => {
+    const p = pendingShrink.current;
+    if (!p) return;
+    pendingShrink.current = null;
+    windowSize.current = p;
+    void api.pillResize(p.w, p.h);
+  }, []);
+
   useLayoutEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-    let frame = 0;
-    const ro = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect();
-        if (r.width > 0 && r.height > 0) void api.pillResize(Math.ceil(r.width) + PAD * 2, Math.ceil(r.height) + PAD * 2);
-      });
-    });
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-      cancelAnimationFrame(frame);
+    const measure = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      if (w > 0 && h > 0) {
+        setShell((s) => (s && s.w === w && s.h === h ? s : { w, h }));
+        sizeWindow(w, h);
+        if (!sizedOnce.current) requestAnimationFrame(() => (sizedOnce.current = true));
+      }
     };
-  }, []);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [expanded, hold !== null, sizeWindow, !!settings && !!phone]);
 
   const collapse = useCallback(() => {
     if (holdRef.current) return; // the countdown stays visible while something is held
@@ -90,8 +125,6 @@ export function Pill() {
   }, [settings?.gestures.sounds]);
 
   const expand = useCallback(() => {
-    // Grow the window first so the Island has room to animate in.
-    void api.pillResize(ISLAND_W + PAD * 2, 300);
     setExpanded(true);
     if (settings?.gestures.sounds) sound.open();
     startCamera();
@@ -108,7 +141,6 @@ export function Pill() {
       }),
       onEvent<null>('island-open', () => {
         // Opened by Rust (hotkey / hold): the session, if any, was started there.
-        void api.pillResize(ISLAND_W + PAD * 2, 300);
         setExpanded(true);
       }),
       onEvent<SessionView>('gesture-session', (v) => {
@@ -249,21 +281,38 @@ export function Pill() {
   const justify = anchorH === 'left' ? 'justify-start' : anchorH === 'right' ? 'justify-end' : 'justify-center';
   const align = anchorV === 'bottom' ? 'items-end' : 'items-start';
   const origin = `${anchorH === 'left' ? 'left' : anchorH === 'right' ? 'right' : 'center'} ${anchorV}`;
-  const spring = reduced ? { duration: 0.08 } : { type: 'spring' as const, stiffness: 420, damping: 30 };
+  // Critically-damped-ish spring: fast, no wobble at the end, feels "physical".
+  const morph = reduced ? { duration: 0.12, ease: 'easeOut' as const } : { type: 'spring' as const, stiffness: 520, damping: 42, mass: 0.9 };
+  const fade = reduced ? { duration: 0.08 } : { duration: 0.18, ease: [0.2, 0, 0, 1] as const };
+  const collapsed = !expanded;
+  const borderClass = hold ? 'border-primary/70' : collapsed && phone.state === 'none' ? 'border-dashed border-muted/60' : 'border-line';
+  // Content sits on the anchored edge and stays put while the shell grows/shrinks around it.
+  // (Flex alignment, not a CSS translate: the fade/scale animation owns `transform`.)
+  const contentPos = `${anchorV === 'bottom' ? 'bottom-0' : 'top-0'} inset-x-0 flex ${justify}`;
 
   return (
     <div className={`flex ${justify} ${align} w-screen h-screen`} style={{ padding: PAD }}>
-      <div ref={contentRef} className="inline-block" onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}>
-        <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        className={`relative overflow-hidden bg-bg/[0.97] border ${borderClass} shadow-[0_4px_12px_rgba(0,0,0,0.5)] ring-1 ring-inset ring-white/[0.04]`}
+        initial={false}
+        animate={shell ? { width: shell.w + 2, height: shell.h + 2, borderRadius: collapsed ? (shell.h + 2) / 2 : 26 } : undefined}
+        transition={sizedOnce.current ? morph : { duration: 0 }}
+        onAnimationComplete={onMorphDone}
+        style={{ transformOrigin: origin, willChange: 'width, height' }}
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
+      >
+        <AnimatePresence initial={false}>
           {expanded ? (
             <motion.div
               key="island"
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={spring}
+              className={`absolute ${contentPos}`}
+              initial={{ opacity: 0, scale: 0.96, filter: 'blur(2px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)', transition: { ...fade, delay: reduced ? 0 : 0.06 } }}
+              exit={{ opacity: 0, scale: 0.97, transition: fade }}
               style={{ transformOrigin: origin }}
             >
+              <div ref={contentRef} className="shrink-0">
               {hold ? (
                 <HoldIsland hold={hold} width={ISLAND_W} />
               ) : (
@@ -286,28 +335,31 @@ export function Pill() {
                   }
                 />
               )}
+              </div>
             </motion.div>
           ) : (
             <motion.div
               key="pill"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={spring}
+              className={`absolute ${contentPos}`}
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1, transition: { ...fade, delay: reduced ? 0 : 0.08 } }}
+              exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.1 } }}
               style={{ transformOrigin: origin }}
             >
-              <PillButton
-                settings={settings}
-                phone={phone}
-                onClick={onPillClick}
-                onPointerDown={onPointerDown}
-                onPointerMove={onPointerMove}
-                onContextMenu={onContextMenu}
-              />
+              <div ref={contentRef} className="shrink-0">
+                <PillButton
+                  settings={settings}
+                  phone={phone}
+                  onClick={onPillClick}
+                  onPointerDown={onPointerDown}
+                  onPointerMove={onPointerMove}
+                  onContextMenu={onContextMenu}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -354,9 +406,7 @@ function PillButton({
       onPointerMove={onPointerMove}
       onContextMenu={onContextMenu}
       style={{ height: size.h }}
-      className={`inline-flex items-center ${size.gap} ${size.px} ${size.text} font-semibold whitespace-nowrap rounded-full bg-bg/95 text-text border ${
-        phone.state === 'none' ? 'border-dashed border-muted/60' : 'border-line'
-      } shadow-[0_4px_14px_rgba(0,0,0,0.45)] cursor-default select-none`}
+      className={`inline-flex items-center ${size.gap} ${size.px} ${size.text} font-semibold whitespace-nowrap rounded-full text-text cursor-default select-none transition-[filter] duration-150 hover:brightness-125 active:brightness-90`}
     >
       <span className={`w-2 h-2 rounded-full ${dot}`} />
       {shows === 'name_battery' && (
@@ -406,7 +456,7 @@ function Island({
     <section
       aria-label="PinchDrop Island"
       style={{ width: ISLAND_W }}
-      className="rounded-[26px] bg-bg/[0.97] border border-line shadow-[0_14px_40px_rgba(0,0,0,0.55)] p-4 flex flex-col gap-3 text-text"
+      className="p-4 flex flex-col gap-3 text-text"
     >
       {/* header row doubles as a drag handle */}
       <div className="flex items-center gap-3" onPointerDown={onDragStart} onPointerMove={onDragMove}>
@@ -442,8 +492,11 @@ function Island({
       </div>
 
       {connected && phone.battery != null && (
-        <div className="h-1.5 rounded-full bg-surface2" role="progressbar" aria-label="Phone battery" aria-valuenow={phone.battery} aria-valuemin={0} aria-valuemax={100}>
-          <div className={`h-1.5 rounded-full ${phone.battery < 20 && !phone.charging ? 'bg-warn' : 'bg-success'}`} style={{ width: `${phone.battery}%` }} />
+        <div className="h-1.5 rounded-full bg-surface2 overflow-hidden" role="progressbar" aria-label="Phone battery" aria-valuenow={phone.battery} aria-valuemin={0} aria-valuemax={100}>
+          <div
+            className={`h-1.5 w-full origin-left transition-transform duration-500 ease-out ${phone.battery < 20 && !phone.charging ? 'bg-warn' : 'bg-success'}`}
+            style={{ transform: `scaleX(${phone.battery / 100})` }}
+          />
         </div>
       )}
 

@@ -85,11 +85,19 @@ object History {
         save()
     }
 
+    /** Disk writes happen off the UI thread, one at a time, newest list wins. */
+    private val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+
     private fun save() {
         val f = file ?: return
-        val arr = JSONArray().apply { _items.value.forEach { put(it.toJson()) } }
-        val tmp = File(f.path + ".tmp")
-        tmp.writeText(arr.toString())
-        tmp.renameTo(f)
+        val snapshot = _items.value
+        writer.execute {
+            runCatching {
+                val arr = JSONArray().apply { snapshot.forEach { put(it.toJson()) } }
+                val tmp = File(f.path + ".tmp")
+                tmp.writeText(arr.toString())
+                tmp.renameTo(f)
+            }
+        }
     }
 }

@@ -77,3 +77,25 @@ fun loadThumbnail(context: Context, uri: String, px: Int = 720): ImageBitmap? = 
         context.contentResolver.openInputStream(u)?.use { BitmapFactory.decodeStream(it, null, opts) }?.asImageBitmap()
     }
 }.getOrNull()
+
+private val thumbCache = android.util.LruCache<String, ImageBitmap>(48)
+
+/**
+ * A received photo's preview, decoded on a background thread and cached, so lists and the
+ * Arrived screen never stall the UI while images load. null until ready (or if unreadable).
+ */
+@androidx.compose.runtime.Composable
+fun rememberThumbnail(uri: String?, px: Int): ImageBitmap? {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val key = uri?.let { "$it@$px" }
+    val state = androidx.compose.runtime.produceState(initialValue = key?.let { thumbCache.get(it) }, key) {
+        // Runs again whenever the item changes: show its cached preview at once, else decode it.
+        value = key?.let { thumbCache.get(it) }
+        val u = uri ?: return@produceState
+        if (key == null || value != null) return@produceState
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            loadThumbnail(context, u, px)?.also { thumbCache.put(key, it) }
+        }
+    }
+    return state.value
+}

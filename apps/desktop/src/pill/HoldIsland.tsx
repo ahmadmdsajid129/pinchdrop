@@ -39,7 +39,7 @@ export function HoldIsland({ hold, width }: { hold: HoldView; width: number }) {
     <section
       aria-label="Holding grabbed items"
       style={{ width }}
-      className="rounded-[26px] bg-bg/[0.97] border border-primary/70 shadow-[0_14px_40px_rgba(124,92,255,0.35)] p-4 flex flex-col gap-3 text-text"
+      className="p-4 flex flex-col gap-3 text-text"
     >
       <div className="flex items-center gap-3">
         <div className="relative w-[54px] h-[54px] shrink-0" role="timer" aria-label={`${secs} seconds left to catch`}>

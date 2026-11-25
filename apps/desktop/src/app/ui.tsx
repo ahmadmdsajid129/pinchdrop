@@ -29,7 +29,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:cursor-not-allowed ${sz} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold select-none transition-[background-color,border-color,color,transform,filter] duration-150 ease-out active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed ${sz} ${VARIANTS[variant]} ${className}`}
       {...rest}
     >
       {children}
@@ -60,8 +60,8 @@ export function Toggle({
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <span className="w-11 h-6 rounded-full bg-surface2 border border-line peer-checked:bg-primary peer-checked:border-primary transition peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-accent" />
-      <span className="absolute left-1 top-1 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+      <span className="w-11 h-6 rounded-full bg-surface2 border border-line peer-checked:bg-primary peer-checked:border-primary transition-colors duration-200 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-accent" />
+      <span className="absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.3,1.4,0.6,1)] peer-checked:translate-x-5 peer-active:scale-x-110" />
     </label>
   );
 }

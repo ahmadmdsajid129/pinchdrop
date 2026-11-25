@@ -86,7 +86,10 @@ function Row({ t }: { t: TransferView }) {
             aria-valuemax={100}
             aria-valuenow={pct(t)}
           >
-            <div className={`h-full ${t.state === 'paused' ? 'bg-warn' : 'bg-primary'} transition-[width] duration-300`} style={{ width: `${pct(t)}%` }} />
+            <div
+              className={`h-full w-full origin-left ${t.state === 'paused' ? 'bg-warn' : 'bg-primary'} transition-transform duration-300 ease-out`}
+              style={{ transform: `scaleX(${pct(t) / 100})` }}
+            />
           </div>
         )}
       </div>
