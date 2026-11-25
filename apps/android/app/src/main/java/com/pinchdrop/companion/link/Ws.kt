@@ -55,6 +55,9 @@ class WsConn private constructor(
 ) {
     fun send(text: String): Boolean = socket.send(text)
 
+    /** File data for a lift (LINK-v1 §6.5). */
+    fun sendBytes(bytes: ByteArray): Boolean = socket.send(okio.ByteString.of(*bytes))
+
     fun close() {
         socket.close(1000, null)
         events.close()
