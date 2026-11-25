@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronUp, Hand, Smartphone, Upload, LayoutGrid } from 'lucide-react';
-import { api, inTauri, onEvent, usePhone, useReducedMotion, useSettings, useTheme, useTransfers } from '../shared/api';
+import { ChevronUp, Hand, Smartphone, Upload, LayoutGrid, MessageSquare, PhoneCall, PhoneMissed } from 'lucide-react';
+import { api, inTauri, onEvent, usePhone, usePhoneLive, useReducedMotion, useSettings, useTheme, useTransfers } from '../shared/api';
 import { SendingIsland } from './SendingIsland';
 import { HoldIsland } from './HoldIsland';
 import { LiftIsland } from './LiftIsland';
 import { NotifIsland } from './NotifIsland';
+import { CallIsland } from './CallIsland';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
 import { sound } from '../shared/sound';
-import type { HoldView, LiftView, NotifView, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
+import type { HoldView, LiftView, NotifView, PhoneLive, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
 
 /** Transparent margin around the pill so its shadow isn't clipped. */
 const PAD = 8;
@@ -57,6 +58,12 @@ export function Pill() {
   const [replying, setReplying] = useState(false);
   /** The banner opened the Island (so closing the banner closes it again). */
   const bannerOpened = useRef(false);
+  const [replyNonce, setReplyNonce] = useState(0);
+  /** v2: unread texts and calls from the phone. */
+  const live = usePhoneLive();
+  const ringing = live.call === 'ringing';
+  const ringingRef = useRef(false);
+  const wasRinging = useRef(false);
 
   // ---- a send in progress shows live on the Island, then "Delivered" for a moment
   const realTransfers = useTransfers();
@@ -258,6 +265,29 @@ export function Pill() {
         setLift(l);
         if (l) setExpanded(true);
       }),
+      // v2: gestures seen by the webcam act on whatever the Island is showing.
+      onEvent<string>('gesture', (g) => {
+        if (ringingRef.current) {
+          if (g === 'palm_hold') void api.callAction('answer');
+          else if (g === 'swipe_left' || g === 'swipe_right') void api.callAction('reject');
+          else if (g === 'fist_hold') void api.callAction('silence');
+          return;
+        }
+        const b = bannerRef.current;
+        if (b) {
+          if (g === 'swipe_left' || g === 'swipe_right') {
+            void api.notifDismiss(b.key).catch(() => undefined);
+            closeBannerRef.current();
+          } else if (g === 'peace_hold') setReplyNonce((n) => n + 1);
+          return;
+        }
+        if (liftRef.current && g === 'thumbs_up') {
+          void api.liftCatch(liftRef.current.id).catch(() => undefined);
+          return;
+        }
+        if (g === 'wave') collapseRef.current();
+        else if (g === 'fist_hold' && sessionRef.current) void api.gestureSessionStop();
+      }),
       onEvent<NotifView>('phone-notif', (n) => {
         // Something more important is on the Island: the notification waits in the app's list.
         if (holdRef.current || liftRef.current) return;
@@ -284,10 +314,21 @@ export function Pill() {
     void api.gestureSessionState().then((v) => v && setSession(v));
     return () => offs.forEach((p) => void p.then((u) => u()));
   }, [showError]);
+  const bannerRef = useRef<NotifView | null>(null);
+  bannerRef.current = banner;
+  const closeBannerRef = useRef<() => void>(() => undefined);
   const expandRef = useRef(expand);
   expandRef.current = expand;
   const collapseRef = useRef(collapse);
   collapseRef.current = collapse;
+
+  // ---- the phone rings: the Island shows the call; when it stops, it closes again
+  useEffect(() => {
+    ringingRef.current = ringing;
+    if (ringing && !wasRinging.current) setExpanded(true);
+    if (!ringing && wasRinging.current && !holdRef.current && !liftRef.current && !sessionRef.current) setExpanded(false);
+    wasRinging.current = ringing;
+  }, [ringing]);
 
   // ---- a notification banner closes by itself after a few seconds (not while hovered or replying)
   const closeBanner = useCallback(() => {
@@ -296,6 +337,7 @@ export function Pill() {
     if (bannerOpened.current && !holdRef.current && !liftRef.current && !sessionRef.current) setExpanded(false);
     bannerOpened.current = false;
   }, []);
+  closeBannerRef.current = closeBanner;
   useEffect(() => {
     if (!banner || hovered || replying) return;
     const t = window.setTimeout(closeBanner, 6500);
@@ -305,10 +347,10 @@ export function Pill() {
   // ---- auto-close after N seconds when the pointer isn't on the Island
   useEffect(() => {
     const secs = settings?.pill.islandAutoCloseSecs ?? 4;
-    if (!expanded || hovered || secs === 0 || hold || lift || banner || session?.active || liveTransfer) return;
+    if (!expanded || hovered || secs === 0 || hold || lift || banner || ringing || session?.active || liveTransfer) return;
     const t = window.setTimeout(collapse, secs * 1000);
     return () => clearTimeout(t);
-  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, lift, banner, session?.active, liveTransfer]);
+  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, lift, banner, ringing, session?.active, liveTransfer]);
 
   // ---- close on Escape and when the pill window loses focus (click elsewhere)
   useEffect(() => {
@@ -466,8 +508,10 @@ export function Pill() {
                 <HoldIsland hold={hold} width={ISLAND_W} />
               ) : lift ? (
                 <LiftIsland lift={lift} width={ISLAND_W} cameraOn={!!settings.gestures.enabled} />
+              ) : ringing ? (
+                <CallIsland live={live} width={ISLAND_W} listening={!!settings.gestures.enabled && !!settings.phone?.callGestures} />
               ) : banner ? (
-                <NotifIsland n={banner} width={ISLAND_W} onClose={closeBanner} onReplying={setReplying} />
+                <NotifIsland n={banner} width={ISLAND_W} onClose={closeBanner} onReplying={setReplying} replyNonce={replyNonce} />
               ) : liveTransfer ? (
                 <SendingIsland t={liveTransfer} width={ISLAND_W} reduced={reduced} />
               ) : (
@@ -505,6 +549,7 @@ export function Pill() {
                 <PillButton
                   settings={settings}
                   phone={phone}
+                  live={live}
                   onClick={onPillClick}
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
@@ -522,6 +567,7 @@ export function Pill() {
 function PillButton({
   settings,
   phone,
+  live,
   onClick,
   onPointerDown,
   onPointerMove,
@@ -529,6 +575,7 @@ function PillButton({
 }: {
   settings: Settings;
   phone: PhoneStatus;
+  live: PhoneLive;
   onClick: () => void;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
@@ -551,7 +598,10 @@ function PillButton({
       ? 'PinchDrop: no phone paired. Click to expand, double-click to open the app.'
       : `PinchDrop: ${phone.name} ${phone.state}${phone.battery != null ? `, battery ${phone.battery} percent` : ''}. Click to expand, double-click to open the app.`;
 
+  const ringing = live.call === 'ringing';
+  const badge = 'inline-flex items-center gap-1 rounded-full px-2 h-[70%] font-semibold cursor-pointer select-none';
   return (
+    <div className="inline-flex items-center" style={{ height: size.h }}>
     <button
       type="button"
       aria-label={aria}
@@ -584,6 +634,36 @@ function PillButton({
         </span>
       )}
     </button>
+    {/* v2: what's happening on the phone: unread texts, ringing (with who), a missed call */}
+    {live.unread > 0 && (
+      <button
+        type="button"
+        title={`${live.unread} unread message${live.unread === 1 ? '' : 's'} (open Messages)`}
+        aria-label={`${live.unread} unread messages. Open Messages`}
+        onClick={() => void api.openMain('messages')}
+        className={`${badge} ${size.text} mr-1 bg-[#0A84FF]/20 text-[#64B5FF] hover:bg-[#0A84FF]/30`}
+      >
+        <MessageSquare size={size.icon - 2} aria-hidden="true" /> {live.unread > 9 ? '9+' : live.unread}
+      </button>
+    )}
+    {ringing && (
+      <span className={`${badge} ${size.text} mr-1.5 bg-[#30D158]/20 text-[#5BE07F]`} role="status" aria-label={`Incoming call from ${live.callerName ?? live.callerNumber ?? 'unknown'}`}>
+        <PhoneCall size={size.icon - 2} className="pd-shake" aria-hidden="true" />
+        <span className="max-w-[140px] truncate">{live.callerName ?? live.callerNumber ?? 'Calling'}</span>
+      </span>
+    )}
+    {!ringing && live.missed && (
+      <button
+        type="button"
+        title={`Missed call from ${live.missed} (click to clear)`}
+        aria-label={`Missed call from ${live.missed}. Clear`}
+        onClick={() => void api.clearMissed()}
+        className={`${badge} ${size.text} mr-1 text-[#FF6961] hover:bg-white/10`}
+      >
+        <PhoneMissed size={size.icon - 2} aria-hidden="true" />
+      </button>
+    )}
+    </div>
   );
 }
 
