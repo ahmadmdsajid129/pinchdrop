@@ -1,0 +1,198 @@
+package com.pinchdrop.companion.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Laptop
+import androidx.compose.material.icons.filled.PanTool
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pinchdrop.companion.data.AppSettings
+import com.pinchdrop.companion.data.PcStatus
+import com.pinchdrop.companion.ui.Avatar
+import com.pinchdrop.companion.ui.DemoTag
+import com.pinchdrop.companion.ui.PdCard
+import com.pinchdrop.companion.ui.PhaseBadge
+import com.pinchdrop.companion.ui.PrimaryButton
+import com.pinchdrop.companion.ui.ToggleRow
+import com.pinchdrop.companion.ui.theme.Pd
+
+// ---------- Home ----------
+
+@Composable
+fun HomeScreen(
+    settings: AppSettings,
+    pc: PcStatus,
+    notice: String?,
+    clearNotice: () -> Unit,
+    onPair: () -> Unit,
+    onSeeAll: () -> Unit,
+    onProfile: () -> Unit,
+) {
+    val c = Pd.colors
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("PinchDrop", color = c.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f).semantics { heading() })
+            Box(Modifier.clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Open profile", onClick = onProfile)) {
+                Avatar(settings.phoneName, c.accent, size = 40)
+            }
+        }
+
+        if (notice != null) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(c.warn.copy(alpha = 0.12f)).padding(start = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(notice, color = c.text, fontSize = 14.sp, modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite })
+                TextButton(onClick = clearNotice) { Text("OK", color = c.accent) }
+            }
+        }
+
+        if (pc.paired) {
+            PdCard(borderColor = if (pc.connected) c.success.copy(alpha = 0.5f) else null) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(c.surface2), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Laptop, contentDescription = null, tint = c.accent)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(pc.name, color = c.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                            if (pc.isDemo) DemoTag()
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(Modifier.size(8.dp).clip(CircleShape).background(if (pc.connected) c.success else c.muted))
+                            Text(
+                                when {
+                                    pc.connected -> "Connected · ${pc.network ?: "Wi-Fi"}"
+                                    pc.connecting -> "Connecting…"
+                                    else -> "Not on this Wi-Fi right now"
+                                },
+                                color = c.muted, fontSize = 13.sp,
+                            )
+                        }
+                    }
+                }
+            }
+            PdCard {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Icon(Icons.Filled.PanTool, contentDescription = null, tint = c.primary, modifier = Modifier.size(28.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(if (settings.catchWithHand) "Ready to catch" else "Ready to receive", color = c.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (settings.catchWithHand) "Camera turns on only when the PC sends" else "Hand catching is off — you'll get a tap-to-accept alert",
+                            color = c.muted, fontSize = 13.sp,
+                        )
+                    }
+                }
+            }
+        } else {
+            PdCard {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Filled.Laptop, contentDescription = null, tint = c.muted, modifier = Modifier.size(36.dp))
+                    Text("No PC paired yet", color = c.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Install PinchDrop for Windows, open Devices → Pair a new phone, then scan its QR code here.", color = c.muted, fontSize = 14.sp, lineHeight = 20.sp)
+                    PrimaryButton("Pair with PC", onClick = onPair, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+
+        Text(
+            "How to receive: select something on your PC → pinch in front of the laptop camera → open your hand over this phone.",
+            color = c.soft, fontSize = 14.sp, lineHeight = 20.sp,
+            modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(c.bg2).padding(14.dp),
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Recently received", color = c.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(
+                "See all", color = c.accent, fontSize = 14.sp,
+                modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = onSeeAll).padding(8.dp),
+            )
+        }
+        EmptyReceived(compact = true)
+    }
+}
+
+@Composable
+private fun EmptyReceived(compact: Boolean) {
+    val c = Pd.colors
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(c.surface).padding(if (compact) 20.dp else 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Icons.Filled.Inventory2, contentDescription = null, tint = c.muted, modifier = Modifier.size(if (compact) 28.dp else 40.dp))
+        Text("Nothing received yet", color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text("Files you catch from your PC show up here.", color = c.muted, fontSize = 13.sp, textAlign = TextAlign.Center)
+        if (!compact) PhaseBadge(4)
+    }
+}
+
+// ---------- Received ----------
+
+@Composable
+fun ReceivedScreen() {
+    val c = Pd.colors
+    var filter by rememberSaveable { mutableStateOf("All") }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Received", color = c.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("All", "Photos", "Videos", "Files").forEach { f ->
+                FilterChip(
+                    selected = filter == f,
+                    onClick = { filter = f },
+                    label = { Text(f) },
+                    modifier = Modifier.heightIn(min = 40.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = c.primary, selectedLabelColor = Color.White,
+                        containerColor = c.surface, labelColor = c.soft,
+                    ),
+                )
+            }
+        }
+        EmptyReceived(compact = false)
+        Text(
+            "Long-press an item: Open · Share · Show in folder · Delete from phone (goes to the phone's trash where Android supports it).",
+            color = c.muted, fontSize = 13.sp, lineHeight = 18.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+    }
+}

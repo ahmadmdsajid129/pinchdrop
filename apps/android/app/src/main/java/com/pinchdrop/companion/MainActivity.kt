@@ -1,196 +1,64 @@
 package com.pinchdrop.companion
 
+import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.PanTool
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.pinchdrop.companion.ui.*
-import com.pinchdrop.companion.vision.PhoneCameraCatchSensor
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pinchdrop.companion.link.PcLink
+import com.pinchdrop.companion.ui.PinchDropApp
 
 class MainActivity : ComponentActivity() {
-    private var dropSensor: PhoneCameraCatchSensor? = null
+    private val vm: AppViewModel by viewModels()
+
+    /** A screen another part of the app (e.g. a notification) asked us to open. Consumed once by the UI. */
+    private var pendingRoute by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        dropSensor = PhoneCameraCatchSensor(this) { _ ->
-            runOnUiThread {
-                Toast.makeText(
-                    this,
-                    "👋 Hand Drop Detected! Receiving 'CPP' folder from PC...",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-        dropSensor?.startListening()
+        PcLink.init(this)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
+        if (savedInstanceState == null) pendingRoute = intent?.getStringExtra(Notifications.EXTRA_OPEN)
 
         setContent {
-            MaterialTheme(colorScheme = PinchDropColorScheme) {
-                CompanionHomeScreen()
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        dropSensor?.stopListening()
-    }
-}
-
-@Composable
-fun CompanionHomeScreen() {
-    var isConnected by remember { mutableStateOf(true) }
-    var activeProgress by remember { mutableStateOf(0.72f) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BgDark)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // App Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "PinchDrop Companion",
-                fontSize = 20.sp,
-                color = AccentCyan
+            val settings by vm.settings.collectAsStateWithLifecycle()
+            val pc by vm.pc.collectAsStateWithLifecycle()
+            val notice by vm.notice.collectAsStateWithLifecycle()
+            PinchDropApp(
+                settings = settings,
+                pc = pc,
+                update = vm::update,
+                reset = vm::reset,
+                pendingRoute = pendingRoute,
+                consumeRoute = { pendingRoute = null },
+                notice = notice,
+                clearNotice = PcLink::clearNotice,
             )
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = if (isConnected) SuccessGreen.copy(alpha = 0.2f) else DangerRed.copy(alpha = 0.2f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, if (isConnected) SuccessGreen else DangerRed)
-            ) {
-                Text(
-                    text = if (isConnected) "● Connected" else "Disconnected",
-                    fontSize = 12.sp,
-                    color = if (isConnected) SuccessGreen else DangerRed,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-        }
-
-        // Quick Grab Actions Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Surface2Dark, RoundedCornerShape(16.dp))
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "HAND DROP RECEIVER", fontSize = 11.sp, color = MutedSlate)
-                    Text(text = "● Sensor Armed", fontSize = 11.sp, color = SuccessGreen)
-                }
-                Text(
-                    text = "Hover open hand above phone camera to drop and catch incoming PC folder ('CPP').",
-                    fontSize = 12.sp,
-                    color = TextLight
-                )
-            }
-        }
-
-        // Quick Grab Actions Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Surface2Dark, RoundedCornerShape(16.dp))
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(text = "QUICK GRAB ACTIONS", fontSize = 11.sp, color = MutedSlate)
-
-                QuickActionButton(
-                    icon = Icons.Default.CameraAlt,
-                    label = "Grab Latest Photo",
-                    color = PrimaryPurple
-                )
-                QuickActionButton(
-                    icon = Icons.Default.ContentPaste,
-                    label = "Grab System Clipboard",
-                    color = AccentCyan
-                )
-                QuickActionButton(
-                    icon = Icons.Default.Description,
-                    label = "Scan Document (ML Kit)",
-                    color = WarnYellow
-                )
-            }
-        }
-
-        // Active Transfers Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Surface2Dark, RoundedCornerShape(16.dp))
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "ACTIVE TRANSFERS (PC ➔ PHONE)", fontSize = 11.sp, color = MutedSlate)
-
-                Text(text = "4K_Broll_Sequence.mp4", fontSize = 14.sp, color = TextLight)
-                LinearProgressIndicator(
-                    progress = { activeProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = PrimaryPurple,
-                    trackColor = Surface2Dark
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = "72% · 38 MB/s", fontSize = 11.sp, color = MutedSlate)
-                    Text(text = "BLAKE3 Verified", fontSize = 11.sp, color = SuccessGreen)
-                }
-            }
         }
     }
-}
 
-@Composable
-fun QuickActionButton(icon: ImageVector, label: String, color: androidx.compose.ui.graphics.Color) {
-    Button(
-        onClick = { /* Grab action */ },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Surface2Dark)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = color)
-            Text(text = label, color = TextLight, fontSize = 14.sp)
-        }
+    // The link stays up while the app is on screen; the background service keeps it up otherwise.
+    override fun onStart() {
+        super.onStart()
+        PcLink.setForeground(true)
+    }
+
+    override fun onStop() {
+        PcLink.setForeground(false)
+        super.onStop()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(Notifications.EXTRA_OPEN)?.let { pendingRoute = it }
     }
 }

@@ -32,3 +32,9 @@ Thumbs.db
 
 # Tauri generated schemas
 apps/desktop/src-tauri/gen/
+
+# Android local
+local.properties
+.kotlin/
+*.jks
+*.keystore
