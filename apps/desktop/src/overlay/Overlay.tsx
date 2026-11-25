@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useVelocity } from 'framer-motion';
 import { Hand } from 'lucide-react';
 import { ItemPreview } from '../shared/ItemPreview';
-import type { ItemPreviewData } from '../shared/types';
+import type { ItemPreviewData, LiftView } from '../shared/types';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
+  CatchMachine,
+  catchConfigFor,
   GrabMachine,
   OneEuroFilter,
   calculatePinchRatio,
@@ -26,6 +28,8 @@ interface ArmState {
   sensitivity: number;
   showRing: boolean;
   sounds: boolean;
+  /** "grab" (pinch the selection) or "catch" (v2: open hand takes what the phone lifted). */
+  mode?: 'grab' | 'catch';
 }
 
 /** Mirrors grab::GrabbedItems. */
@@ -189,6 +193,8 @@ export function Overlay() {
     return () => cancelAnimationFrame(raf);
   }, [hx, hy]);
   const ringX = useTransform(hx, (v) => v - 22);
+  const catchRingX = useTransform(hx, (v) => v - 32);
+  const catchRingY = useTransform(hy, (v) => v - 32);
   const ringY = useTransform(hy, (v) => v - 22);
   // The card is "carried": a soft, critically damped follow (no wobble) and a gentle tilt with
   // the direction of travel, like a photo held between two fingers.
@@ -234,6 +240,7 @@ export function Overlay() {
         setHandIfChanged(h ? { pinched: h.pinched } : null);
       } else if (d.type === 'card') setCard(d.card as Card | null);
       else if (d.type === 'sendfx') setFx(d.fx as SendFxEvent);
+      else if (d.type === 'lift') setLift(d.lift as LiftView | null);
     };
     window.addEventListener('pd-demo', on);
     return () => window.removeEventListener('pd-demo', on);
@@ -247,6 +254,29 @@ export function Overlay() {
   }, []);
 
   const armed = !!arm?.armed;
+  const catching = armed && arm?.mode === 'catch';
+
+  // v2 · What the phone has in the air (shown big while the webcam waits for an open hand).
+  const [lift, setLift] = useState<LiftView | null>(null);
+  const [catchProgress, setCatchProgress] = useState(0);
+  const [caught, setCaught] = useState(false);
+  useEffect(() => {
+    if (!inTauri) return;
+    void invoke<LiftView | null>('lift_state').then(setLift);
+    const off = onEvent<LiftView | null>('lift-changed', (l) => {
+      if (l) {
+        setCaught(false);
+        setLift(l);
+      } else {
+        // Leave a moment for the "pulled in" animation after a catch.
+        window.setTimeout(() => {
+          setLift(null);
+          setCaught(false);
+        }, 700);
+      }
+    });
+    return () => void off.then((u) => u());
+  }, []);
 
   useEffect(() => {
     if (!armed || !arm || !inTauri) return;
@@ -255,6 +285,15 @@ export function Overlay() {
     let raf = 0;
     let cancelFrame = () => cancelAnimationFrame(raf);
     const machine = new GrabMachine(grabConfigFor(arm.sensitivity));
+    // v2: in catch mode only an open hand counts (no pinching, nothing is picked up here).
+    const catcher = arm.mode === 'catch' ? new CatchMachine(catchConfigFor(arm.sensitivity)) : null;
+    let shownProgress = 0;
+    const showProgress = (v: number) => {
+      if (Math.abs(v - shownProgress) >= 0.08 || (v === 0) !== (shownProgress === 0)) {
+        shownProgress = v;
+        setCatchProgress(v);
+      }
+    };
     // Pointer filter: steady when the hand is still, almost no lag when it moves fast (high beta).
     // Gesture classification uses the raw landmarks — its thresholds, dwell and hysteresis are the stabiliser.
     const POINTER = { minCutoff: 1.2, beta: 0.05, dCutoff: 1.0 };
@@ -388,11 +427,50 @@ export function Overlay() {
           prev = null;
           track.current.live = false;
           setHandIfChanged(null);
+          if (catcher) {
+            catcher.step(now, null);
+            showProgress(0);
+            return;
+          }
           const ev = machine.step(now, null);
           if (ev?.type === 'cancel') onCancel();
           return;
         }
         const lm = raw;
+        if (catcher) {
+          // The ring sits on the palm; the hold fills it.
+          const palm = cameraToScreen(lm[9].x, lm[9].y);
+          feed(fx.filter(palm.x, now) * window.innerWidth, fy.filter(palm.y, now) * window.innerHeight, now, !handRef.current);
+          const got = catcher.step(now, {
+            t: now,
+            extended: extendedFingers(lm),
+            pinchRatio: calculatePinchRatio(lm),
+            scale: handScale(raw),
+            score: res.handedness?.[0]?.[0]?.score ?? 0,
+            x: lm[9].x,
+            y: lm[9].y,
+          });
+          setHandIfChanged(catcher.hint === 'TOO_FAR' || catcher.hint === 'LOOKING' ? null : { pinched: false });
+          showProgress(catcher.progress);
+          if (catcher.hint === 'TOO_FAR') {
+            if (!farSince) farSince = now;
+            if (now - farSince > 1200 && !hintShown) {
+              hintShown = true;
+              flash('Move your hand a little closer to the camera');
+            }
+          } else farSince = 0;
+          if (got) {
+            activity();
+            setCaught(true);
+            if (arm?.sounds) sound.pop();
+            void invoke('lift_catch', { id: null }).catch(() => {
+              setCaught(false);
+              catcher.reset();
+              flash('It isn’t in the air any more');
+            });
+          }
+          return;
+        }
         const mid = { x: (lm[4].x + lm[8].x) / 2, y: (lm[4].y + lm[8].y) / 2 };
         const target = cameraToScreen(mid.x, mid.y);
         const sx = fx.filter(target.x, now);
@@ -452,7 +530,7 @@ export function Overlay() {
       if (videoRef.current) videoRef.current.srcObject = null;
       setHand(null);
     };
-  }, [armed, arm?.cameraId, arm?.sensitivity]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [armed, arm?.cameraId, arm?.sensitivity, arm?.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cardTarget = { x: W / 2 - 110, y: 8 };
 
@@ -463,6 +541,45 @@ export function Overlay() {
       {/* Never shown: the camera feeds MediaPipe directly. */}
       <video ref={videoRef} className="hidden" muted playsInline />
 
+
+      {/* v2 · what the phone lifted, floating in, waiting for an open hand */}
+      <AnimatePresence>
+        {lift && (catching || caught) && (
+          <motion.div
+            key={lift.id}
+            className="absolute left-1/2 top-[18%]"
+            initial={{ opacity: 0, y: 60, scale: 0.7, x: '-50%' }}
+            animate={
+              caught
+                ? { opacity: 0, scale: 1.25, y: 30, x: '-50%', transition: { duration: 0.45, ease: [0.2, 0, 0, 1] } }
+                : { opacity: 1, y: [0, -8, 0], scale: 1, x: '-50%', transition: { opacity: { duration: 0.3 }, scale: { type: 'spring', stiffness: 300, damping: 22 }, y: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } } }
+            }
+            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+          >
+            <ItemPreview
+              size="big"
+              p={lift.preview}
+              title={lift.label}
+              subtitle={`From ${lift.phoneName}${lift.fileCount ? ` · ${formatBytes(lift.totalBytes)}` : ''}`}
+              hint={caught ? 'Caught!' : 'Open your hand at the camera to catch it'}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {catching && hand && catchProgress > 0 && (
+        <motion.svg
+          className="absolute left-0 top-0 pointer-events-none"
+          width="64"
+          height="64"
+          viewBox="0 0 64 64"
+          style={{ x: catchRingX, y: catchRingY }}
+          aria-hidden="true"
+        >
+          <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="4" />
+          <circle cx="32" cy="32" r="28" fill="none" stroke="#30D158" strokeWidth="4" strokeLinecap="round" strokeDasharray={2 * Math.PI * 28} strokeDashoffset={2 * Math.PI * 28 * (1 - catchProgress)} transform="rotate(-90 32 32)" />
+        </motion.svg>
+      )}
 
       {armed && hand && arm?.showRing && (
         <motion.div
