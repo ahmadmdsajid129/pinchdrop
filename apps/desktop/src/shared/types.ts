@@ -117,6 +117,20 @@ export interface TransferView {
   bytesDone: number;
   moved: boolean;
   firstName: string | null;
+  /** "out" = PC → phone; "in" = lifted from the phone (v2). */
+  direction: 'out' | 'in';
+}
+
+/** v2 · Something the phone lifted and is holding in the air. Mirrors link::lift::LiftView. */
+export interface LiftView {
+  id: string;
+  phoneName: string;
+  label: string;
+  fileCount: number;
+  totalBytes: number;
+  expiresInMs: number;
+  totalMs: number;
+  preview: ItemPreviewData;
 }
 
 /** The click-started camera session. Mirrors grab::SessionView. */
