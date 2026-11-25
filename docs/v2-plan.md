@@ -21,16 +21,16 @@ Status: 🟢 agreed with the founder · 🔵 proposed (needs a yes before we bui
 | 2 | Phone notifications on the PC (in the Island) (**built in v2.0**) | 🟢 |
 | 3 | SMS: read and reply from the PC (**built in v2.0**) | 🟢 |
 | 4 | Contacts on the PC (**built in v2.0**) | 🟢 |
-| 5 | Calls: see who's calling, answer or reject with your hand | 🟢 |
-| 6 | Fast mode for big files | 🟢 |
-| 7 | Proximity-sensor catch (no camera needed) | 🟢 |
-| 8 | Several phones and tablets, with a cool way to pick the target | 🟢 |
+| 5 | Calls: see who's calling, answer or reject with your hand (**built in v2.0**) | 🟢 |
+| 6 | Fast mode for big files (**built in v2.0**) | 🟢 |
+| 7 | Proximity-sensor catch (no camera needed) (**built in v2.0**) | 🟢 |
+| 8 | Several phones and tablets, with a cool way to pick the target (**built in v2.0**) | 🟢 |
 | 9 | Laptop ↔ laptop | 🟢 |
-| 10 | New gestures for all of the above (section 2) | 🟢 |
-| 11 | Clipboard both ways | 🔵 |
-| 12 | Grab a screenshot with a two-hand frame | 🔵 |
-| 13 | Find my phone (ring it from the PC) | 🔵 |
-| 14 | Pill shows unread messages and incoming calls; the message icon opens the Messages view | 🟢 |
+| 10 | New gestures for all of the above (section 2) (**built in v2.0**) | 🟢 |
+| 11 | Clipboard both ways (**built in v2.0**) | 🟢 |
+| 12 | Grab a screenshot with a two-hand frame (**built in v2.0**) | 🟢 |
+| 13 | Find my phone (ring it from the PC) (**built in v2.0**) | 🟢 |
+| 14 | Pill shows unread messages and incoming calls; the message icon opens the Messages view (**built in v2.0**) | 🟢 |
 
 ### 1. Phone → PC with gestures
 **How it works:**
