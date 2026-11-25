@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { Contact, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
+import type { Contact, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -164,6 +164,12 @@ export const api = {
     inTauri ? ((await invoke<{ contacts: Contact[] }>('contacts_list')).contacts ?? []) : DEMO_CONTACTS,
   dial: (number: string): Promise<{ how: string }> => (inTauri ? invoke('phone_dial', { number }) : Promise.resolve({ how: 'calling' })),
 
+  // v2 · Calls, unread badge, find my phone.
+  phoneLive: (): Promise<PhoneLive> => (inTauri ? invoke('phone_live') : Promise.resolve(DEMO_LIVE)),
+  clearMissed: () => (inTauri ? invoke<void>('clear_missed') : Promise.resolve()),
+  callAction: (action: 'answer' | 'reject' | 'silence') => (inTauri ? invoke<void>('call_action', { action }) : Promise.resolve()),
+  findPhone: (stop = false) => (inTauri ? invoke<void>('find_phone', { stop }) : Promise.resolve()),
+
   // v2 · Lift (phone → PC).
   liftState: (): Promise<LiftView | null> => (inTauri ? invoke<LiftView | null>('lift_state') : Promise.resolve(null)),
   liftCatch: (id?: string) => (inTauri ? invoke<void>('lift_catch', { id: id ?? null }) : Promise.resolve()),
@@ -256,6 +262,27 @@ export function useDevices() {
   }, []);
   useAsyncSubscription(() => onEvent<DeviceView[]>('devices-changed', setDevices), []);
   return devices;
+}
+
+const DEMO_LIVE: PhoneLive = { unread: 0, call: 'idle', callerName: null, callerNumber: null, missed: null };
+
+/** v2 · Unread texts and calls, live (for the pill). */
+export function usePhoneLive() {
+  const [live, setLive] = useState<PhoneLive>(DEMO_LIVE);
+  useEffect(() => {
+    api.phoneLive().then(setLive);
+  }, []);
+  useAsyncSubscription(() => onEvent<PhoneLive>('phone-live', setLive), []);
+  useEffect(() => {
+    if (inTauri) return;
+    const on = (e: Event) => {
+      const d = (e as CustomEvent).detail as { type: string; live?: PhoneLive };
+      if (d.type === 'live' && d.live) setLive(d.live);
+    };
+    window.addEventListener('pd-demo', on);
+    return () => window.removeEventListener('pd-demo', on);
+  }, []);
+  return live;
 }
 
 /** v2 · The phone's current notifications, live. */
