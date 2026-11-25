@@ -140,7 +140,7 @@ fun SettingsScreen(
                     settings.manualSends, { v -> update { it.copy(manualSends = v) } },
                 )
             }
-            NavRow("Practice the catch", onClick = { onDemo(Route.CATCH_DEMO) }, description = "Try the Catch screen with a pretend folder", last = true)
+            NavRow("Practice the catch", onClick = { onDemo(Route.CATCH_DEMO) }, description = "Try the open-hand catch with a pretend folder — nothing is sent", last = true)
         }
 
         SectionLabel("Saving")
@@ -195,7 +195,7 @@ fun SettingsScreen(
                 color = c.soft, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(16.dp),
             )
             SettingRow("Clear received history", description = "Nothing stored yet") { PhaseBadge(4) }
-            SettingRow("PinchDrop $version", description = "Phase 3 build — pairing and live connection", last = true)
+            SettingRow("PinchDrop $version", description = "Phase 6 build — catch with an open hand", last = true)
         }
     }
 }

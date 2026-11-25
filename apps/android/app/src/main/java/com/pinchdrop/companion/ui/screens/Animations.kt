@@ -1,5 +1,15 @@
 package com.pinchdrop.companion.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.pinchdrop.companion.data.HandDetection
+import com.pinchdrop.companion.vision.CatchCamera
+import com.pinchdrop.companion.vision.CatchCameraError
+import com.pinchdrop.companion.vision.CatchDetector
+import com.pinchdrop.companion.vision.CatchHint
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Movie
@@ -84,7 +94,6 @@ import androidx.compose.ui.unit.sp
 import com.pinchdrop.companion.Notifications
 import com.pinchdrop.companion.data.AppSettings
 import com.pinchdrop.companion.ui.DemoTag
-import com.pinchdrop.companion.ui.PhaseBadge
 import com.pinchdrop.companion.ui.PrimaryButton
 import com.pinchdrop.companion.ui.SecondaryButton
 import com.pinchdrop.companion.ui.theme.Pd
@@ -114,9 +123,37 @@ private object DemoItem {
 // ---------- Catch ----------
 
 @Composable
-fun CatchScreen(pcName: String, onAccept: () -> Unit, onDecline: () -> Unit, hold: Receiver.Hold? = null) {
+fun CatchScreen(
+    pcName: String,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+    hold: Receiver.Hold? = null,
+    settings: AppSettings? = null,
+) {
     val c = Pd.colors
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+
+    // ---- Phase 6: open-hand catch with the front camera (only while this screen is open)
+    var cameraOk by remember {
+        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+    }
+    val askCamera = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { cameraOk = it }
+    val handOn = settings?.catchWithHand ?: true
+    val detector = remember(settings?.handDetection) {
+        CatchDetector(CatchDetector.configFor(settings?.handDetection ?: HandDetection.NORMAL))
+    }
+    var hint by remember { mutableStateOf(CatchHint.LOOKING) }
+    var cameraError by remember { mutableStateOf<CatchCameraError?>(null) }
+    var caught by remember { mutableStateOf(false) }
+    val catchNow: () -> Unit = {
+        if (!caught) {
+            caught = true
+            if (settings?.vibrate != false) haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            if (settings?.arrivalSound == true) chime()
+            onAccept()
+        }
+    }
     val total = hold?.totalSecs ?: 30
     var left by remember(hold?.id) { mutableIntStateOf(hold?.secondsLeft() ?: total) }
     LaunchedEffect(hold?.id) {
@@ -132,6 +169,17 @@ fun CatchScreen(pcName: String, onAccept: () -> Unit, onDecline: () -> Unit, hol
     val hover by pulse.animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "hover")
 
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0B1020), Color(0xFF1A1440))))) {
+        if (handOn && cameraOk && cameraError == null && !caught) {
+            // Dimmed front-camera view so people can see their hand is over the phone.
+            CatchCamera(
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.3f },
+                onFrame = { f ->
+                    if (detector.step(f?.t ?: android.os.SystemClock.uptimeMillis(), f)) catchNow()
+                    hint = detector.hint
+                },
+                onError = { cameraError = it },
+            )
+        }
         Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.08f)).padding(14.dp),
@@ -183,12 +231,28 @@ fun CatchScreen(pcName: String, onAccept: () -> Unit, onDecline: () -> Unit, hol
             Spacer(Modifier.height(6.dp))
             Text("Hold it 10–30 cm above the screen, then spread your fingers.", color = Color(0xFFC7CEEA), fontSize = 15.sp, textAlign = TextAlign.Center)
             Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Hand detection:", color = Color(0xFF8B94B8), fontSize = 13.sp)
-                PhaseBadge(6)
+            val status: Pair<String, Color> = when {
+                !handOn -> "Catching by hand is off (Settings → Catching) — use the button" to Color(0xFF8B94B8)
+                !cameraOk -> "The camera is needed to see your hand" to Color(0xFFFBBF24)
+                cameraError == CatchCameraError.NO_FRONT_CAMERA -> "This phone has no front camera — use the button" to Color(0xFFFBBF24)
+                cameraError == CatchCameraError.CAMERA_BUSY -> "The camera is busy in another app — close it, or use the button" to Color(0xFFFBBF24)
+                cameraError == CatchCameraError.TRACKING_FAILED -> "Hand tracking couldn't start — use the button" to Color(0xFFFBBF24)
+                caught || hint == CatchHint.CAUGHT -> "Caught!" to c.success
+                hint == CatchHint.TOO_FAR -> "Bring your hand closer to the phone" to Color(0xFFC7CEEA)
+                hint == CatchHint.HAND_SEEN -> "Hand seen — now open it" to c.accent
+                hint == CatchHint.OPENING -> "Keep it open…" to c.accent
+                else -> "Watching for your hand" to Color(0xFF8B94B8)
+            }
+            Text(
+                status.first, color = status.second, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+            if (handOn && !cameraOk) {
+                Spacer(Modifier.height(8.dp))
+                SecondaryButton("Allow camera", onClick = { askCamera.launch(Manifest.permission.CAMERA) })
             }
             Spacer(Modifier.height(20.dp))
-            PrimaryButton("Accept without gesture", onClick = onAccept, modifier = Modifier.fillMaxWidth())
+            PrimaryButton("Accept without gesture", onClick = catchNow, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(10.dp))
             SecondaryButton("Decline", onClick = onDecline, modifier = Modifier.fillMaxWidth())
         }

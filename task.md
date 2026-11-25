@@ -10,7 +10,7 @@
 | **Source of Truth For** | Roadmap tracking (S0–S13), sprint tasks, and backlog |
 
 > [!NOTE]
-> **v1 rebuild in progress — Phase P5 of 7.** P1–P5 code written; P2–P5 not compiled yet (the dev PC is still downloading the C++ build tools and Gradle). gesture-core unit tests run and pass. Founder checks P1.7 / P2.7 / P3.8 / P4.8 / P5.8 open. The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
+> **v1 rebuild in progress — Phase P6 of 7.** P1–P6 code written; P2–P6 not compiled yet (the dev PC is still downloading the C++ build tools and Gradle). gesture-core unit tests run and pass. Founder checks P1.7 / P2.7 / P3.8 / P4.8 / P5.8 / P6.6 open. The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
 
 ---
 
@@ -24,8 +24,8 @@ Approved 2026-11-25 together with the full screen design (see [memory.md](memory
 | **P2** | **Android app shell** — every phone screen, permission flow, settings | Install the APK | 🟢 Written — build + founder check open |
 | **P3** | **Real connection** — discovery, QR + 6-digit pairing, encrypted link, live phone name + battery | Pair your phone | 🟢 Written — build + founder check open |
 | **P4** | **Manual send** — files, folders, text; Gallery / Downloads saving; receive animations; history; resume | Send real files | 🟢 Written — build + founder check open |
-| **P5** | **Grab on PC** — Explorer/Desktop selection, webcam pinch, floating card, Island countdown | Pinch a folder | 🟡 In progress |
-| **P6** | **Catch on phone** — incoming alert, camera open-hand detection, full gesture loop | The whole thing | ⚪ Pending |
+| **P5** | **Grab on PC** — Explorer/Desktop selection, webcam pinch, floating card, Island countdown | Pinch a folder | 🟢 Written — build + founder check open |
+| **P6** | **Catch on phone** — incoming alert, camera open-hand detection, full gesture loop | The whole thing | 🟡 In progress |
 | **P7** | **Polish & installers** — sounds, haptics, error states, Windows installer, release APK | Install fresh | ⚪ Pending |
 
 ### P1 · Desktop shell
@@ -79,6 +79,14 @@ Spec: [LINK-v1 §6.4](packages/protocol/LINK-v1.md).
 - [x] `P5.6` Phone: real Catch screen for holds (countdown, Accept without gesture, Decline) + high-priority notification when the app is closed. Open-hand detection is P6.
 - [x] `P5.7` Gesture unit tests: 15 for the grab rules (fist, far hand, unsure tracking, waving, entering mid-pinch, half-open hand, hysteresis, lost hand) — 25 gesture-core tests passing.
 - [ ] `P5.8` Founder check: select CPP on the Desktop and in Explorer, pinch, move, open hand; watch the Island; catch on the phone with the button.
+
+### P6 · Catch on phone
+- [x] `P6.1` Front camera (CameraX) → MediaPipe HandLandmarker for Android with the same bundled model as the PC (uncompressed asset, works offline); GPU with CPU fallback; frames analysed in memory and dropped; runs only while the Catch screen is open.
+- [x] `P6.2` `CatchDetector`: only a hand **close to the phone** that **opens** catches — closed/pinched then spread (150 ms), or a steady open palm (600 ms). Far hands, people walking past, fists, pointing, half-open hands, waving and unsure tracking are ignored. Easy / Normal / Strict from Settings → Hand detection. 10 JVM unit tests.
+- [x] `P6.3` Catch screen: dimmed camera view, live hints (Watching · Bring your hand closer · Hand seen — now open it · Keep it open · Caught!), haptic + chime, then `hold.catch` → the PC sends → Receiving → Arrived.
+- [x] `P6.4` Errors in plain words, with *Accept without gesture* always available: camera not allowed (Allow camera button), no front camera, camera busy in another app, hand tracking failed; catching by hand switched off.
+- [x] `P6.5` Practice the catch (Settings) uses the real camera with a pretend folder; nothing is sent.
+- [ ] `P6.6` Founder check: the whole loop — click the pill, select CPP, pinch, carry, open your hand over the phone; it arrives.
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 

@@ -16,10 +16,10 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Phase:** **v1 rebuild — Phase P5 (Grab on PC)**. P1–P5 code is written; P2–P5 are not compiled yet because the dev PC is still downloading the MSVC build tools / Windows SDK and Gradle (the founder's editor, Antigravity IDE with the Red Hat Java extension, also auto-syncs the Android project and competes for the download). The earlier S3–S12 "done" stages were UI prototypes with mocked data (fake pairing, fake LAN server, prefix-only licence). On 2026-11-25 the founder approved a full v1 design (PC → phone only) and a 7-phase rebuild (P1–P7, see [task.md](task.md)).
+- **Current Phase:** **v1 rebuild — Phase P6 (Catch on phone)**. P1–P6 code is written; P2–P6 are not compiled yet because the dev PC is still downloading the MSVC build tools / Windows SDK and Gradle (the founder's editor, Antigravity IDE with the Red Hat Java extension, also auto-syncs the Android project and competes for the download). The earlier S3–S12 "done" stages were UI prototypes with mocked data (fake pairing, fake LAN server, prefix-only licence). On 2026-11-25 the founder approved a full v1 design (PC → phone only) and a 7-phase rebuild (P1–P7, see [task.md](task.md)).
 - **Design reference:** "PinchDrop — Desktop & Mobile App Design" canvas (claude.ai artifact, private to the founder): every desktop + phone screen, pill/Island states, send animations, and the "How it works" spec.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Phase:** **P6 — Catch on phone** (front-camera open-hand detection on the Catch screen; the rest of the catch flow already exists from P5).
+- **Next Phase:** **P7 — Polish & installers** (compile + fix everything once the toolchain is ready, signed Windows installer, release APK, error states, sounds).
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Rust `1.100` (MSVC), Tauri `2.x`
   - `apps/desktop`: Tauri 2 shell rebuilt in P1 — pill + Dynamic Island window, main window (onboarding, Home, Send, Transfers, Devices, Pair, Settings, Profile), tray, start-with-Windows, persistent settings. No phone connection yet (P3); "demo phone" preview setting stands in.

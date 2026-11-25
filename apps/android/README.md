@@ -1,6 +1,6 @@
 # Android app (`apps/android`)
 
-> **Phase:** P4 — receiving (see [task.md](../../task.md))
+> **Phase:** P6 — catch with an open hand (see [task.md](../../task.md))
 > **Stack:** Kotlin 2.2, Jetpack Compose (Material 3), DataStore · Gradle 8.14.3 wrapper, AGP 8.13, compileSdk 36, minSdk 26
 
 ## What works now
@@ -13,8 +13,10 @@
 - Pairing by QR or from the "Found on this Wi-Fi" list, with the 6-digit code check; encrypted link; live battery on the PC's pill.
 - Receiving files, folders, notes and links from the PC into Gallery / Downloads/PinchDrop, with resume, history, and the real Arrived animation.
 
+- Catching with an open hand over the phone (front camera + MediaPipe, model bundled in `assets/`, works offline).
+
 ## Not yet (by phase)
-- **P6** Open-hand detection with the front camera.
+- **P7** Release signing, installer polish.
 
 ## Build
 Needs JDK 17+ and the Android SDK (platform 36). Point Gradle at the SDK with `local.properties` (`sdk.dir=...`) or `ANDROID_HOME`.

@@ -31,6 +31,10 @@ android {
     buildFeatures {
         compose = true
     }
+    androidResources {
+        // MediaPipe memory-maps the model; it must be stored uncompressed in the APK.
+        noCompress += "task"
+    }
 }
 
 kotlin {
@@ -52,6 +56,8 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-view:1.4.2")
     implementation("com.google.zxing:core:3.5.3")
+    // Phase 6: open-hand catch with the front camera. Same hand model as the PC, bundled in assets.
+    implementation("com.google.mediapipe:tasks-vision:0.10.21")
 
     implementation(platform("androidx.compose:compose-bom:2025.09.00"))
     implementation("androidx.compose.ui:ui")

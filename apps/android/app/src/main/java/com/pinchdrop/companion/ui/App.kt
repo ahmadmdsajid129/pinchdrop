@@ -200,7 +200,7 @@ fun PinchDropApp(
                             Route.PROFILE -> ProfileScreen(settings, update, onReset = { reset(); route = Route.WELCOME }, onBack = back)
                             Route.PERMISSIONS_CHECK -> PermissionsScreen(step = null, onContinue = back, onBack = back)
                             Route.CATCH_DEMO -> CatchScreen(
-                                pcName = pc.name.ifEmpty { "Demo laptop" },
+                                pcName = pc.name.ifEmpty { "Demo laptop" }, settings = settings,
                                 onAccept = { go(Route.RECEIVING_DEMO) }, onDecline = back,
                             )
                             Route.RECEIVING_DEMO -> ReceivingScreen(
@@ -212,7 +212,7 @@ fun PinchDropApp(
                                 val h = hold
                                 if (h == null) LaunchedEffect(Unit) { go(Route.HOME) }
                                 else CatchScreen(
-                                    pcName = h.pcName, hold = h,
+                                    pcName = h.pcName, hold = h, settings = settings,
                                     onAccept = { Receiver.catchHold(); go(Route.HOME) },
                                     onDecline = { Receiver.dismissHold(); go(Route.HOME) },
                                 )
