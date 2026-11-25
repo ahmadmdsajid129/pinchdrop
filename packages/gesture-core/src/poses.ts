@@ -74,7 +74,7 @@ export function classifyPose(h: HandShape): Pose {
   return 'other';
 }
 
-export type GestureEvent = 'palm_hold' | 'peace_hold' | 'thumbs_up' | 'fist_hold' | 'swipe_left' | 'swipe_right' | 'wave';
+export type PoseEvent = 'palm_hold' | 'peace_hold' | 'thumbs_up' | 'fist_hold' | 'swipe_left' | 'swipe_right' | 'wave';
 
 export interface PoseConfig {
   minScale: number;
@@ -111,7 +111,7 @@ export function poseConfigFor(sensitivity: number): PoseConfig {
   };
 }
 
-const HOLD_EVENT: Record<'open' | 'peace' | 'thumbs_up' | 'fist', GestureEvent> = {
+const HOLD_EVENT: Record<'open' | 'peace' | 'thumbs_up' | 'fist', PoseEvent> = {
   open: 'palm_hold',
   peace: 'peace_hold',
   thumbs_up: 'thumbs_up',
@@ -140,7 +140,7 @@ export class PoseMachine {
     this.holding = null;
   }
 
-  step(t: number, h: HandShape | null): GestureEvent | null {
+  step(t: number, h: HandShape | null): PoseEvent | null {
     const c = this.config;
     this.holding = null;
     if (!h || h.score < c.minScore || h.scale < c.minScale) {
@@ -191,7 +191,7 @@ export class PoseMachine {
     this.trail = [];
   }
 
-  private motion(t: number): GestureEvent | null {
+  private motion(t: number): PoseEvent | null {
     const c = this.config;
     const pts = this.trail.filter((p) => p.open);
     if (pts.length < 3) return null;
