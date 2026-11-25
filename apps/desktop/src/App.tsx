@@ -3,7 +3,9 @@ import { EdgeZone, ZoneType } from './components/EdgeZone';
 import { FileCard, FileCardData } from './components/FileCard';
 import { PointerRing } from './components/PointerRing';
 import { UndoToast } from './components/UndoToast';
-import { Smartphone, ShieldCheck, Folder, Globe } from 'lucide-react';
+import { GestureGym } from './components/GestureGym';
+import { PrivacyDashboard } from './components/PrivacyDashboard';
+import { Smartphone, ShieldCheck, Folder, Globe, Award } from 'lucide-react';
 import { GestureStateMachine, ThrowDetector } from '@pinchdrop/gesture-core';
 
 export default function App() {
@@ -23,6 +25,11 @@ export default function App() {
   const [isGrabbing, setIsGrabbing] = useState(false);
   const [grabbedCardId, setGrabbedCardId] = useState<string | null>(null);
   const [activeZone, setActiveZone] = useState<ZoneType | null>(null);
+
+  // Modals state (Stage 9)
+  const [isGymOpen, setIsGymOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [cameraActive, setCameraActive] = useState(true);
 
   // Undo Toast state
   const [undoToast, setUndoToast] = useState({
@@ -173,7 +180,7 @@ export default function App() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#34D399] animate-pulse" />
             <span className="text-sm font-semibold text-[#22D3EE]">PinchDrop Air Workspace</span>
           </div>
-          <span className="text-xs text-[#8B94B8]">Stage 8 · Air Clipboard &amp; Throw</span>
+          <span className="text-xs text-[#8B94B8]">Stage 9 · Gesture Gym &amp; Privacy Dashboard</span>
         </div>
 
         {/* Center Breadcrumb */}
@@ -184,6 +191,14 @@ export default function App() {
 
         {/* Controls */}
         <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setIsGymOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#7C5CFF]/20 text-[#A78BFA] border border-[#7C5CFF]/40 hover:bg-[#7C5CFF]/30 transition"
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>Gesture Gym</span>
+          </button>
+
           <button
             onClick={triggerPhoneGrab}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
@@ -196,9 +211,13 @@ export default function App() {
             <span>{phoneArmed ? `ARMED (${armedCountdown}s)` : 'Simulate Phone Grab'}</span>
           </button>
 
-          <div className="p-2 rounded-xl bg-[#1C2547] text-[#8B94B8]">
-            <ShieldCheck className="w-4 h-4 text-[#34D399]" />
-          </div>
+          <button
+            onClick={() => setIsPrivacyOpen(true)}
+            title="Open Zero-Storage Privacy Dashboard"
+            className="p-2 rounded-xl bg-[#1C2547] text-[#34D399] border border-[#34D399]/30 hover:bg-[#34D399]/10 transition"
+          >
+            <ShieldCheck className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -284,6 +303,17 @@ export default function App() {
         message={undoToast.message}
         remainingSeconds={undoToast.remaining}
         onUndo={handleUndo}
+      />
+
+      {/* Stage 9 Gesture Gym Modal */}
+      <GestureGym isOpen={isGymOpen} onClose={() => setIsGymOpen(false)} />
+
+      {/* Stage 9 Privacy Dashboard Modal */}
+      <PrivacyDashboard
+        isOpen={isPrivacyOpen}
+        onClose={() => setIsPrivacyOpen(false)}
+        cameraActive={cameraActive}
+        onToggleCamera={() => setCameraActive(!cameraActive)}
       />
     </div>
   );
