@@ -6,6 +6,7 @@
 
 pub mod lift;
 pub mod phone_data;
+pub mod phone_live;
 pub mod proto;
 pub mod store;
 pub mod transfer;
@@ -435,6 +436,9 @@ impl Link {
                     self.on_notif_event(kind, &env.payload)
                 }
                 (Some(_), "sms.new") => self.on_sms_new(&env.payload),
+                (Some(_), kind @ ("call.state" | "status.messages" | "clip.set")) => {
+                    self.on_live_event(kind, &env.payload)
+                }
                 (Some(dev), "lift.cancel") => self.on_lift_cancel(&dev, &env.payload),
                 (Some(dev), "unpair") => {
                     self.forget(&dev, false);
@@ -781,8 +785,11 @@ impl Link {
         }
         let _ = tx.send(Out::Text(message(
             "welcome",
-            json!({ "pcName": self.pc_name() }),
+            // v2: what this PC supports. chunk2m = fast mode (LINK-v1 §6.7).
+            json!({ "pcName": self.pc_name(), "caps": ["chunk2m"] }),
         )));
+        let on = crate::current_settings(&self.app).phone.clipboard_sync;
+        let _ = tx.send(Out::Text(message("clip.config", json!({ "enabled": on }))));
         // Offers the phone never answered (it was away) are sent again.
         let pending: Vec<String> = self
             .transfers
@@ -845,6 +852,7 @@ impl Link {
         let Some(dev) = device else { return };
         self.lift_device_gone(&dev);
         self.phone_data_gone();
+        self.live_gone();
         self.pause_transfers_of(&dev);
         let removed = self
             .sessions
