@@ -23,10 +23,11 @@ function statusText(t: TransferView): string {
     case 'offered':
       return `Waiting for ${t.deviceName} to accept`;
     case 'sending':
-      return `Sending · ${t.filesDone} of ${t.fileCount} files · ${formatBytes(t.bytesDone)} / ${formatBytes(t.totalBytes)}`;
+      return `${t.direction === 'in' ? `Receiving from ${t.deviceName}` : 'Sending'} · ${t.filesDone} of ${t.fileCount} files · ${formatBytes(t.bytesDone)} / ${formatBytes(t.totalBytes)}`;
     case 'paused':
       return `Paused at ${pct(t)}% — resumes when ${t.deviceName} is back`;
     case 'done':
+      if (t.direction === 'in') return `Received from ${t.deviceName} · in Downloads\PinchDrop`;
       return `Delivered to ${t.deviceName}${t.moved ? ' · PC copy moved to the Recycle Bin' : ''}`;
     case 'declined':
       return `${t.deviceName} declined`;
