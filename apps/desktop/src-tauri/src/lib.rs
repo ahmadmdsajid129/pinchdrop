@@ -174,6 +174,27 @@ pub(crate) fn force_show_pill(app: &AppHandle, secs: u64) {
     refresh_pill_visibility(app);
 }
 
+/// Puts the pill above every other always-on-top window. Among topmost windows the last one
+/// raised wins, so re-assert it.
+pub(crate) fn raise_pill(app: &AppHandle) {
+    if let Some(win) = pill_window(app) {
+        let _ = win.set_always_on_top(false);
+        let _ = win.set_always_on_top(true);
+    }
+}
+
+/// The user pressed the shortcut: bring the Island to the very front, even over a focused
+/// full-screen app (Windows lets a full-screen foreground window cover always-on-top windows,
+/// and pauses drawing of covered ones). Windows allows this because the user pressed our hotkey.
+/// Clicking back into the app folds the Island away as usual.
+pub(crate) fn summon_pill(app: &AppHandle) {
+    force_show_pill(app, 60);
+    raise_pill(app);
+    if let Some(win) = pill_window(app) {
+        let _ = win.set_focus();
+    }
+}
+
 fn place_pill_initially(app: &AppHandle) {
     let Some(win) = pill_window(app) else { return };
     let Some(rect) = pill::outer_rect(&win) else {
@@ -336,6 +357,7 @@ pub(crate) fn outbox_dir(app: &AppHandle) -> PathBuf {
 fn hold_start(app: AppHandle, items: grab::GrabbedItems) -> Option<grab::HoldView> {
     let g = app.try_state::<grab::Grab>()?;
     let view = g.hold_start(&app, items);
+    raise_pill(&app);
     // Open the Island so the countdown is visible.
     let _ = app.emit_to("pill", "island-open", ());
     Some(view)

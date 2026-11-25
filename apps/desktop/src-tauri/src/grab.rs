@@ -585,7 +585,7 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
                     while PeekMessageW(&mut msg, None, WM_HOTKEY, WM_HOTKEY, PM_REMOVE).as_bool() {
                         if msg.message == WM_HOTKEY && msg.wParam.0 as i32 == ID {
                             // Bring the pill up even over a full-screen app, then open/close the Island.
-                            crate::force_show_pill(&app, 60);
+                            crate::summon_pill(&app);
                             let _ = app.emit_to("pill", "island-toggle", ());
                         }
                     }
