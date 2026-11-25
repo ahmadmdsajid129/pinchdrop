@@ -92,6 +92,25 @@ impl Default for TransferSettings {
     }
 }
 
+/// v2 · How the phone's live status is used on the PC.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PhoneSettings {
+    /// Copy on one, paste on the other (text only). Off by default.
+    pub clipboard_sync: bool,
+    /// While the phone rings, the webcam watches for palm (answer), swipe (reject), fist (silence).
+    pub call_gestures: bool,
+}
+
+impl Default for PhoneSettings {
+    fn default() -> Self {
+        Self {
+            clipboard_sync: false,
+            call_gestures: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct NotificationSettings {
@@ -148,6 +167,9 @@ pub struct Settings {
     /// Shows a pretend phone so the pill and Island can be previewed before
     /// real pairing exists (Phase 3). Off by default.
     pub demo_phone: bool,
+    /// v2 · calls, clipboard.
+    #[serde(default)]
+    pub phone: PhoneSettings,
 }
 
 impl Default for Settings {
@@ -165,6 +187,7 @@ impl Default for Settings {
             crash_reports: false,
             profile: ProfileSettings::default(),
             demo_phone: false,
+            phone: PhoneSettings::default(),
         }
     }
 }
