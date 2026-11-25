@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { DeepPartial, DeviceView, HoldView, ItemPreviewData, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
+import type { DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -150,6 +150,11 @@ export const api = {
   /** The look of a send (thumbnail, folder…) for its lift-off animation. */
   transferPreview: (id: string): Promise<ItemPreviewData | null> =>
     inTauri ? invoke<ItemPreviewData | null>('transfer_preview', { id }).catch(() => null) : Promise.resolve(null),
+
+  // v2 · Lift (phone → PC).
+  liftState: (): Promise<LiftView | null> => (inTauri ? invoke<LiftView | null>('lift_state') : Promise.resolve(null)),
+  liftCatch: (id?: string) => (inTauri ? invoke<void>('lift_catch', { id: id ?? null }) : Promise.resolve()),
+  liftDismiss: () => (inTauri ? invoke<void>('lift_dismiss') : Promise.resolve()),
 
   // Phase 5 grab-and-hold.
   holdState: (): Promise<HoldView | null> => (inTauri ? invoke('hold_state') : Promise.resolve(null)),
