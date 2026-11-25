@@ -130,7 +130,8 @@ PinchDrop is styled in a futuristic, calm, dark-first **aurora glass** theme:
 | **S8** | **Air Clipboard & Open-on-Device (Throw G3b)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S9** | **Gesture Gym & Settings (Calibration + Privacy)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
 | **S10** | **Polish Pass & Audio/Haptics (60fps Springs & Web Audio)** | 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
-| **S11–S13** | **Store Packaging, Pro Tier, Launch** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
+| **S11** | **Beta Packaging & Installers (Windows MSI/NSIS & Play AAB)**| 🟢 Done | `▰▰▰▰▰▰▰▰▰▰ 100%` |
+| **S12–S13** | **Pro Tier Licensing & Public Launch** | ⚪ Pending | `▱▱▱▱▱▱▱▱▱▱ 0%` |
 
 ---
 
