@@ -207,6 +207,60 @@ pub fn read() -> Option<(String, Option<String>)> {
     None
 }
 
+/// Puts plain text on the PC clipboard (a note lifted from the phone). True on success.
+#[cfg(windows)]
+pub fn write(text: &str) -> bool {
+    use windows::Win32::Foundation::{GlobalFree, HANDLE, HGLOBAL};
+    use windows::Win32::System::DataExchange::{
+        CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData,
+    };
+    use windows::Win32::System::Memory::{
+        GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE,
+    };
+    use windows::Win32::System::Ole::CF_UNICODETEXT;
+
+    let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    // SAFETY: the buffer is sized for the text plus NUL; ownership passes to the clipboard on
+    // success, otherwise it is freed here; the clipboard is always closed.
+    unsafe {
+        let mut opened = false;
+        for _ in 0..5 {
+            if OpenClipboard(None).is_ok() {
+                opened = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        if !opened {
+            return false;
+        }
+        let ok = (|| -> Option<()> {
+            EmptyClipboard().ok()?;
+            let h: HGLOBAL = GlobalAlloc(GMEM_MOVEABLE, wide.len() * 2).ok()?;
+            let p = GlobalLock(h) as *mut u16;
+            if p.is_null() {
+                let _ = GlobalFree(Some(h));
+                return None;
+            }
+            std::ptr::copy_nonoverlapping(wide.as_ptr(), p, wide.len());
+            let _ = GlobalUnlock(h);
+            if SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(h.0))).is_err() {
+                let _ = GlobalFree(Some(h));
+                return None;
+            }
+            Some(())
+        })()
+        .is_some();
+        let _ = CloseClipboard();
+        ok
+    }
+}
+
+#[cfg(not(windows))]
+pub fn write(_text: &str) -> bool {
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
