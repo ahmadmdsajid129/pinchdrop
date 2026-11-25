@@ -13,7 +13,7 @@ export interface QrPairingPayload {
 export function usePairing() {
   const [pairingPayload, setPairingPayload] = useState<QrPairingPayload | null>(null);
   const [isPhoneConnected, setIsPhoneConnected] = useState<boolean>(true);
-  const [connectedDeviceName, setConnectedDeviceName] = useState<string>('Pixel 9 Pro');
+  const [connectedDeviceName] = useState<string>('Pixel 9 Pro');
 
   useEffect(() => {
     async function fetchPayload() {
