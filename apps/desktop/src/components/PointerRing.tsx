@@ -5,6 +5,7 @@ interface PointerRingProps {
   y: number;
   isGrabbing: boolean;
   holdProgress?: number;
+  reducedMotion?: boolean;
 }
 
 export const PointerRing: React.FC<PointerRingProps> = ({
@@ -12,13 +13,16 @@ export const PointerRing: React.FC<PointerRingProps> = ({
   y,
   isGrabbing,
   holdProgress = 0,
+  reducedMotion = false,
 }) => {
   return (
     <div
       style={{
         transform: `translate(${x - 24}px, ${y - 24}px)`,
       }}
-      className="fixed top-0 left-0 pointer-events-none z-50 flex items-center justify-center transition-transform duration-75"
+      className={`fixed top-0 left-0 pointer-events-none z-50 flex items-center justify-center ${
+        reducedMotion ? 'transition-none' : 'transition-transform duration-75 ease-out'
+      }`}
     >
       <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
         {/* Background track */}
