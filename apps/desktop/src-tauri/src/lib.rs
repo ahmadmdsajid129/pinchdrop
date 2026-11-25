@@ -279,6 +279,40 @@ fn hold_start(app: AppHandle, items: grab::GrabbedItems) -> Option<grab::HoldVie
     Some(view)
 }
 
+/// The pill was clicked open: the camera may run until 30 s pass with nothing happening.
+#[tauri::command]
+fn gesture_session_start(app: AppHandle) -> Result<grab::SessionView, String> {
+    app.try_state::<grab::Grab>().ok_or("not ready")?.session_start(&app)
+}
+
+#[tauri::command]
+fn gesture_session_stop(app: AppHandle) {
+    if let Some(g) = app.try_state::<grab::Grab>() {
+        g.session_stop(&app, "stopped");
+    }
+}
+
+#[tauri::command]
+fn gesture_session_state(app: AppHandle) -> Option<grab::SessionView> {
+    app.try_state::<grab::Grab>().map(|g| g.session_view())
+}
+
+/// The overlay saw a real gesture: keep the camera on.
+#[tauri::command]
+fn gesture_activity(app: AppHandle) {
+    if let Some(g) = app.try_state::<grab::Grab>() {
+        g.activity(&app);
+    }
+}
+
+/// The overlay hit a problem (camera missing / busy / tracking failed / nothing selected…).
+#[tauri::command]
+fn gesture_error(app: AppHandle, message: String, fatal: bool) {
+    if let Some(g) = app.try_state::<grab::Grab>() {
+        g.report_error(&app, &message, fatal);
+    }
+}
+
 #[tauri::command]
 fn hold_state(app: AppHandle) -> Option<grab::HoldView> {
     app.try_state::<grab::Grab>().and_then(|g| g.hold_view())
@@ -635,7 +669,12 @@ pub fn run() {
             hold_start,
             hold_state,
             hold_cancel,
-            hold_send_now
+            hold_send_now,
+            gesture_session_start,
+            gesture_session_stop,
+            gesture_session_state,
+            gesture_activity,
+            gesture_error
         ])
         .run(tauri::generate_context!())
         .expect("error while running PinchDrop");

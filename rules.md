@@ -18,6 +18,8 @@
 
 1. **Safety First:** Permanent file deletion (`std::fs::remove_file`) via gesture is strictly prohibited. Deletions must route to the OS Recycle Bin via the `trash` crate, accompanied by an 8-second visual toast and undo journal record.
 2. **Local-First Privacy:** Video frames must remain in volatile memory. Camera frames and landmark coordinates must never be written to persistent storage or sent over the network.
+   - **Camera only on request (DEC-0019):** the PC camera starts only after the user clicks the pill (or presses the hotkey, or — if they chose it — while something is selected), and switches off after 30 s without activity. A visible "Camera on" indicator is shown whenever it runs. No always-on mode.
+   - **Only intended gestures act:** a deliberate pinch grabs and a clearly open hand drops; every other hand pose or movement is ignored.
 3. **Offline Runtime (No CDNs):** No runtime asset or model fetching from external CDNs. All WASM, TFLite, and UI assets must be locally vendored.
 4. **Allow-List File Containment:** All file system read, write, and move operations must be validated against user-approved folder roots. All paths containing `..` or forbidden Windows characters must be rejected.
 5. **Docs & Code Synchronization:** Any modification to thresholds, gestures, data models, or pricing must be updated across all affected Markdown files in the same commit.

@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronUp, Hand, Smartphone, Upload, LayoutGrid } from 'lucide-react';
 import { api, inTauri, onEvent, usePhone, useReducedMotion, useSettings, useTheme } from '../shared/api';
 import { HoldIsland } from './HoldIsland';
+import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
 import { sound } from '../shared/sound';
-import type { HoldView, PhoneStatus, Settings } from '../shared/types';
+import type { HoldView, PhoneStatus, SessionView, Settings } from '../shared/types';
 
 /** Transparent margin around the pill so its shadow isn't clipped. */
 const PAD = 8;
@@ -35,6 +36,24 @@ export function Pill() {
   const [hold, setHold] = useState<HoldView | null>(null);
   const holdRef = useRef<HoldView | null>(null);
   holdRef.current = hold;
+  const [session, setSession] = useState<SessionView | null>(null);
+  const sessionRef = useRef(false);
+  sessionRef.current = !!session?.active;
+  const [gestureError, setGestureError] = useState<string | null>(null);
+  const errorTimer = useRef<number | null>(null);
+
+  const showError = useCallback((msg: string) => {
+    setGestureError(msg);
+    if (errorTimer.current) clearTimeout(errorTimer.current);
+    errorTimer.current = window.setTimeout(() => setGestureError(null), 6000);
+  }, []);
+
+  /** Clicking the pill open allows the camera (unless the mode is "follow my selection"). */
+  const startCamera = useCallback(() => {
+    if (!settings?.gestures.enabled || settings.gestures.cameraMode === 'on_select') return;
+    setGestureError(null);
+    api.gestureSessionStart().then(setSession, (e) => showError(String(e instanceof Error ? e.message : e)));
+  }, [settings?.gestures.enabled, settings?.gestures.cameraMode, showError]);
   const contentRef = useRef<HTMLDivElement>(null);
   const clickTimer = useRef<number | null>(null);
   const press = useRef<{ x: number; y: number } | null>(null);
@@ -63,6 +82,7 @@ export function Pill() {
 
   const collapse = useCallback(() => {
     if (holdRef.current) return; // the countdown stays visible while something is held
+    if (sessionRef.current) void api.gestureSessionStop(); // closing the Island switches the camera off
     setExpanded((was) => {
       if (was && settings?.gestures.sounds) sound.close();
       return false;
@@ -71,10 +91,11 @@ export function Pill() {
 
   const expand = useCallback(() => {
     // Grow the window first so the Island has room to animate in.
-    void api.pillResize(ISLAND_W + PAD * 2, 240);
+    void api.pillResize(ISLAND_W + PAD * 2, 300);
     setExpanded(true);
     if (settings?.gestures.sounds) sound.open();
-  }, [settings?.gestures.sounds]);
+    startCamera();
+  }, [settings?.gestures.sounds, startCamera]);
 
   // ---- Phase 5: a pinch-grabbed item is held: open the Island with its countdown
   useEffect(() => {
@@ -85,18 +106,29 @@ export function Pill() {
         setHold(h);
         if (!h) setExpanded(false);
       }),
-      onEvent<null>('island-open', () => expand()),
+      onEvent<null>('island-open', () => {
+        // Opened by Rust (hotkey / hold): the session, if any, was started there.
+        void api.pillResize(ISLAND_W + PAD * 2, 300);
+        setExpanded(true);
+      }),
+      onEvent<SessionView>('gesture-session', (v) => {
+        setSession(v);
+        // 30 s with nothing happening: camera off and back to the pill.
+        if (!v.active && v.reason === 'idle' && !holdRef.current) setExpanded(false);
+      }),
+      onEvent<string>('gesture-error', (msg) => showError(msg)),
     ];
+    void api.gestureSessionState().then((v) => v && setSession(v));
     return () => offs.forEach((p) => void p.then((u) => u()));
-  }, [expand]);
+  }, [showError]);
 
   // ---- auto-close after N seconds when the pointer isn't on the Island
   useEffect(() => {
     const secs = settings?.pill.islandAutoCloseSecs ?? 4;
-    if (!expanded || hovered || secs === 0 || hold) return;
+    if (!expanded || hovered || secs === 0 || hold || session?.active) return;
     const t = window.setTimeout(collapse, secs * 1000);
     return () => clearTimeout(t);
-  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold]);
+  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, session?.active]);
 
   // ---- close on Escape and when the pill window loses focus (click elsewhere)
   useEffect(() => {
@@ -106,7 +138,9 @@ export function Pill() {
     if (inTauri) {
       void currentWindow().then(async (w) => {
         unlisten = await w.onFocusChanged(({ payload: focused }) => {
-          if (!focused) collapse();
+          // While the camera is on the user is expected to click into Explorer to select things,
+          // so losing focus must not close the Island; the 30 s idle rule closes it instead.
+          if (!focused && !sessionRef.current) collapse();
         });
       });
     }
@@ -233,7 +267,24 @@ export function Pill() {
               {hold ? (
                 <HoldIsland hold={hold} width={ISLAND_W} />
               ) : (
-                <Island settings={settings} phone={phone} update={update} onCollapse={collapse} onDragStart={onPointerDown} onDragMove={onPointerMove} />
+                <Island
+                  settings={settings}
+                  phone={phone}
+                  update={update}
+                  onCollapse={collapse}
+                  onDragStart={onPointerDown}
+                  onDragMove={onPointerMove}
+                  camera={
+                    <CameraRow
+                      session={session}
+                      error={gestureError}
+                      mode={settings.gestures.cameraMode}
+                      enabled={settings.gestures.enabled}
+                      onStart={startCamera}
+                      onStop={() => void api.gestureSessionStop()}
+                    />
+                  }
+                />
               )}
             </motion.div>
           ) : (
@@ -338,6 +389,7 @@ function Island({
   onCollapse,
   onDragStart,
   onDragMove,
+  camera,
 }: {
   settings: Settings;
   phone: PhoneStatus;
@@ -345,6 +397,7 @@ function Island({
   onCollapse: () => void;
   onDragStart: (e: React.PointerEvent) => void;
   onDragMove: (e: React.PointerEvent) => void;
+  camera: React.ReactNode;
 }) {
   const connected = phone.state === 'connected';
   const gesturesOn = settings.gestures.enabled;
@@ -393,6 +446,8 @@ function Island({
           <div className={`h-1.5 rounded-full ${phone.battery < 20 && !phone.charging ? 'bg-warn' : 'bg-success'}`} style={{ width: `${phone.battery}%` }} />
         </div>
       )}
+
+      {camera}
 
       <div className="flex gap-2">
         {phone.state === 'none' ? (

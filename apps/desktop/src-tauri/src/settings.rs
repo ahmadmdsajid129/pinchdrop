@@ -45,7 +45,7 @@ impl Default for PillSettings {
 pub struct GestureSettings {
     pub enabled: bool,
     pub camera_id: Option<String>,
-    pub camera_mode: String, // "on_select" | "hotkey" | "always"
+    pub camera_mode: String, // "on_click" (default) | "hotkey" | "on_select"
     pub sensitivity: u8,     // 0..=100
     pub catch_secs: u32,
     pub show_hand_ring: bool,
@@ -57,7 +57,7 @@ impl Default for GestureSettings {
         Self {
             enabled: true,
             camera_id: None,
-            camera_mode: "on_select".into(),
+            camera_mode: "on_click".into(),
             sensitivity: 55,
             catch_secs: 30,
             show_hand_ring: true,

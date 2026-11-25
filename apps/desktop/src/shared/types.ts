@@ -15,7 +15,8 @@ export interface PillSettings {
 export interface GestureSettings {
   enabled: boolean;
   cameraId: string | null;
-  cameraMode: 'on_select' | 'hotkey' | 'always';
+  /** on_click: camera only after clicking the pill, off after 30 s idle (default). */
+  cameraMode: 'on_click' | 'hotkey' | 'on_select';
   sensitivity: number;
   catchSecs: number;
   showHandRing: boolean;
@@ -113,6 +114,14 @@ export interface TransferView {
   firstName: string | null;
 }
 
+/** The click-started camera session. Mirrors grab::SessionView. */
+export interface SessionView {
+  active: boolean;
+  endsInMs: number;
+  idleSecs: number;
+  reason: 'idle' | 'stopped' | 'holding' | 'error' | 'disabled' | null;
+}
+
 /** Something grabbed by pinch and held, counting down on the Island. Mirrors grab::HoldView. */
 export interface HoldView {
   id: string;
@@ -157,7 +166,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gestures: {
     enabled: true,
     cameraId: null,
-    cameraMode: 'on_select',
+    cameraMode: 'on_click',
     sensitivity: 55,
     catchSecs: 30,
     showHandRing: true,

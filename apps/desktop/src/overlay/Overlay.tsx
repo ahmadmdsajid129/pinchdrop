@@ -2,7 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { File, Folder, Hand } from 'lucide-react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
-import { GESTURE_CONFIG, GrabMachine, LandmarkSmoother, calculatePinchRatio, cameraToScreen, grabConfigFor } from '@pinchdrop/gesture-core';
+import {
+  GESTURE_CONFIG,
+  GrabMachine,
+  LandmarkSmoother,
+  calculatePinchRatio,
+  cameraToScreen,
+  extendedFingers,
+  grabConfigFor,
+  handScale,
+} from '@pinchdrop/gesture-core';
 import { formatBytes, inTauri, onEvent } from '../shared/api';
 import { sound } from '../shared/sound';
 
@@ -31,6 +40,30 @@ type Card = { items: Grabbed; phase: 'held' | 'flying' | 'dropped' };
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const core = await import('@tauri-apps/api/core');
   return core.invoke<T>(cmd, args);
+}
+
+/** Tells Rust (and through it the Island) about a problem. Fatal ones switch the camera off. */
+function reportError(message: string, fatal: boolean) {
+  if (inTauri) void invoke('gesture_error', { message, fatal }).catch(() => undefined);
+}
+
+/** Plain-words explanation for getUserMedia failures. */
+function cameraErrorText(e: unknown, chosenDevice: boolean): string {
+  const name = e instanceof DOMException || e instanceof Error ? e.name : '';
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Camera access is blocked. Allow it in Windows Settings → Privacy & security → Camera.';
+    case 'NotFoundError':
+      return 'No camera found. Plug one in, or check Settings → Gestures & camera.';
+    case 'OverconstrainedError':
+      return chosenDevice ? 'The chosen camera isn’t connected. Pick another in Settings → Gestures & camera.' : 'The camera can’t provide video right now.';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'The camera is busy in another app (Teams, Zoom, Camera…). Close it and try again.';
+    default:
+      return 'The camera couldn’t start. Try again, or pick another camera in Settings.';
+  }
 }
 
 let landmarkerPromise: Promise<HandLandmarker> | null = null;
@@ -69,6 +102,7 @@ export function Overlay() {
   const [card, setCard] = useState<Card | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cardRef = useRef<Card | null>(null);
   cardRef.current = card;
@@ -94,16 +128,22 @@ export function Overlay() {
 
     const flash = (text: string) => {
       setToast(text);
-      window.setTimeout(() => setToast((t) => (t === text ? null : t)), 1600);
+      window.setTimeout(() => setToast((t) => (t === text ? null : t)), 1800);
     };
+    const activity = () => void invoke('gesture_activity').catch(() => undefined);
+    let lastActivity = 0;
+    let farSince = 0;
+    let frameErrors = 0;
 
     async function onGrab() {
       busy = true;
+      activity();
       const items = await invoke<Grabbed | null>('grab_selection').catch(() => null);
       busy = false;
       if (!items) {
         machine.reset();
-        flash('Select a file or folder first');
+        flash('Select a file or folder first, then pinch');
+        reportError('Nothing was selected. Click a file or folder in Explorer or on the Desktop, then pinch.', false);
         return;
       }
       if (arm?.sounds) sound.pop();
@@ -115,7 +155,12 @@ export function Overlay() {
       if (!c) return;
       setCard({ ...c, phase: 'flying' });
       if (arm?.sounds) sound.close();
-      await invoke('hold_start', { items: c.items }).catch(() => flash('Couldn’t hold that — try again'));
+      activity();
+      const held = await invoke('hold_start', { items: c.items }).catch(() => null);
+      if (!held) {
+        flash('Couldn’t hold that — try again');
+        reportError('Couldn’t hold that item. Try the pinch again.', false);
+      }
       window.setTimeout(() => setCard(null), 700);
     }
 
@@ -123,11 +168,16 @@ export function Overlay() {
       const c = cardRef.current;
       if (!c) return;
       setCard({ ...c, phase: 'dropped' });
-      flash('Hand lost — nothing was grabbed');
+      flash('Hand left the camera — nothing was grabbed');
       window.setTimeout(() => setCard(null), 500);
     }
 
     async function start() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError('Camera unavailable');
+        reportError('This PC doesn’t offer a camera to apps.', true);
+        return;
+      }
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -139,7 +189,9 @@ export function Overlay() {
           audio: false,
         });
       } catch (e) {
-        setCameraError(e instanceof Error && e.name === 'NotFoundError' ? 'No camera found' : 'Camera unavailable');
+        const msg = cameraErrorText(e, !!arm?.cameraId);
+        setCameraError(msg);
+        reportError(msg, true);
         return;
       }
       if (stopped) {
@@ -147,12 +199,19 @@ export function Overlay() {
         return;
       }
       setCameraError(null);
+      // Unplugged / taken by another app mid-session.
+      stream.getVideoTracks().forEach((t) =>
+        t.addEventListener('ended', () => {
+          if (!stopped) reportError('The camera was disconnected.', true);
+        }),
+      );
       const video = videoRef.current!;
       video.srcObject = stream;
       await video.play().catch(() => undefined);
       const landmarker = await loadLandmarker().catch(() => null);
       if (!landmarker) {
         setCameraError('Hand tracking failed to load');
+        reportError('Hand tracking couldn’t start on this PC. Try again; if it keeps failing, update your graphics driver.', true);
         return;
       }
 
@@ -162,22 +221,51 @@ export function Overlay() {
         if (video.readyState < 2 || video.currentTime === lastVideoTime) return;
         lastVideoTime = video.currentTime;
         const now = performance.now();
-        const res = landmarker.detectForVideo(video, now);
+        let res;
+        try {
+          res = landmarker.detectForVideo(video, now);
+          frameErrors = 0;
+        } catch {
+          // One bad frame is fine; a run of them means tracking is broken.
+          if (++frameErrors > 30) reportError('Hand tracking stopped working. Turn the camera on again from the pill.', true);
+          return;
+        }
         const raw = res.landmarks?.[0];
         if (!raw || raw.length < 21) {
           smoother.reset();
           setHand(null);
+          setHint(null);
           const ev = machine.step(now, null);
           if (ev?.type === 'cancel') onCancel();
           return;
         }
         const lm = smoother.smooth(raw, now);
-        const ratio = calculatePinchRatio(lm);
         const mid = { x: (lm[4].x + lm[8].x) / 2, y: (lm[4].y + lm[8].y) / 2 };
         const p = cameraToScreen(mid.x, mid.y);
         if (busy) return;
-        const ev = machine.step(now, { x: p.x, y: p.y, pinchRatio: ratio });
-        setHand({ x: p.x, y: p.y, pinched: machine.holding || machine.state === 'PINCHING' });
+        const ev = machine.step(now, {
+          x: p.x,
+          y: p.y,
+          pinchRatio: calculatePinchRatio(lm),
+          extended: extendedFingers(lm),
+          scale: handScale(raw),
+          score: res.handedness?.[0]?.[0]?.score ?? 0,
+        });
+        // Only gentle hints; ignored gestures never do anything.
+        if (machine.ignored === 'far') {
+          if (!farSince) farSince = now;
+          if (now - farSince > 1200) setHint('Move your hand a little closer to the camera');
+        } else {
+          farSince = 0;
+          setHint(null);
+        }
+        const tracked = machine.ignored !== 'far' && machine.ignored !== 'unsure';
+        setHand(tracked ? { x: p.x, y: p.y, pinched: machine.holding || machine.state === 'PINCHING' } : null);
+        // Holding something counts as activity, so the camera never switches off mid-move.
+        if (machine.holding && now - lastActivity > 3000) {
+          lastActivity = now;
+          activity();
+        }
         if (ev?.type === 'grab') void onGrab();
         else if (ev?.type === 'release') void onRelease();
         else if (ev?.type === 'cancel') onCancel();
@@ -208,7 +296,7 @@ export function Overlay() {
       {armed && (
         <div className="absolute right-4 bottom-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0B1020]/85 text-[12px] text-[#E8ECFF] border border-white/10">
           <span className={`w-2 h-2 rounded-full ${cameraError ? 'bg-[#FBBF24]' : 'bg-[#34D399]'}`} />
-          {cameraError ?? (arm?.label ? `Camera on · pinch to grab “${arm.label}”` : 'Camera on · pinch to grab')}
+          {cameraError ?? hint ?? (arm?.label ? `Camera on · pinch to grab “${arm.label}”` : 'Camera on · select something, then pinch')}
         </div>
       )}
 

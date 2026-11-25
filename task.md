@@ -71,12 +71,13 @@ Spec: [LINK-v1 §6](packages/protocol/LINK-v1.md).
 ### P5 · Grab on PC
 Spec: [LINK-v1 §6.4](packages/protocol/LINK-v1.md).
 - [x] `P5.1` Real Explorer / Desktop selection through the Shell COM interfaces (foreground window, active Windows 11 tab, Desktop via `FindWindowSW`); read-only, on its own COM thread. Replaces the old name-guessing prototype.
-- [x] `P5.2` Camera only when allowed: "on select" (selection present, 2.5 s grace), Ctrl+Shift+Space (15 s, hotkey registered only in that mode), or always. Camera permission granted to our own WebView2 windows only.
-- [x] `P5.3` Click-through full-screen overlay window: MediaPipe HandLandmarker from bundled files (no CDN; verified zero external requests), One-Euro smoothing, pinch ratio → `GrabMachine` (dwell 120 ms, release 150 ms, hand-lost cancel 1.5 s, sensitivity → thresholds). Frames go video → MediaPipe in memory only.
-- [x] `P5.4` Hand ring, floating card (name, files, size) that follows the hand, "Select a file or folder first" hint, card flies to the pill on release; "Camera on" chip whenever the camera runs.
+- [x] `P5.2` Camera only when the user asks (founder decision 2026-11-25): **clicking the pill** opens the Island and starts a camera session (default); Ctrl+Shift+Space does the same in hotkey mode; a new selection or a pinch keeps it alive; **30 s with nothing happening switches the camera off and folds the Island back into the pill**. Optional "while something is selected" mode. No always-on mode. While the session runs, clicking into Explorer doesn't close the Island. Camera permission granted to our own WebView2 windows only.
+- [x] `P5.3` Click-through full-screen overlay window: MediaPipe HandLandmarker from bundled files (no CDN; verified zero external requests), One-Euro smoothing → `GrabMachine`. **Only two gestures act**: a deliberate pinch (hand steady 300 ms first, pinch held 150 ms, not a fist, not waving) grabs; a clearly open hand (≥3 fingers out, 200 ms) drops. Far/background hands and low-confidence readings are ignored; a half-open hand keeps holding; hand lost 1.5 s cancels. Frames go video → MediaPipe in memory only.
+- [x] `P5.4` Hand ring, floating card (name, files, size) that follows the hand, card flies to the pill on release; "Camera on" chip whenever the camera runs; Island camera line with countdown and Stop / Turn on.
+- [x] `P5.4b` Error handling, shown in plain words on the Island: camera blocked by Windows privacy, no camera, chosen camera unplugged, camera busy in another app, camera disconnected mid-session, hand tracking failed to load or keeps failing (all switch the camera off), nothing selected, item couldn't be held, hand left the camera, move closer.
 - [x] `P5.5` Hold: Island countdown ring (Time to catch), *Send now* / *Drop it*; offered to the phone (`hold.offer`), caught sends auto-accepted on the phone.
 - [x] `P5.6` Phone: real Catch screen for holds (countdown, Accept without gesture, Decline) + high-priority notification when the app is closed. Open-hand detection is P6.
-- [x] `P5.7` `GrabMachine` + `cameraToScreen` unit tests (7 new, 17 total passing).
+- [x] `P5.7` Gesture unit tests: 15 for the grab rules (fist, far hand, unsure tracking, waving, entering mid-pinch, half-open hand, hysteresis, lost hand) — 25 gesture-core tests passing.
 - [ ] `P5.8` Founder check: select CPP on the Desktop and in Explorer, pinch, move, open hand; watch the Island; catch on the phone with the button.
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)

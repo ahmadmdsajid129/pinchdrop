@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { DeepPartial, DeviceView, HoldView, PairInfo, PairRequest, PathInfo, PhoneStatus, Settings, TransferView } from './types';
+import type { DeepPartial, DeviceView, HoldView, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -131,6 +131,12 @@ export const api = {
   listTransfers: (): Promise<TransferView[]> => (inTauri ? invoke('list_transfers') : Promise.resolve([])),
   cancelTransfer: (id: string) => (inTauri ? invoke<void>('cancel_transfer', { id }) : Promise.resolve()),
   clearTransferHistory: () => (inTauri ? invoke<void>('clear_transfer_history') : Promise.resolve()),
+
+  // Camera session: starts when the pill is clicked, ends after 30 s without activity.
+  gestureSessionStart: (): Promise<SessionView> =>
+    inTauri ? invoke('gesture_session_start') : Promise.reject(new Error('Hand tracking works only in the PinchDrop app.')),
+  gestureSessionStop: () => (inTauri ? invoke<void>('gesture_session_stop') : Promise.resolve()),
+  gestureSessionState: (): Promise<SessionView | null> => (inTauri ? invoke('gesture_session_state') : Promise.resolve(null)),
 
   // Phase 5 grab-and-hold.
   holdState: (): Promise<HoldView | null> => (inTauri ? invoke('hold_state') : Promise.resolve(null)),

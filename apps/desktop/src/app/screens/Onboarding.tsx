@@ -108,7 +108,7 @@ export function Onboarding() {
                   )
                 }
               >
-                Watches for your pinch only while something is selected. Frames stay in memory — never saved, never sent.
+                Turns on only when you click the pill, and off again after 30 seconds of nothing happening. It reacts to a pinch and an open hand — nothing else. Frames stay in memory — never saved, never sent.
                 {cameraName && <> Using <strong className="text-text">{cameraName}</strong>.</>}
                 {camera === 'denied' && <span className="text-warn"> Access was refused — gestures stay off, manual sending still works.</span>}
               </PermissionCard>
@@ -154,7 +154,7 @@ export function Onboarding() {
             </div>
             <ul className="m-0 pl-0 list-none flex flex-col gap-3 text-[15px]">
               {[
-                ['Click once', 'opens the Dynamic Island: your phone, its battery, quick actions'],
+                ['Click once', 'opens the Dynamic Island and turns the camera on — select something, pinch, open your hand. It switches off after 30 s of nothing happening'],
                 ['Double-click', 'opens this window'],
                 ['Drag', 'moves it anywhere — it sticks to the nearest edge'],
                 ['Right-click', 'menu: send files, pause gestures, hide for an hour, quit'],

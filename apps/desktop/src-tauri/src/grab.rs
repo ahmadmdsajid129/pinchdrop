@@ -1,8 +1,10 @@
 //! Phase 5: grabbing on the PC.
 //!
-//! * Decides when the webcam should run ("camera mode": only while something is
-//!   selected in Explorer / on the Desktop, only after Ctrl+Shift+Space, or always)
-//!   and shows the click-through `overlay` window, which runs hand tracking.
+//! * Decides when the webcam may run. Default ("on_click"): only after the user clicks
+//!   the pill (or presses Ctrl+Shift+Space in "hotkey" mode), and it switches itself
+//!   off after [`SESSION_IDLE`] without activity. "on_select" keeps it on while
+//!   Explorer / the Desktop has a selection. There is no always-on mode.
+//!   While allowed, the click-through `overlay` window runs hand tracking.
 //! * When the overlay sees a pinch it asks for the current selection
 //!   ([`grab_selection`]); when the hand opens it "holds" those items
 //!   ([`hold_start`]). The hold counts down on the Dynamic Island and is offered
@@ -15,10 +17,27 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
 
-/// Keep the camera on this long after the selection disappears (clicking around shouldn't flicker it).
+/// Keep the camera on this long after the selection disappears ("on_select" mode).
 const DISARM_GRACE: Duration = Duration::from_millis(2500);
-/// Ctrl+Shift+Space turns the camera on for this long.
-const HOTKEY_WINDOW: Duration = Duration::from_secs(15);
+/// A camera session ends after this long without activity (a new selection or a pinch).
+pub const SESSION_IDLE: Duration = Duration::from_secs(30);
+
+/// The live camera session shown on the Island.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionView {
+    pub active: bool,
+    /// Milliseconds until the camera switches itself off (0 when inactive).
+    pub ends_in_ms: u64,
+    pub idle_secs: u64,
+    /// Why it ended: "idle" | "stopped" | "holding" | "error" | "disabled".
+    pub reason: Option<String>,
+}
+
+struct Session {
+    deadline: Instant,
+    last_selection: Option<Vec<String>>,
+}
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -70,7 +89,7 @@ struct Hold {
 pub struct Grab {
     arm: Mutex<Option<ArmState>>,
     last_selection_seen: Mutex<Option<Instant>>,
-    hotkey_until: Mutex<Option<Instant>>,
+    session: Mutex<Option<Session>>,
     hold: Mutex<Option<Hold>>,
 }
 
@@ -85,10 +104,120 @@ fn label_for(paths: &[String]) -> String {
 }
 
 impl Grab {
-    pub fn hotkey_pressed(&self) {
-        if let Ok(mut g) = self.hotkey_until.lock() {
-            *g = Some(Instant::now() + HOTKEY_WINDOW);
+    pub fn hotkey_pressed(&self, app: &AppHandle) {
+        let _ = self.session_start(app);
+    }
+
+    // ------------------------------------------------------------ camera session (click / hotkey)
+
+    pub fn session_view(&self) -> SessionView {
+        let ends = self
+            .session
+            .lock()
+            .ok()
+            .and_then(|s| s.as_ref().map(|s| s.deadline.saturating_duration_since(Instant::now())))
+            .unwrap_or_default();
+        SessionView { active: !ends.is_zero(), ends_in_ms: ends.as_millis() as u64, idle_secs: SESSION_IDLE.as_secs(), reason: None }
+    }
+
+    fn emit_session(&self, app: &AppHandle, reason: Option<&str>) {
+        let mut v = self.session_view();
+        v.reason = reason.map(str::to_string);
+        let _ = app.emit("gesture-session", &v);
+    }
+
+    /// The user clicked the pill (or pressed the hotkey): allow the camera for [`SESSION_IDLE`].
+    pub fn session_start(&self, app: &AppHandle) -> Result<SessionView, String> {
+        let s = crate::current_settings(app);
+        if !s.gestures.enabled {
+            return Err("Air gestures are off. Turn them on in the Island or in Settings.".into());
         }
+        if s.gestures.camera_mode == "on_select" {
+            return Err("The camera follows your selection in this mode (Settings → Gestures).".into());
+        }
+        if self.hold.lock().map(|h| h.is_some()).unwrap_or(false) {
+            return Err("Something is already in the air.".into());
+        }
+        if let Ok(mut g) = self.session.lock() {
+            *g = Some(Session { deadline: Instant::now() + SESSION_IDLE, last_selection: explorer::current().map(|s| s.paths) });
+        }
+        self.tick(app);
+        self.emit_session(app, None);
+        Ok(self.session_view())
+    }
+
+    /// Ends the camera session now (Island closed, Stop camera, error, hold started).
+    pub fn session_stop(&self, app: &AppHandle, reason: &str) {
+        let had = self.session.lock().map(|mut g| g.take().is_some()).unwrap_or(false);
+        if had {
+            self.tick(app);
+            self.emit_session(app, Some(reason));
+        }
+    }
+
+    /// Something happened (a pinch, a new selection): keep the camera on for another [`SESSION_IDLE`].
+    pub fn activity(&self, app: &AppHandle) {
+        let extended = self
+            .session
+            .lock()
+            .map(|mut g| match g.as_mut() {
+                Some(s) => {
+                    s.deadline = Instant::now() + SESSION_IDLE;
+                    true
+                }
+                None => false,
+            })
+            .unwrap_or(false);
+        if extended {
+            self.emit_session(app, None);
+        }
+    }
+
+    /// Hand tracking reported a problem. Fatal ones (no camera, camera busy, tracking failed) end the session.
+    pub fn report_error(&self, app: &AppHandle, message: &str, fatal: bool) {
+        let msg: String = message.chars().take(160).collect();
+        let _ = app.emit("gesture-error", &msg);
+        if fatal {
+            self.session_stop(app, "error");
+        }
+    }
+
+    /// Session bookkeeping for one tick: idle timeout, and a new selection counts as activity.
+    fn session_tick(&self, app: &AppHandle) -> bool {
+        let now = Instant::now();
+        let (active, expired, check_selection) = match self.session.lock() {
+            Ok(g) => match g.as_ref() {
+                Some(s) if s.deadline > now => (true, false, true),
+                Some(_) => (false, true, false),
+                None => (false, false, false),
+            },
+            Err(_) => (false, false, false),
+        };
+        if expired {
+            if let Ok(mut g) = self.session.lock() {
+                *g = None;
+            }
+            self.emit_session(app, Some("idle"));
+            return false;
+        }
+        if check_selection {
+            let sel = explorer::current().map(|s| s.paths);
+            let changed = self
+                .session
+                .lock()
+                .map(|mut g| match g.as_mut() {
+                    Some(s) if sel.is_some() && s.last_selection != sel => {
+                        s.last_selection = sel.clone();
+                        true
+                    }
+                    _ => false,
+                })
+                .unwrap_or(false);
+            if changed {
+                self.activity(app);
+            }
+        }
+        active
     }
 
     /// One tick of the watcher (about every 600 ms): arm/disarm the camera and expire holds.
@@ -99,17 +228,17 @@ impl Grab {
         let holding = self.hold.lock().map(|h| h.is_some()).unwrap_or(false);
         let now = Instant::now();
 
+        let session_on = self.session_tick(app);
+        if (!g.enabled || holding) && session_on {
+            // Gestures switched off or something is held: no camera.
+            self.session_stop(app, if holding { "holding" } else { "disabled" });
+        }
         let (want, label) = if !g.enabled || holding {
             (false, None)
         } else {
             match g.camera_mode.as_str() {
-                "always" => (true, explorer::current().map(|sel| label_for(&sel.paths))),
-                "hotkey" => {
-                    let on = self.hotkey_until.lock().ok().and_then(|h| *h).map(|t| now < t).unwrap_or(false);
-                    (on, None)
-                }
-                // "on_select" (default): only while Explorer / the Desktop has a selection.
-                _ => match explorer::current() {
+                // "on_select": only while Explorer / the Desktop has a selection.
+                "on_select" => match explorer::current() {
                     Some(sel) => {
                         if let Ok(mut l) = self.last_selection_seen.lock() {
                             *l = Some(now);
@@ -129,6 +258,8 @@ impl Grab {
                         (recent, if recent { prev_label } else { None })
                     }
                 },
+                // "on_click" (default) and "hotkey": only during a session the user started.
+                _ => (session_on, if session_on { explorer::current().map(|sel| label_for(&sel.paths)) } else { None }),
             }
         };
 
@@ -190,6 +321,7 @@ impl Grab {
             *a = None; // re-evaluated (and switched off) on the next tick
         }
         set_overlay_visible(app, false);
+        self.session_stop(app, "holding");
         self.emit_hold(app);
         self.hold_view().expect("just set")
     }
@@ -297,8 +429,8 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
                     while PeekMessageW(&mut msg, None, WM_HOTKEY, WM_HOTKEY, PM_REMOVE).as_bool() {
                         if msg.message == WM_HOTKEY && msg.wParam.0 as i32 == ID {
                             if let Some(g) = app.try_state::<Grab>() {
-                                g.hotkey_pressed();
-                                g.tick(&app);
+                                g.hotkey_pressed(&app);
+                                let _ = app.emit_to("pill", "island-open", ());
                             }
                         }
                     }
