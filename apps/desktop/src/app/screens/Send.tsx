@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { File, Folder, Image, Link2, Type, Video, X } from 'lucide-react';
-import { api, formatBytes } from '../../shared/api';
+import { api, formatBytes, useDevices } from '../../shared/api';
 import { useApp } from '../context';
 import type { QueueItem } from '../context';
 import { Button, Card, PageTitle, Radio, Toggle } from '../ui';
@@ -39,6 +39,10 @@ function describe(item: QueueItem): string {
 
 export function Send() {
   const { phone, settings, update, queue, addPaths, addText, removeItem, clearQueue, go } = useApp();
+  // v2: with several phones / tablets connected, pick which one gets it.
+  const connectedDevices = useDevices().filter((d) => d.connected);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const chosen = connectedDevices.find((d) => d.id === deviceId) ?? (connectedDevices.length > 1 ? connectedDevices[0] : null);
   const [text, setText] = useState('');
   const [allToDownloads, setAllToDownloads] = useState(false);
   const [sending, setSending] = useState(false);
@@ -50,7 +54,7 @@ export function Send() {
     try {
       const paths = queue.filter((i) => i.kind !== 'text' && i.info).map((i) => i.info!.path);
       const texts = queue.filter((i) => i.kind === 'text').map((i) => i.text ?? '');
-      await api.sendItems(paths, texts, allToDownloads ? 'downloads' : 'auto');
+      await api.sendItems(paths, texts, allToDownloads ? 'downloads' : 'auto', chosen?.id ?? null);
       clearQueue();
       go('transfers');
     } catch (e) {
@@ -167,8 +171,28 @@ export function Send() {
             <Toggle label="Open first file on phone" checked={settings.transfers.openFirst} onChange={(v) => void update({ transfers: { openFirst: v } })} />
           </div>
 
+          {connectedDevices.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Send to which device">
+              <span className="text-[13px] text-muted">Send to</span>
+              {connectedDevices.map((d) => {
+                const on = (chosen?.id ?? connectedDevices[0].id) === d.id;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setDeviceId(d.id)}
+                    className={`h-9 px-4 rounded-full text-[13px] font-semibold transition ${on ? 'bg-primary text-white' : 'bg-bg2 text-soft hover:text-text'}`}
+                  >
+                    {d.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <Button variant="primary" size="lg" disabled={blocker !== null || unreadable || sending} onClick={() => void send()}>
-            {sending ? 'Starting…' : `Send ${queue.length || ''} item${queue.length === 1 ? '' : 's'} to ${target}`}
+            {sending ? 'Starting…' : `Send ${queue.length || ''} item${queue.length === 1 ? '' : 's'} to ${chosen?.name ?? target}`}
           </Button>
           {error ? (
             <div className="text-[12px] text-danger" role="alert">{error}</div>
