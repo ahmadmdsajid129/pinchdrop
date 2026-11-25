@@ -10,6 +10,7 @@
     "docs:all": "pnpm docs:assets && pnpm docs:diagrams && pnpm docs:pdf",
     "docs:check": "node tools/check-links.mjs",
     "audit:latency": "node tools/benchmark-latency.mjs",
+    "audit:package": "node tools/package-verify.mjs",
     "test": "pnpm --filter @pinchdrop/gesture-core test"
   },
   "devDependencies": {
