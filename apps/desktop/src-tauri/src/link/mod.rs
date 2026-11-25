@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use store::{Devices, Identity, PairedDevice};
 use transfer::{Transfer, TransferView, CHUNK_MAX, HISTORY_MAX};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 use tokio::time::timeout;
@@ -367,6 +367,16 @@ impl Link {
                 (Some(dev), "status") => self.on_status(&dev, conn_id, &env.payload),
                 // Served in order, one at a time, so chunks reach the phone in the order it asked.
                 (Some(dev), "chunk.req") => self.serve_chunk(&dev, &tx, &env.payload).await,
+                (Some(_), "hold.catch") => {
+                    // The phone caught a held item (P6): send it for real.
+                    let hold_id = env.payload.get("holdId").and_then(Value::as_str).unwrap_or_default().to_string();
+                    let app = self.app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Some(g) = app.try_state::<crate::grab::Grab>() {
+                            let _ = g.hold_deliver(&app, Some(&hold_id)).await;
+                        }
+                    });
+                }
                 (Some(dev), kind @ ("push.accept" | "push.decline" | "file.done" | "transfer.complete" | "transfer.cancel")) => {
                     self.on_transfer_msg(&dev, kind, &env.payload)
                 }
@@ -868,8 +878,38 @@ impl Link {
         ts.iter_mut().find(|t| t.id == id).map(f)
     }
 
+    /// Offers a held item to the connected phone so it can show the Catch screen.
+    /// Returns the phone's name, or None when no phone is connected.
+    pub fn hold_offer(&self, hold_id: &str, label: &str, file_count: u64, total_bytes: u64, is_folder: bool, secs: u64) -> Option<String> {
+        let (device_id, name) = self.target_device()?;
+        let tx = self.session_tx(&device_id)?;
+        let _ = tx.send(Out::Text(message(
+            "hold.offer",
+            json!({ "holdId": hold_id, "label": label, "fileCount": file_count, "totalBytes": total_bytes, "isFolder": is_folder, "expiresInSecs": secs }),
+        )));
+        Some(name)
+    }
+
+    /// Tells connected phones a hold ended without being caught.
+    pub fn hold_cancel(&self, hold_id: &str, reason: &str) {
+        if let Ok(s) = self.sessions.lock() {
+            for sess in s.values() {
+                let _ = sess.tx.send(Out::Text(message("hold.cancel", json!({ "holdId": hold_id, "reason": reason }))));
+            }
+        }
+    }
+
+    /// Sends grabbed items after a catch (or "Send now"); the phone accepts it without asking.
+    pub async fn send_items_for_hold(self: &Arc<Self>, paths: Vec<String>, hold_id: Option<String>) -> Result<String, String> {
+        self.send_inner(paths, Vec::new(), "auto".into(), hold_id).await
+    }
+
     /// Starts a manual send of picked paths and/or texts to the connected phone.
     pub async fn send_items(self: &Arc<Self>, paths: Vec<String>, texts: Vec<String>, destination: String) -> Result<String, String> {
+        self.send_inner(paths, texts, destination, None).await
+    }
+
+    async fn send_inner(self: &Arc<Self>, paths: Vec<String>, texts: Vec<String>, destination: String, hold_id: Option<String>) -> Result<String, String> {
         let (device_id, device_name) = self.target_device().ok_or("Your phone isn't connected right now.")?;
         let texts: Vec<String> = texts
             .into_iter()
@@ -905,6 +945,7 @@ impl Link {
             files,
             texts,
             roots: paths,
+            hold_id,
             files_done: 0,
             bytes_done: 0,
             moved: false,
@@ -1103,6 +1144,7 @@ fn offer_message(t: &Transfer) -> String {
             "label": t.label,
             "destination": t.destination,
             "openFirst": t.open_first,
+            "holdId": t.hold_id,
             "totalBytes": t.total_bytes,
             "files": files,
             "texts": t.texts,

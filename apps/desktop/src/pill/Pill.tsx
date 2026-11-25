@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronUp, Hand, Smartphone, Upload, LayoutGrid } from 'lucide-react';
-import { api, inTauri, usePhone, useReducedMotion, useSettings, useTheme } from '../shared/api';
+import { api, inTauri, onEvent, usePhone, useReducedMotion, useSettings, useTheme } from '../shared/api';
+import { HoldIsland } from './HoldIsland';
 import { Battery } from '../shared/Battery';
 import { sound } from '../shared/sound';
-import type { PhoneStatus, Settings } from '../shared/types';
+import type { HoldView, PhoneStatus, Settings } from '../shared/types';
 
 /** Transparent margin around the pill so its shadow isn't clipped. */
 const PAD = 8;
@@ -31,6 +32,9 @@ export function Pill() {
 
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [hold, setHold] = useState<HoldView | null>(null);
+  const holdRef = useRef<HoldView | null>(null);
+  holdRef.current = hold;
   const contentRef = useRef<HTMLDivElement>(null);
   const clickTimer = useRef<number | null>(null);
   const press = useRef<{ x: number; y: number } | null>(null);
@@ -58,6 +62,7 @@ export function Pill() {
   }, []);
 
   const collapse = useCallback(() => {
+    if (holdRef.current) return; // the countdown stays visible while something is held
     setExpanded((was) => {
       if (was && settings?.gestures.sounds) sound.close();
       return false;
@@ -71,13 +76,27 @@ export function Pill() {
     if (settings?.gestures.sounds) sound.open();
   }, [settings?.gestures.sounds]);
 
+  // ---- Phase 5: a pinch-grabbed item is held: open the Island with its countdown
+  useEffect(() => {
+    if (!inTauri) return;
+    void api.holdState().then(setHold);
+    const offs = [
+      onEvent<HoldView | null>('hold-changed', (h) => {
+        setHold(h);
+        if (!h) setExpanded(false);
+      }),
+      onEvent<null>('island-open', () => expand()),
+    ];
+    return () => offs.forEach((p) => void p.then((u) => u()));
+  }, [expand]);
+
   // ---- auto-close after N seconds when the pointer isn't on the Island
   useEffect(() => {
     const secs = settings?.pill.islandAutoCloseSecs ?? 4;
-    if (!expanded || hovered || secs === 0) return;
+    if (!expanded || hovered || secs === 0 || hold) return;
     const t = window.setTimeout(collapse, secs * 1000);
     return () => clearTimeout(t);
-  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse]);
+  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold]);
 
   // ---- close on Escape and when the pill window loses focus (click elsewhere)
   useEffect(() => {
@@ -211,7 +230,11 @@ export function Pill() {
               transition={spring}
               style={{ transformOrigin: origin }}
             >
-              <Island settings={settings} phone={phone} update={update} onCollapse={collapse} onDragStart={onPointerDown} onDragMove={onPointerMove} />
+              {hold ? (
+                <HoldIsland hold={hold} width={ISLAND_W} />
+              ) : (
+                <Island settings={settings} phone={phone} update={update} onCollapse={collapse} onDragStart={onPointerDown} onDragMove={onPointerMove} />
+              )}
             </motion.div>
           ) : (
             <motion.div

@@ -62,6 +62,9 @@ textarea {
 
 /* The pill window is see-through around the pill itself. */
 .pill-page,
+.overlay-page,
+.overlay-page body,
+.overlay-page #root,
 .pill-page body,
 .pill-page #root {
   background: transparent;

@@ -33,6 +33,8 @@ object Notifications {
     private const val ID_INCOMING_DEMO = 1001
     private const val ID_OFFER = 1002
     private const val ID_PROGRESS = 1003
+    private const val ID_HOLD = 1004
+    const val ROUTE_CATCH = "catch"
     private var nextArrivedId = 1100
 
     fun ensureChannels(context: Context) {
@@ -114,6 +116,23 @@ object Notifications {
     }
 
     fun cancelOffer(context: Context) = NotificationManagerCompat.from(context).cancel(ID_OFFER)
+
+    /** The PC is holding something for this phone: tap to open the Catch screen. */
+    fun postHold(context: Context, pcName: String, label: String, files: Long, bytes: Long, secs: Int) {
+        post(context, ID_HOLD, NotificationCompat.Builder(context, CH_INCOMING)
+            .setSmallIcon(R.drawable.ic_stat_pinchdrop)
+            .setContentTitle("“$label” is in the air")
+            .setContentText("$pcName is holding $files file${if (files == 1L) "" else "s"} · ${com.pinchdrop.companion.data.formatBytes(bytes)}. Catch it within $secs s.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setAutoCancel(true)
+            .setTimeoutAfter(secs * 1000L)
+            .setContentIntent(openApp(context, ROUTE_CATCH, 20))
+            .addAction(0, "Catch", openApp(context, ROUTE_CATCH, 21))
+            .build())
+    }
+
+    fun cancelHold(context: Context) = NotificationManagerCompat.from(context).cancel(ID_HOLD)
 
     fun postProgress(context: Context, label: String, pcName: String, done: Long, total: Long) {
         val pct = if (total > 0) (done * 100 / total).toInt() else 0

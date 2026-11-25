@@ -2884,6 +2884,8 @@ dependencies = [
  "tokio-tungstenite",
  "trash",
  "urlencoding",
+ "webview2-com",
+ "windows",
  "windows-sys 0.59.0",
 ]
 

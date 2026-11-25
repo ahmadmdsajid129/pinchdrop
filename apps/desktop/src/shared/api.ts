@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { DeepPartial, DeviceView, PairInfo, PairRequest, PathInfo, PhoneStatus, Settings, TransferView } from './types';
+import type { DeepPartial, DeviceView, HoldView, PairInfo, PairRequest, PathInfo, PhoneStatus, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -131,6 +131,11 @@ export const api = {
   listTransfers: (): Promise<TransferView[]> => (inTauri ? invoke('list_transfers') : Promise.resolve([])),
   cancelTransfer: (id: string) => (inTauri ? invoke<void>('cancel_transfer', { id }) : Promise.resolve()),
   clearTransferHistory: () => (inTauri ? invoke<void>('clear_transfer_history') : Promise.resolve()),
+
+  // Phase 5 grab-and-hold.
+  holdState: (): Promise<HoldView | null> => (inTauri ? invoke('hold_state') : Promise.resolve(null)),
+  holdCancel: () => (inTauri ? invoke<void>('hold_cancel') : Promise.resolve()),
+  holdSendNow: (): Promise<string> => (inTauri ? invoke('hold_send_now') : Promise.reject(new Error('Only in the app'))),
 
   resetApp: async (): Promise<Settings> => {
     if (inTauri) return invoke('reset_app');

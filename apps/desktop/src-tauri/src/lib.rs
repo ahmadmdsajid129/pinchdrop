@@ -4,7 +4,9 @@
 //! persistent settings tie them together. Phase 3 adds the encrypted link
 //! to paired phones (`link`).
 
+mod explorer;
 mod fs_info;
+mod grab;
 mod link;
 mod phone;
 mod pill;
@@ -38,7 +40,7 @@ impl AppState {
     }
 }
 
-fn link_of(app: &AppHandle) -> Option<Arc<link::Link>> {
+pub(crate) fn link_of(app: &AppHandle) -> Option<Arc<link::Link>> {
     app.try_state::<Arc<link::Link>>().map(|l| l.inner().clone())
 }
 
@@ -254,6 +256,48 @@ fn clear_transfer_history(app: AppHandle) {
     }
 }
 
+// ---------------------------------------------------------------- grab (Phase 5)
+
+#[tauri::command]
+fn grab_arm_state(app: AppHandle) -> Option<grab::ArmState> {
+    app.try_state::<grab::Grab>().and_then(|g| g.arm_state())
+}
+
+/// Called by the overlay the moment a pinch closes: what is selected right now?
+#[tauri::command]
+async fn grab_selection() -> Option<grab::GrabbedItems> {
+    tauri::async_runtime::spawn_blocking(grab::grab_selection).await.ok().flatten()
+}
+
+/// Called by the overlay when the hand opens with something grabbed.
+#[tauri::command]
+fn hold_start(app: AppHandle, items: grab::GrabbedItems) -> Option<grab::HoldView> {
+    let g = app.try_state::<grab::Grab>()?;
+    let view = g.hold_start(&app, items);
+    // Open the Island so the countdown is visible.
+    let _ = app.emit_to("pill", "island-open", ());
+    Some(view)
+}
+
+#[tauri::command]
+fn hold_state(app: AppHandle) -> Option<grab::HoldView> {
+    app.try_state::<grab::Grab>().and_then(|g| g.hold_view())
+}
+
+#[tauri::command]
+fn hold_cancel(app: AppHandle) {
+    if let Some(g) = app.try_state::<grab::Grab>() {
+        g.hold_cancel(&app);
+    }
+}
+
+/// "Send now" on the Island: skip the catch and send the held items.
+#[tauri::command]
+async fn hold_send_now(app: AppHandle) -> Result<String, String> {
+    let g = app.try_state::<grab::Grab>().ok_or("not ready")?;
+    g.hold_deliver(&app, None).await
+}
+
 #[tauri::command]
 fn unpair_device(app: AppHandle, id: String) {
     if let Some(l) = link_of(&app) {
@@ -393,6 +437,42 @@ fn reset_app(app: AppHandle) -> Result<Settings, String> {
     commit_settings(&app, Settings::default())
 }
 
+/// WebView2 would otherwise ask about the camera inside our own windows (and the overlay is
+/// click-through, so a prompt there couldn't be answered). Only our bundled pages load in
+/// these windows, so camera access is granted to them; the user chose Air gestures in Settings.
+fn allow_camera_in_webviews(app: &AppHandle) {
+    #[cfg(windows)]
+    for label in ["main", "overlay"] {
+        let Some(win) = app.get_webview_window(label) else { continue };
+        let _ = win.with_webview(|wv| {
+            use webview2_com::Microsoft::Web::WebView2::Win32::{
+                COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_CAMERA, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+            };
+            use webview2_com::PermissionRequestedEventHandler;
+            // SAFETY: COM calls on the webview's own controller, on its UI thread.
+            unsafe {
+                let Ok(core) = wv.controller().CoreWebView2() else { return };
+                let mut token = Default::default();
+                let _ = core.add_PermissionRequested(
+                    &PermissionRequestedEventHandler::create(Box::new(|_, args| {
+                        if let Some(args) = args {
+                            let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+                            args.PermissionKind(&mut kind)?;
+                            if kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA {
+                                args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+                            }
+                        }
+                        Ok(())
+                    })),
+                    &mut token,
+                );
+            }
+        });
+    }
+    #[cfg(not(windows))]
+    let _ = app;
+}
+
 // ---------------------------------------------------------------- tray
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -481,6 +561,9 @@ pub fn run() {
                 // Not fatal: the app still runs; the Pair screen shows the error.
                 Err(e) => eprintln!("PinchDrop link failed to start: {e}"),
             }
+            app.manage(grab::Grab::default());
+            grab::spawn_hotkey_thread(handle.clone());
+            allow_camera_in_webviews(&handle);
             build_tray(&handle)?;
             place_pill_initially(&handle);
             refresh_pill_visibility(&handle);
@@ -511,6 +594,14 @@ pub fn run() {
                 std::thread::sleep(Duration::from_millis(1500));
                 refresh_pill_visibility(&watcher);
             });
+            // Every 600 ms: should the camera be on (selection / hotkey / always), and has a hold expired?
+            let grabber = handle.clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(Duration::from_millis(600));
+                if let Some(g) = grabber.try_state::<grab::Grab>() {
+                    g.tick(&grabber);
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -538,7 +629,13 @@ pub fn run() {
             send_items,
             list_transfers,
             cancel_transfer,
-            clear_transfer_history
+            clear_transfer_history,
+            grab_arm_state,
+            grab_selection,
+            hold_start,
+            hold_state,
+            hold_cancel,
+            hold_send_now
         ])
         .run(tauri::generate_context!())
         .expect("error while running PinchDrop");

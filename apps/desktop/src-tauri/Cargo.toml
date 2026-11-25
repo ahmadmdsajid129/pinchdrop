@@ -42,6 +42,19 @@ trash = "5"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation"] }
+# Phase 5: read the Explorer / Desktop selection (Shell COM), Ctrl+Shift+Space, camera permission in WebView2.
+# Same versions Tauri already uses, so nothing extra is downloaded.
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_Ole",
+    "Win32_System_Variant",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+] }
+webview2-com = "0.39"
 
 [features]
 default = ["custom-protocol"]

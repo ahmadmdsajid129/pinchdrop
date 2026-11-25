@@ -39,10 +39,27 @@
         "minimizable": false,
         "focus": false,
         "visible": false
+      },
+      {
+        "label": "overlay",
+        "url": "overlay.html",
+        "title": "PinchDrop hand tracking",
+        "width": 800,
+        "height": 600,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "focus": false,
+        "visible": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {

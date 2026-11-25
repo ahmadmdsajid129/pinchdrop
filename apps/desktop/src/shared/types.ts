@@ -113,6 +113,18 @@ export interface TransferView {
   firstName: string | null;
 }
 
+/** Something grabbed by pinch and held, counting down on the Island. Mirrors grab::HoldView. */
+export interface HoldView {
+  id: string;
+  label: string;
+  fileCount: number;
+  totalBytes: number;
+  isFolder: boolean;
+  expiresInMs: number;
+  totalMs: number;
+  phoneName: string | null;
+}
+
 export interface PathInfo {
   path: string;
   name: string;

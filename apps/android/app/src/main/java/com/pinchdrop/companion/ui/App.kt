@@ -61,7 +61,7 @@ enum class Route(val tab: Boolean = false) {
     HOME(tab = true), RECEIVED(tab = true), SETTINGS(tab = true),
     PAIR, PROFILE, PERMISSIONS_CHECK,
     CATCH_DEMO, RECEIVING_DEMO, ARRIVED_DEMO,
-    RECEIVING, ARRIVED,
+    RECEIVING, ARRIVED, CATCH,
 }
 
 /** Where the system back gesture goes from each screen (null = leave the app). */
@@ -69,7 +69,7 @@ private fun backOf(r: Route): Route? = when (r) {
     Route.WELCOME, Route.HOME -> null
     Route.PERMISSIONS -> Route.WELCOME
     Route.ONBOARD_PAIR -> Route.PERMISSIONS
-    Route.RECEIVED, Route.SETTINGS, Route.RECEIVING -> Route.HOME
+    Route.RECEIVED, Route.SETTINGS, Route.RECEIVING, Route.CATCH -> Route.HOME
     Route.ARRIVED -> Route.RECEIVED
     Route.PAIR, Route.PROFILE, Route.PERMISSIONS_CHECK, Route.CATCH_DEMO, Route.RECEIVING_DEMO, Route.ARRIVED_DEMO -> Route.SETTINGS
 }
@@ -103,6 +103,12 @@ fun PinchDropApp(
         var arrived by remember { mutableStateOf<Receiver.Arrived?>(null) }
         val progress by Receiver.progress.collectAsStateWithLifecycle()
         val offer by Receiver.incoming.collectAsStateWithLifecycle()
+        val hold by Receiver.hold.collectAsStateWithLifecycle()
+
+        // The PC is holding something for us: show the Catch screen straight away (the app is open).
+        LaunchedEffect(hold?.id) {
+            if (hold != null && settings.onboarded && route != Route.CATCH) route = Route.CATCH
+        }
         var shownTransfer by rememberSaveable { mutableStateOf<String?>(null) }
 
         // When a transfer starts, show the Receiving screen once (unless the user is mid-setup).
@@ -126,6 +132,7 @@ fun PinchDropApp(
             when (pendingRoute) {
                 Notifications.ROUTE_RECEIVING -> if (settings.onboarded) route = if (Receiver.progress.value != null) Route.RECEIVING else Route.HOME
                 Notifications.ROUTE_RECEIVED -> if (settings.onboarded) route = Route.RECEIVED
+                Notifications.ROUTE_CATCH -> if (settings.onboarded) route = if (Receiver.hold.value != null) Route.CATCH else Route.HOME
                 Notifications.ROUTE_CATCH_DEMO -> { demoReturn = if (route.tab) route else Route.HOME; route = Route.CATCH_DEMO }
                 Notifications.ROUTE_RECEIVING_DEMO -> { demoReturn = if (route.tab) route else Route.HOME; route = Route.RECEIVING_DEMO }
             }
@@ -201,6 +208,15 @@ fun PinchDropApp(
                                 onDone = { go(Route.ARRIVED_DEMO) }, onHide = back, onCancel = back,
                             )
                             Route.ARRIVED_DEMO -> ArrivedScreen(settings = settings, pcName = pc.name.ifEmpty { "Demo laptop" }, onClose = back)
+                            Route.CATCH -> {
+                                val h = hold
+                                if (h == null) LaunchedEffect(Unit) { go(Route.HOME) }
+                                else CatchScreen(
+                                    pcName = h.pcName, hold = h,
+                                    onAccept = { Receiver.catchHold(); go(Route.HOME) },
+                                    onDecline = { Receiver.dismissHold(); go(Route.HOME) },
+                                )
+                            }
                             Route.RECEIVING -> LiveReceivingScreen(onHide = { go(Route.HOME) }, onCancel = { Receiver.cancelCurrent(); go(Route.HOME) })
                             Route.ARRIVED -> {
                                 val a = arrived

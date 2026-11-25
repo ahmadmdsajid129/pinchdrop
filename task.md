@@ -10,7 +10,7 @@
 | **Source of Truth For** | Roadmap tracking (S0–S13), sprint tasks, and backlog |
 
 > [!NOTE]
-> **v1 rebuild in progress — Phase P4 of 7.** P1–P4 code written; none of P2–P4 is compiled yet because the dev PC is still downloading the C++ build tools and Gradle. Founder checks P1.7 / P2.7 / P3.8 / P4.8 open. The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
+> **v1 rebuild in progress — Phase P5 of 7.** P1–P5 code written; P2–P5 not compiled yet (the dev PC is still downloading the C++ build tools and Gradle). gesture-core unit tests run and pass. Founder checks P1.7 / P2.7 / P3.8 / P4.8 / P5.8 open. The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
 
 ---
 
@@ -23,8 +23,8 @@ Approved 2026-11-25 together with the full screen design (see [memory.md](memory
 | **P1** | **Desktop shell** — pill, Dynamic Island, main window screens, tray, start with Windows, settings | Run the `.exe` | 🟢 Built — founder check open |
 | **P2** | **Android app shell** — every phone screen, permission flow, settings | Install the APK | 🟢 Written — build + founder check open |
 | **P3** | **Real connection** — discovery, QR + 6-digit pairing, encrypted link, live phone name + battery | Pair your phone | 🟢 Written — build + founder check open |
-| **P4** | **Manual send** — files, folders, text; Gallery / Downloads saving; receive animations; history; resume | Send real files | 🟡 In progress |
-| **P5** | **Grab on PC** — Explorer/Desktop selection, webcam pinch, floating card, Island countdown | Pinch a folder | ⚪ Pending |
+| **P4** | **Manual send** — files, folders, text; Gallery / Downloads saving; receive animations; history; resume | Send real files | 🟢 Written — build + founder check open |
+| **P5** | **Grab on PC** — Explorer/Desktop selection, webcam pinch, floating card, Island countdown | Pinch a folder | 🟡 In progress |
 | **P6** | **Catch on phone** — incoming alert, camera open-hand detection, full gesture loop | The whole thing | ⚪ Pending |
 | **P7** | **Polish & installers** — sounds, haptics, error states, Windows installer, release APK | Install fresh | ⚪ Pending |
 
@@ -67,6 +67,17 @@ Spec: [LINK-v1 §6](packages/protocol/LINK-v1.md).
 - [x] `P4.6` Phone: Accept automatically or Ask first; real Receiving screen + progress notification; Arrived animation with the real photo; notes copied to the clipboard; Received list (filters, open, share, copy, remove from list) and Home "Recently received".
 - [x] `P4.7` PC: Transfers screen with live progress, paused/declined/failed states, search, filters, cancel, clear history.
 - [ ] `P4.8` Founder check: send a photo, a big video and a folder; turn Wi-Fi off halfway and back on; try Move.
+
+### P5 · Grab on PC
+Spec: [LINK-v1 §6.4](packages/protocol/LINK-v1.md).
+- [x] `P5.1` Real Explorer / Desktop selection through the Shell COM interfaces (foreground window, active Windows 11 tab, Desktop via `FindWindowSW`); read-only, on its own COM thread. Replaces the old name-guessing prototype.
+- [x] `P5.2` Camera only when allowed: "on select" (selection present, 2.5 s grace), Ctrl+Shift+Space (15 s, hotkey registered only in that mode), or always. Camera permission granted to our own WebView2 windows only.
+- [x] `P5.3` Click-through full-screen overlay window: MediaPipe HandLandmarker from bundled files (no CDN; verified zero external requests), One-Euro smoothing, pinch ratio → `GrabMachine` (dwell 120 ms, release 150 ms, hand-lost cancel 1.5 s, sensitivity → thresholds). Frames go video → MediaPipe in memory only.
+- [x] `P5.4` Hand ring, floating card (name, files, size) that follows the hand, "Select a file or folder first" hint, card flies to the pill on release; "Camera on" chip whenever the camera runs.
+- [x] `P5.5` Hold: Island countdown ring (Time to catch), *Send now* / *Drop it*; offered to the phone (`hold.offer`), caught sends auto-accepted on the phone.
+- [x] `P5.6` Phone: real Catch screen for holds (countdown, Accept without gesture, Decline) + high-priority notification when the app is closed. Open-hand detection is P6.
+- [x] `P5.7` `GrabMachine` + `cameraToScreen` unit tests (7 new, 17 total passing).
+- [ ] `P5.8` Founder check: select CPP on the Desktop and in Explorer, pinch, move, open hand; watch the Island; catch on the phone with the button.
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 

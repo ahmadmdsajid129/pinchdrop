@@ -79,6 +79,23 @@ object Receiver {
         val openFirst: Boolean,
     )
 
+    /**
+     * Something pinched on the PC and held for this phone to catch (P5/P6).
+     * The Catch screen shows it; catching tells the PC to send it.
+     */
+    data class Hold(
+        val id: String,
+        val label: String,
+        val fileCount: Long,
+        val totalBytes: Long,
+        val isFolder: Boolean,
+        val pcName: String,
+        val expiresAtMs: Long,
+        val totalSecs: Int,
+    ) {
+        fun secondsLeft(): Int = ((expiresAtMs - System.currentTimeMillis() + 999) / 1000).toInt().coerceAtLeast(0)
+    }
+
     private class Chunk(val id: String, val index: Int, val offset: Long, val data: ByteArray)
 
     /** A transfer being received; persisted so it survives a dropped link or an app restart. */
@@ -94,6 +111,11 @@ object Receiver {
     val incoming: StateFlow<Offer?> = _incoming.asStateFlow()
     private val _progress = MutableStateFlow<Progress?>(null)
     val progress: StateFlow<Progress?> = _progress.asStateFlow()
+    private val _hold = MutableStateFlow<Hold?>(null)
+    /** What the PC is holding for this phone right now, if anything. */
+    val hold: StateFlow<Hold?> = _hold.asStateFlow()
+    /** Holds this phone caught: their sends are accepted without asking. */
+    private val caughtHolds = mutableSetOf<String>()
     private val _arrivals = MutableSharedFlow<Arrived>(extraBufferCapacity = 4)
     val arrivals: SharedFlow<Arrived> = _arrivals.asSharedFlow()
 
@@ -142,6 +164,8 @@ object Receiver {
             "push.offer" -> parseOffer(p)?.let { scope.launch { handleOffer(it) } }
                 ?: send(Proto.message("push.decline", JSONObject().put("transferId", p.optString("transferId"))))
             "transfer.cancel" -> scope.launch { finishEarly(p.optString("transferId"), cancelled = true) }
+            "hold.offer" -> onHoldOffer(p)
+            "hold.cancel" -> if (_hold.value?.id == p.optString("holdId")) clearHold()
             "transfer.error" -> scope.launch { finishEarly(p.optString("transferId"), cancelled = false) }
         }
     }
@@ -154,6 +178,46 @@ object Receiver {
         val h = runCatching { JSONObject(String(bytes, 4, headerLen, Charsets.UTF_8)) }.getOrNull() ?: return
         chunks.trySend(Chunk(h.optString("t"), h.optInt("i", -1), h.optLong("o", -1), bytes.copyOfRange(4 + headerLen, bytes.size)))
     }
+
+    // ------------------------------------------------------------ holds (catch)
+
+    private fun onHoldOffer(p: JSONObject) {
+        val id = p.optString("holdId").takeIf { it.isNotBlank() } ?: return
+        val secs = p.optInt("expiresInSecs", 30).coerceIn(5, 120)
+        val h = Hold(
+            id = id,
+            label = p.optString("label").ifBlank { "Items" }.take(80),
+            fileCount = p.optLong("fileCount"),
+            totalBytes = p.optLong("totalBytes"),
+            isFolder = p.optBoolean("isFolder"),
+            pcName = pcName,
+            expiresAtMs = System.currentTimeMillis() + secs * 1000L,
+            totalSecs = secs,
+        )
+        _hold.value = h
+        // Android won't let an app open the camera from the background, so ask the user to open it.
+        if (!foreground) Notifications.postHold(app, h.pcName, h.label, h.fileCount, h.totalBytes, secs)
+        scope.launch {
+            kotlinx.coroutines.delay(secs * 1000L + 500)
+            if (_hold.value?.id == id) clearHold()
+        }
+    }
+
+    private fun clearHold() {
+        _hold.value = null
+        Notifications.cancelHold(app)
+    }
+
+    /** "Open your hand" (P6) or "Accept without gesture": tells the PC to send what it holds. */
+    fun catchHold() {
+        val h = _hold.value ?: return
+        synchronized(this) { caughtHolds += h.id }
+        send(Proto.message("hold.catch", JSONObject().put("holdId", h.id)))
+        clearHold()
+    }
+
+    /** Declined on the phone; the PC keeps counting down and can still "Send now". */
+    fun dismissHold() = clearHold()
 
     // ------------------------------------------------------------ offers
 
@@ -187,8 +251,11 @@ object Receiver {
             send(Proto.message("push.accept", JSONObject().put("transferId", o.id)))
             return
         }
+        val holdId = o.raw.optString("holdId").takeIf { it.isNotBlank() && !o.raw.isNull("holdId") }
+        if (holdId != null && holdId == _hold.value?.id) clearHold() // "Send now" on the PC ends the catch
+        val caught = holdId != null && synchronized(this) { holdId in caughtHolds }
         val s = settings.settings.first()
-        if (s.manualSends == ManualSends.AUTO) {
+        if (caught || s.manualSends == ManualSends.AUTO) {
             accept(o)
         } else {
             _incoming.value = o

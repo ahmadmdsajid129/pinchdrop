@@ -126,6 +126,22 @@ header = { "t": transferId, "i": index, "o": offset }
 - After the phone reconnects, it sends `chunk.req` from the byte where it stopped. The PC keeps unfinished transfers on disk, so this also works after either side restarts.
 - If the PC doesn't know the transfer any more, it answers `transfer.error` `{ reason: "unknown" }` and the phone marks the transfer as failed.
 
+### 6.4 Grab and catch (Phases P5 / P6)
+
+When the user pinches something on the PC and opens their hand, the PC **holds** it for the catch window (Settings → "Time to catch", 15–60 s).
+
+- PC → phone `hold.offer`:
+  ```json
+  { "holdId": "…", "label": "CPP", "fileCount": 12, "totalBytes": 50331648, "isFolder": true, "expiresInSecs": 30 }
+  ```
+  - If the app is open, the phone shows its Catch screen.
+  - Otherwise it shows a high-priority notification that opens the Catch screen; Android doesn't let apps start the camera in the background.
+- Phone → PC `hold.catch` `{ holdId }`: an open hand was seen (P6), or the user pressed *Accept without gesture*.
+  - The PC then sends the held items as a normal `push.offer` that carries the same `holdId`.
+  - The phone accepts that offer without asking.
+- PC → phone `hold.cancel` `{ holdId, reason }`, where `reason` is `"expired" | "cancelled"`. The phone closes its Catch screen.
+- If the PC user presses *Send now* on the Island, the PC sends the `push.offer` with the `holdId` directly. Receiving it closes the phone's Catch screen, and the phone's normal Accept/Ask setting applies.
+
 ## 7. Storage
 
 | Where | What |

@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the PinchDrop main window and pill window",
-  "windows": ["main", "pill"],
+  "description": "Permissions for the PinchDrop main, pill and hand-tracking overlay windows",
+  "windows": ["main", "pill", "overlay"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

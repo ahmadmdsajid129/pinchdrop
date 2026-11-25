@@ -237,7 +237,7 @@ object PcLink {
                         when (val e = r.getOrNull()) {
                             null, is WsEvent.Closed -> false
                             is WsEvent.Text -> when (e.env.type) {
-                                "push.offer", "transfer.cancel", "transfer.error" -> {
+                                "push.offer", "transfer.cancel", "transfer.error", "hold.offer", "hold.cancel" -> {
                                     Receiver.onMessage(e.env.type, e.env.payload)
                                     null
                                 }

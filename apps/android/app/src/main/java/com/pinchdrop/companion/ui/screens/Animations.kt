@@ -114,13 +114,13 @@ private object DemoItem {
 // ---------- Catch ----------
 
 @Composable
-fun CatchScreen(pcName: String, onAccept: () -> Unit, onDecline: () -> Unit) {
+fun CatchScreen(pcName: String, onAccept: () -> Unit, onDecline: () -> Unit, hold: Receiver.Hold? = null) {
     val c = Pd.colors
     val context = LocalContext.current
-    val total = 30
-    var left by remember { mutableIntStateOf(total) }
-    LaunchedEffect(Unit) {
-        Notifications.cancelIncomingDemo(context)
+    val total = hold?.totalSecs ?: 30
+    var left by remember(hold?.id) { mutableIntStateOf(hold?.secondsLeft() ?: total) }
+    LaunchedEffect(hold?.id) {
+        if (hold == null) Notifications.cancelIncomingDemo(context) else Notifications.cancelHold(context)
         while (left > 0) {
             delay(1000); left--
         }
@@ -138,13 +138,20 @@ fun CatchScreen(pcName: String, onAccept: () -> Unit, onDecline: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(Icons.Filled.Folder, contentDescription = null, tint = c.accent)
+                Icon(
+                    if (hold == null || hold.isFolder) Icons.Filled.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
+                    contentDescription = null, tint = c.accent,
+                )
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(DemoItem.FOLDER, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        DemoTag()
+                        Text(hold?.label ?: DemoItem.FOLDER, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        if (hold == null) DemoTag()
                     }
-                    Text("from $pcName · ${DemoItem.FILES} files · ${DemoItem.MB} MB", color = Color(0xFFC7CEEA), fontSize = 13.sp)
+                    Text(
+                        if (hold == null) "from $pcName · ${DemoItem.FILES} files · ${DemoItem.MB} MB"
+                        else "from ${hold.pcName} · ${hold.fileCount} file${if (hold.fileCount == 1L) "" else "s"} · ${formatBytes(hold.totalBytes)}",
+                        color = Color(0xFFC7CEEA), fontSize = 13.sp,
+                    )
                 }
                 Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                     Canvas(Modifier.size(44.dp)) {

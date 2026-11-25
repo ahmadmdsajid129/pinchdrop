@@ -26,6 +26,9 @@ importers:
       '@fontsource/poppins':
         specifier: ^5.3.0
         version: 5.3.0
+      '@mediapipe/tasks-vision':
+        specifier: 0.10.35
+        version: 0.10.35
       '@pinchdrop/gesture-core':
         specifier: workspace:*
         version: link:../../packages/gesture-core

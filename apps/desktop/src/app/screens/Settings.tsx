@@ -111,7 +111,7 @@ export function SettingsScreen() {
         </Row>
       </Section>
 
-      <Section id="gestures" title="Gestures & camera" badge={<PhaseBadge phase={5} />}>
+      <Section id="gestures" title="Gestures & camera">
         <Row title="Air gestures">
           <Toggle label="Air gestures" checked={g.enabled} onChange={(v) => void update({ gestures: { enabled: v } })} />
         </Row>
@@ -191,7 +191,7 @@ export function SettingsScreen() {
       </Section>
 
       <Section id="about" title="About & updates">
-        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Phase 4 build — manual sending">
+        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Phase 5 build — grab with a pinch">
           <Button size="sm" disabled>Check for updates</Button>
         </Row>
         <Row title="Preview with a demo phone" description="Shows a pretend phone (marked DEMO) when no real phone is paired">

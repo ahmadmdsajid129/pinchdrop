@@ -43,6 +43,9 @@ pub struct Transfer {
     pub texts: Vec<String>,
     /// The items the user picked (used for Move → Recycle Bin). Cleared when finished.
     pub roots: Vec<String>,
+    /// Set when this send is a caught hold (P5/P6): the phone accepts it without asking.
+    #[serde(default)]
+    pub hold_id: Option<String>,
     pub total_bytes: u64,
     pub files_done: u32,
     pub bytes_done: u64,
@@ -225,6 +228,7 @@ mod tests {
             ],
             texts: vec![],
             roots: vec!["C:\\a".into()],
+            hold_id: None,
             total_bytes: 15,
             files_done: 0,
             bytes_done: 0,
