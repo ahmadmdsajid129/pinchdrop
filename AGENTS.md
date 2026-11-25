@@ -63,6 +63,7 @@ When entering the codebase, read documents in this exact order:
 |---|---|
 | `pnpm install` | Install monorepo dependencies across packages |
 | `pnpm test` | Run Vitest unit tests in `@pinchdrop/gesture-core` |
+| `pnpm audit:latency` | Run microsecond-precision latency and jitter benchmark |
 | `pnpm docs:assets` | Generate SVG banners, badges, palette swatches, and glyphs |
 | `pnpm docs:diagrams` | Generate Mermaid diagrams and offline SVG fallbacks |
 | `pnpm docs:check` | Validate that all markdown internal file links resolve |
