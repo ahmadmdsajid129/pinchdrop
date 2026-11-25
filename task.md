@@ -27,7 +27,7 @@
 | **S4** | **File Ops & Safety** | Rust allow-list, trash crate integration, undo journal | 2 wks | 🟢 Done |
 | **S5** | **LAN Transfer Engine** | Axum HTTP/WS server, TLS 1.3, pairing, 5GB soak test | 2–3 wks | 🟢 Done |
 | **S6** | **Android App v0** | Compose app, QR pairing, MediaStore download | 3 wks | 🟢 Done |
-| **S7** | **Grab → Catch & Stage Tray** | Share target, tiles, in-app capture, Peek, ARMED state | 3 wks | ⚪ Pending |
+| **S7** | **Grab → Catch & Stage Tray** | Share target, tiles, in-app capture, Peek, ARMED state | 3 wks | 🟢 Done |
 | **S8** | **Air Clipboard** | Bi-directional clipboard, Open on device, Throw gesture | 1 wk | ⚪ Pending |
 | **S9** | **Gesture Gym & Settings** | First-run onboarding, calibration, privacy controls | 2 wks | ⚪ Pending |
 | **S10** | **Polish Pass** | 60 fps spring animations, audio cues, a11y, latency audit | 3 wks | ⚪ Pending |
