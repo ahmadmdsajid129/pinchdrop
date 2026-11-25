@@ -128,6 +128,10 @@ fun SettingsScreen(
                 "Catch with open hand", settings.catchWithHand, { v -> update { it.copy(catchWithHand = v) } },
                 description = "Uses the front camera only while something is coming",
             )
+            ToggleRow(
+                "Catch by hovering over the phone", settings.proximityCatch, { v -> update { it.copy(proximityCatch = v) } },
+                description = "Wave a hand over the top of the phone, no camera needed. Works with the screen off.",
+            )
             SettingRow("Hand detection") {
                 Segmented(
                     listOf(HandDetection.EASY to "Easy", HandDetection.NORMAL to "Normal", HandDetection.STRICT to "Strict"),
