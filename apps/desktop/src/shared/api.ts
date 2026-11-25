@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { DeepPartial, PathInfo, PhoneStatus, Settings } from './types';
+import type { DeepPartial, DeviceView, PairInfo, PairRequest, PathInfo, PhoneStatus, Settings } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -84,8 +84,8 @@ export const api = {
   },
   quit: () => (inTauri ? invoke<void>('quit_app') : Promise.resolve()),
 
-  getAppInfo: (): Promise<{ version: string; configDir: string }> =>
-    inTauri ? invoke('get_app_info') : Promise.resolve({ version: '0.1.0 (browser preview)', configDir: '—' }),
+  getAppInfo: (): Promise<{ version: string; configDir: string; fingerprint: string | null }> =>
+    inTauri ? invoke('get_app_info') : Promise.resolve({ version: '0.1.0 (browser preview)', configDir: '—', fingerprint: null }),
   openConfigFolder: () => (inTauri ? invoke<void>('open_config_folder') : Promise.resolve()),
 
   inspectPaths: (paths: string[]): Promise<PathInfo[]> =>
@@ -102,6 +102,26 @@ export const api = {
             error: null,
           })),
         ),
+
+  // Phase 3 link. In a plain browser there is no network side, so these report "unavailable".
+  pairingOpen: (): Promise<PairInfo> =>
+    inTauri
+      ? invoke('pairing_open')
+      : Promise.resolve({
+          url: '',
+          qrSvgDataUrl: '',
+          pcName: mockSettings().profile.pcName,
+          hosts: [],
+          port: null,
+          fingerprint: '',
+          expiresInSecs: 0,
+          listenError: 'Pairing works only in the PinchDrop app, not in a browser preview.',
+        }),
+  pairingClose: () => (inTauri ? invoke<void>('pairing_close') : Promise.resolve()),
+  pairingRequest: (): Promise<PairRequest | null> => (inTauri ? invoke('pairing_request') : Promise.resolve(null)),
+  pairingRespond: (accept: boolean) => (inTauri ? invoke<void>('pairing_respond', { accept }) : Promise.resolve()),
+  listDevices: (): Promise<DeviceView[]> => (inTauri ? invoke('list_devices') : Promise.resolve([])),
+  unpairDevice: (id: string) => (inTauri ? invoke<void>('unpair_device', { id }) : Promise.resolve()),
 
   resetApp: async (): Promise<Settings> => {
     if (inTauri) return invoke('reset_app');
@@ -175,6 +195,16 @@ export function usePhone() {
   }, []);
   useAsyncSubscription(() => onEvent<PhoneStatus>('phone-status', setPhone), []);
   return phone;
+}
+
+/** Live list of paired phones (Phase 3). */
+export function useDevices() {
+  const [devices, setDevices] = useState<DeviceView[]>([]);
+  useEffect(() => {
+    api.listDevices().then(setDevices);
+  }, []);
+  useAsyncSubscription(() => onEvent<DeviceView[]>('devices-changed', setDevices), []);
+  return devices;
 }
 
 /** Applies the theme setting to <html data-theme>. Pass `force` to pin one (the pill is always dark). */

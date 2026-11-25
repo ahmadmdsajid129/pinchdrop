@@ -16,15 +16,15 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Phase:** **v1 rebuild — Phase P1 (Desktop shell)**. The earlier S3–S12 "done" stages were UI prototypes with mocked data (fake pairing, fake LAN server, prefix-only licence). On 2026-11-25 the founder approved a full v1 design (PC → phone only) and a 7-phase rebuild (P1–P7, see [task.md](task.md)).
+- **Current Phase:** **v1 rebuild — Phase P3 (Real connection)**. P1 desktop shell and P2 Android shell code are done (founder checks open). P3 code is written but not compiled yet: the dev PC is still downloading the MSVC build tools / Windows SDK and Gradle. The earlier S3–S12 "done" stages were UI prototypes with mocked data (fake pairing, fake LAN server, prefix-only licence). On 2026-11-25 the founder approved a full v1 design (PC → phone only) and a 7-phase rebuild (P1–P7, see [task.md](task.md)).
 - **Design reference:** "PinchDrop — Desktop & Mobile App Design" canvas (claude.ai artifact, private to the founder): every desktop + phone screen, pill/Island states, send animations, and the "How it works" spec.
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Phase:** **P2 — Android app shell** (all phone screens, permission flow, settings).
+- **Next Phase:** **P4 — Manual send** (files, folders, text from the PC; Gallery / Downloads saving; receive animations; history; resume).
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Rust `1.100` (MSVC), Tauri `2.x`
   - `apps/desktop`: Tauri 2 shell rebuilt in P1 — pill + Dynamic Island window, main window (onboarding, Home, Send, Transfers, Devices, Pair, Settings, Profile), tray, start-with-Windows, persistent settings. No phone connection yet (P3); "demo phone" preview setting stands in.
   - `@pinchdrop/gesture-core` (10 vitest tests) and `tools/gesture-lab` kept for P5.
-  - `apps/android`: prototype code, to be rebuilt in P2.
+  - `apps/android`: rebuilt in P2 — Kotlin + Jetpack Compose, Gradle wrapper 8.14.3, AGP 8.13, compileSdk 36. Every phone screen (Welcome, Permissions, Pair, Home, Received, Settings, Profile) plus DEMO previews of the incoming alert, Catch, Receiving and Photo-arrived animations. No PC connection yet (P3); "demo PC" preview setting stands in.
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
@@ -47,6 +47,7 @@
 | **DEC-0012** | 2026-11-25 | Offline-First Zero-Phone-Home Licensing Verification | Enforce Pro tier unlocks via local signature parsing and persistent JSON state without cloud DRM telemetry. | Server-backed cloud licensing / DRM — violates zero-telemetry privacy promise. | [Monetization Spec](docs/monetization.md) |
 | **DEC-0013** | 2026-11-25 | v1 = PC → phone only, rebuilt in 7 phases (P1 shell → P7 installers) | Earlier stages were mock-ups; a real end-to-end path beats breadth. Phone → PC, Throw, rename/lock gestures and Pro come after v1. | Keep extending the prototype code — rejected: fake pairing/server/licence could not be built on. | [task.md](task.md) |
 | **DEC-0014** | 2026-11-25 | Pill is its own always-on-top window that resizes to its content | Transparent areas of a WebView2 window still swallow clicks, so the window must be exactly pill- or Island-sized; Rust keeps the anchored edge fixed while resizing. | One large transparent overlay window — rejected: blocks clicks on apps underneath. | [task.md](task.md) |
+| **DEC-0016** | 2026-11-25 | Link = WebSocket over TLS with a pinned self-signed PC certificate; pairing by QR or mDNS + 6-digit SAS code; reconnect by HMAC proof | No accounts or cloud; the QR carries the fingerprint so the phone can't be fooled, and the code catches a man-in-the-middle when the list is used instead. Spec: [LINK-v1](packages/protocol/LINK-v1.md). | Mutual TLS with phone certificates — more moving parts on Android for no real gain in v1; plain HTTP on the LAN — rejected (privacy). | [LINK-v1](packages/protocol/LINK-v1.md) |
 | **DEC-0015** | 2026-11-25 | Default send mode is copy; "move" recycles the PC file only after the phone confirms | Never lose a file to a dropped connection; still no permanent deletes. | Move by default — rejected as risky. | [task.md](task.md) |
 
 ---
@@ -75,6 +76,9 @@
 6. **No-CDN Policy:** All MediaPipe WASM binaries and HandLandmarker `.task` model files must be bundled inside the desktop package.
 7. **Android camera from background:** Android does not let an app start the camera while it is in the background, so the phone "catch" needs the app on screen — a high-priority notification brings up the Catch screen, with "Accept without gesture" as a fallback.
 8. **Transparent WebView2 windows still capture clicks** in their transparent parts — keep the pill window sized to its content.
+9. **Android build needs `local.properties`** (`sdk.dir=...`, not committed) or `ANDROID_HOME`. Only SDK platform 36 is installed on the dev PC, so compileSdk is 36.
+10. **Slow first builds on the dev PC:** the first Gradle and MSVC builds download hundreds of MB to GB; on the founder's connection that took over an hour. Later builds are offline from caches.
+11. **Windows Firewall:** the first time PinchDrop opens port 47821, Windows asks; it must be allowed on *private* networks or phones can't connect.
 
 ---
 

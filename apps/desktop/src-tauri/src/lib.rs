@@ -1,9 +1,11 @@
-//! PinchDrop for Windows — Phase 1 shell.
+//! PinchDrop for Windows.
 //! Two windows: `pill` (always-on-top pill / Dynamic Island) and `main`
 //! (the full app). A tray icon, start-with-Windows, single instance and
-//! persistent settings tie them together.
+//! persistent settings tie them together. Phase 3 adds the encrypted link
+//! to paired phones (`link`).
 
 mod fs_info;
+mod link;
 mod phone;
 mod pill;
 mod settings;
@@ -13,7 +15,7 @@ use serde::Serialize;
 use serde_json::Value;
 use settings::Settings;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -36,6 +38,35 @@ impl AppState {
     }
 }
 
+fn link_of(app: &AppHandle) -> Option<Arc<link::Link>> {
+    app.try_state::<Arc<link::Link>>().map(|l| l.inner().clone())
+}
+
+/// The name phones see for this PC.
+pub(crate) fn current_pc_name(app: &AppHandle) -> String {
+    app.try_state::<AppState>()
+        .map(|s| s.snapshot().profile.pc_name)
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| "My PC".into())
+}
+
+/// What the pill and Island show: a real paired phone wins; otherwise the demo (if on) or nothing.
+fn phone_status(app: &AppHandle) -> PhoneStatus {
+    if let Some(real) = link_of(app).and_then(|l| l.primary_phone()) {
+        return real;
+    }
+    let demo = app.try_state::<AppState>().map(|s| s.snapshot().demo_phone).unwrap_or(false);
+    PhoneStatus::current(demo)
+}
+
+pub(crate) fn emit_phone_status(app: &AppHandle) {
+    let _ = app.emit("phone-status", phone_status(app));
+}
+
+pub(crate) fn show_main_route(app: &AppHandle, route: &str) {
+    open_main_at(app, route);
+}
+
 fn pill_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window("pill")
 }
@@ -56,7 +87,12 @@ fn commit_settings(app: &AppHandle, next: Settings) -> Result<Settings, String> 
     settings::save(&state.settings_path, &next)?;
     let _ = app.emit("settings-changed", &next);
     if previous.demo_phone != next.demo_phone {
-        let _ = app.emit("phone-status", PhoneStatus::current(next.demo_phone));
+        emit_phone_status(app);
+    }
+    if previous.profile.pc_name != next.profile.pc_name {
+        if let Some(l) = link_of(app) {
+            l.pc_renamed();
+        }
     }
     if previous.pill.visible != next.pill.visible {
         if let Ok(guard) = state.tray_show_pill.lock() {
@@ -152,8 +188,46 @@ fn update_settings(app: AppHandle, patch: Value) -> Result<Settings, String> {
 }
 
 #[tauri::command]
-fn get_phone_status(state: State<AppState>) -> PhoneStatus {
-    PhoneStatus::current(state.snapshot().demo_phone)
+fn get_phone_status(app: AppHandle) -> PhoneStatus {
+    phone_status(&app)
+}
+
+// ---------------------------------------------------------------- link (Phase 3)
+
+#[tauri::command]
+fn pairing_open(app: AppHandle) -> Result<link::PairInfo, String> {
+    Ok(link_of(&app).ok_or("The connection service didn't start")?.pairing_open())
+}
+
+#[tauri::command]
+fn pairing_close(app: AppHandle) {
+    if let Some(l) = link_of(&app) {
+        l.pairing_close();
+    }
+}
+
+#[tauri::command]
+fn pairing_request(app: AppHandle) -> Option<link::PairRequestView> {
+    link_of(&app).and_then(|l| l.pair_request_view())
+}
+
+#[tauri::command]
+fn pairing_respond(app: AppHandle, accept: bool) {
+    if let Some(l) = link_of(&app) {
+        l.pairing_respond(accept);
+    }
+}
+
+#[tauri::command]
+fn list_devices(app: AppHandle) -> Vec<link::DeviceView> {
+    link_of(&app).map(|l| l.devices()).unwrap_or_default()
+}
+
+#[tauri::command]
+fn unpair_device(app: AppHandle, id: String) {
+    if let Some(l) = link_of(&app) {
+        l.forget(&id, true);
+    }
 }
 
 #[tauri::command]
@@ -250,6 +324,8 @@ fn quit_app(app: AppHandle) {
 struct AppInfo {
     version: String,
     config_dir: String,
+    /// SHA-256 of this PC's link certificate; phones pin it.
+    fingerprint: Option<String>,
 }
 
 #[tauri::command]
@@ -257,6 +333,7 @@ fn get_app_info(app: AppHandle, state: State<AppState>) -> AppInfo {
     AppInfo {
         version: app.package_info().version.to_string(),
         config_dir: state.config_dir.to_string_lossy().into_owned(),
+        fingerprint: link_of(&app).map(|l| l.identity.fingerprint.clone()),
     }
 }
 
@@ -276,9 +353,12 @@ async fn inspect_paths(paths: Vec<String>) -> Vec<fs_info::PathInfo> {
         .unwrap_or_default()
 }
 
-/// Resets everything to first-run defaults (keeps no pairing data — none exists yet).
+/// Resets everything to first-run defaults and unpairs every phone.
 #[tauri::command]
 fn reset_app(app: AppHandle) -> Result<Settings, String> {
+    if let Some(l) = link_of(&app) {
+        l.forget_all();
+    }
     commit_settings(&app, Settings::default())
 }
 
@@ -361,6 +441,15 @@ pub fn run() {
             });
 
             let handle = app.handle().clone();
+            let link_dir = app.state::<AppState>().config_dir.clone();
+            match link::Link::new(handle.clone(), &link_dir) {
+                Ok(l) => {
+                    l.start();
+                    app.manage(l);
+                }
+                // Not fatal: the app still runs; the Pair screen shows the error.
+                Err(e) => eprintln!("PinchDrop link failed to start: {e}"),
+            }
             build_tray(&handle)?;
             place_pill_initially(&handle);
             refresh_pill_visibility(&handle);
@@ -408,7 +497,13 @@ pub fn run() {
             get_app_info,
             open_config_folder,
             inspect_paths,
-            reset_app
+            reset_app,
+            pairing_open,
+            pairing_close,
+            pairing_request,
+            pairing_respond,
+            list_devices,
+            unpair_device
         ])
         .run(tauri::generate_context!())
         .expect("error while running PinchDrop");

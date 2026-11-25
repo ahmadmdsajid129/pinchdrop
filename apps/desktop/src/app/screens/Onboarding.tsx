@@ -113,7 +113,7 @@ export function Onboarding() {
                 {camera === 'denied' && <span className="text-warn"> Access was refused — gestures stay off, manual sending still works.</span>}
               </PermissionCard>
 
-              <PermissionCard icon={<Wifi size={22} aria-hidden="true" />} title="Local network — so your phone can reach this PC" control={<span className="text-[12px] text-muted text-right w-28">Asked when you pair (Phase 3)</span>}>
+              <PermissionCard icon={<Wifi size={22} aria-hidden="true" />} title="Local network — so your phone can reach this PC" control={<span className="text-[12px] text-muted text-right w-28">Windows asks once</span>}>
                 Windows Firewall will ask once. Tick <strong className="text-text">Private networks</strong> only and press Allow.
               </PermissionCard>
 
@@ -138,7 +138,7 @@ export function Onboarding() {
               <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">Pair your phone</h1>
               <p className="m-0 text-[15px] text-muted">You can skip this for now and pair later from Devices.</p>
             </div>
-            <PairPanel compact />
+            <PairPanel compact onPaired={() => setStep(3)} />
             <div className="flex justify-between items-center flex-wrap gap-3">
               <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
               <Button variant="primary" onClick={() => setStep(3)}>Continue</Button>

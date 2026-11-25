@@ -54,6 +54,46 @@ export interface PhoneStatus {
   isDemo: boolean;
 }
 
+/** Phase 3 pairing: what the Pair screen shows. Mirrors link::PairInfo. */
+export interface PairInfo {
+  url: string;
+  qrSvgDataUrl: string;
+  pcName: string;
+  hosts: string[];
+  port: number | null;
+  fingerprint: string;
+  expiresInSecs: number;
+  listenError: string | null;
+}
+
+/** A phone asking to pair, with the 6-digit code both screens show. Mirrors link::PairRequestView. */
+export interface PairRequest {
+  phoneName: string;
+  phoneModel: string;
+  code: string;
+  phoneConfirmed: boolean;
+  pcConfirmed: boolean;
+}
+
+export interface PairResult {
+  outcome: 'paired' | 'cancelled' | 'mismatch' | 'phone_left';
+  phoneName: string;
+}
+
+/** One paired phone. Mirrors link::DeviceView. */
+export interface DeviceView {
+  id: string;
+  name: string;
+  model: string;
+  pairedAt: number;
+  lastSeen: number;
+  connected: boolean;
+  battery: number | null;
+  charging: boolean;
+  network: string | null;
+  freeSpaceGb: number | null;
+}
+
 export interface PathInfo {
   path: string;
   name: string;

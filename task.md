@@ -10,7 +10,7 @@
 | **Source of Truth For** | Roadmap tracking (S0–S13), sprint tasks, and backlog |
 
 > [!NOTE]
-> **v1 rebuild in progress — Phase P1 of 7.** The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
+> **v1 rebuild in progress — Phase P3 of 7.** P1 and P2 code done (founder checks P1.7 / P2.7 open). P3 code written, not yet compiled — the dev PC is still downloading the C++ build tools and Gradle. The S0–S13 table below records the earlier prototype stages; their UI and Rust code were mock-ups and are being replaced phase by phase.
 
 ---
 
@@ -20,9 +20,9 @@ Approved 2026-11-25 together with the full screen design (see [memory.md](memory
 
 | Phase | Name | You test | Status |
 |---|---|---|---|
-| **P1** | **Desktop shell** — pill, Dynamic Island, main window screens, tray, start with Windows, settings | Run the `.exe` | 🟡 In progress |
-| **P2** | **Android app shell** — every phone screen, permission flow, settings | Install the APK | ⚪ Pending |
-| **P3** | **Real connection** — discovery, QR + 6-digit pairing, encrypted link, live phone name + battery | Pair your phone | ⚪ Pending |
+| **P1** | **Desktop shell** — pill, Dynamic Island, main window screens, tray, start with Windows, settings | Run the `.exe` | 🟢 Built — founder check open |
+| **P2** | **Android app shell** — every phone screen, permission flow, settings | Install the APK | 🟢 Written — build + founder check open |
+| **P3** | **Real connection** — discovery, QR + 6-digit pairing, encrypted link, live phone name + battery | Pair your phone | 🟡 In progress |
 | **P4** | **Manual send** — files, folders, text; Gallery / Downloads saving; receive animations; history; resume | Send real files | ⚪ Pending |
 | **P5** | **Grab on PC** — Explorer/Desktop selection, webcam pinch, floating card, Island countdown | Pinch a folder | ⚪ Pending |
 | **P6** | **Catch on phone** — incoming alert, camera open-hand detection, full gesture loop | The whole thing | ⚪ Pending |
@@ -36,6 +36,26 @@ Approved 2026-11-25 together with the full screen design (see [memory.md](memory
 - [x] `P1.5` Main window: first-run setup, Home (drop area + connected phone panel), Send (real file/folder picking and drag-drop with sizes), Transfers, Devices, Pair, Settings (every option), Profile.
 - [x] `P1.6` Start with Windows, light/dark theme, reduced motion, demo-phone preview.
 - [ ] `P1.7` Founder check on a real Windows desktop (multi-monitor, high-DPI).
+
+### P2 · Android app shell
+- [x] `P2.1` Gradle rebuilt: wrapper (Gradle 8.14.3), AGP 8.13, Kotlin 2.2, compileSdk/targetSdk 36, minSdk 26; prototype stubs removed (fake pairing, share target, QS tile, proximity "catch").
+- [x] `P2.2` Settings stored on the phone (DataStore), changed in one transaction so quick taps never overwrite each other.
+- [x] `P2.3` Onboarding: Welcome → Permissions (notifications, camera, nearby devices, stay connected in background — real Android pop-ups, "Settings" when blocked) → Pair (QR scanner placeholder, Phase 3) → Home.
+- [x] `P2.4` Home (paired PC card or "No PC paired yet", ready-to-catch, recently received), Received (filters, empty state), Settings (every option from the design), Profile (phone name, model, reset).
+- [x] `P2.5` Animation previews, clearly marked DEMO: incoming alert (real notification), Catch screen with countdown, Receiving ring, Photo arrived (drop → bounce + haptic → sharpen → check + chime). Honour the Arrival animation/sound/vibrate settings and Android's "remove animations".
+- [x] `P2.6` Demo-PC preview toggle (Pair screen), light/dark/auto theme, JVM unit tests for shared helpers.
+- [ ] `P2.7` Founder check on a real Android phone (install the debug APK).
+
+### P3 · Real connection
+Spec: [packages/protocol/LINK-v1.md](packages/protocol/LINK-v1.md).
+- [x] `P3.1` PC: self-signed TLS identity (ECDSA P-256) created on first run; `wss://<pc>:47821/link` server (rustls + tokio-tungstenite); mDNS `_pinchdrop._tcp` advertisement with the fingerprint.
+- [x] `P3.2` Pairing: QR (address, port, fingerprint, one-time token) or pick-from-Wi-Fi list; both screens show the same 6-digit code (SAS over fingerprint + both nonces); each side presses Pair; PC issues a device id + 32-byte secret. Shared test vector `749713` in both unit-test suites.
+- [x] `P3.3` Reconnect: HMAC-SHA256 challenge proof; phone finds the PC by mDNS or last address, backs off 2 → 30 s; "unknown device" makes the phone forget the PC and say so.
+- [x] `P3.4` Live status: phone sends name, model, battery %, charging, network type, free space on connect, on battery change and every 60 s; the pill, Island, Home and Devices show the real phone (offline = last seen).
+- [x] `P3.5` Unpair from either side (tells the other side if connected); Reset unpairs everything.
+- [x] `P3.6` Phone: CameraX + ZXing QR scanner (offline), "Found on this Wi-Fi" list, code screen, optional "Stay connected in background" foreground service (connectedDevice), restart after reboot.
+- [ ] `P3.7` Compile both apps and run the unit tests (blocked on toolchain downloads).
+- [ ] `P3.8` Founder check: pair the real phone, watch its battery on the pill, unplug Wi-Fi and come back.
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 

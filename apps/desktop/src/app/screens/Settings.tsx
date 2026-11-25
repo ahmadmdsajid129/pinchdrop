@@ -31,7 +31,7 @@ export function SettingsScreen() {
   const [autostartError, setAutostartError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [preview, setPreview] = useState(false);
-  const [info, setInfo] = useState<{ version: string; configDir: string } | null>(null);
+  const [info, setInfo] = useState<{ version: string; configDir: string; fingerprint: string | null } | null>(null);
 
   useEffect(() => {
     void api.getAutostart().then(setAutostart);
@@ -195,10 +195,10 @@ export function SettingsScreen() {
       </Section>
 
       <Section id="about" title="About & updates">
-        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Phase 1 build — desktop shell">
+        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Phase 3 build — pairing and live phone status">
           <Button size="sm" disabled>Check for updates</Button>
         </Row>
-        <Row title="Preview with a demo phone" description="Shows a pretend phone (marked DEMO) until real pairing ships">
+        <Row title="Preview with a demo phone" description="Shows a pretend phone (marked DEMO) when no real phone is paired">
           <Toggle label="Demo phone" checked={settings.demoPhone} onChange={(v) => void update({ demoPhone: v })} />
         </Row>
         <Row title="Settings folder" description={info?.configDir} last>

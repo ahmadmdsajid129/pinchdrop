@@ -16,6 +16,10 @@ const COLORS = [
 export function Profile() {
   const { settings, update, go } = useApp();
   const [name, setName] = useState(settings.profile.pcName);
+  const [fingerprint, setFingerprint] = useState<string | null>(null);
+  useEffect(() => {
+    void api.getAppInfo().then((i) => setFingerprint(i.fingerprint));
+  }, []);
   useEffect(() => setName(settings.profile.pcName), [settings.profile.pcName]);
 
   const saveName = () => {
@@ -77,7 +81,9 @@ export function Profile() {
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="text-[13px] text-muted">Security key of this PC</span>
-            <span className="text-[14px] px-3.5 py-2.5 rounded-xl bg-bg2 border border-line text-muted">Created when you pair your first phone</span>
+            <span className="text-[14px] px-3.5 py-2.5 rounded-xl bg-bg2 border border-line text-muted font-mono" title={fingerprint ?? undefined}>
+              {fingerprint ? `${fingerprint.slice(0, 16).toUpperCase().match(/.{4}/g)?.join(':')}…` : 'Created when PinchDrop first starts'}
+            </span>
           </div>
           <div className="p-3.5 rounded-xl bg-bg2 text-[13px] text-soft">No account, no email, no password. Your profile lives only on this PC.</div>
         </div>

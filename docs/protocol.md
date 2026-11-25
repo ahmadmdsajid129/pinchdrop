@@ -39,6 +39,8 @@ All control, stage synchronization, and transfer coordination messages use a sta
 ## 2. Core Message Types
 
 ### 2.1 Handshake & Pairing
+
+> **Implemented in P3 as [Link v1](../packages/protocol/LINK-v1.md)** — that spec is the source of truth for discovery, pairing, the 6-digit code, reconnect proofs and `status`. The list below is the original outline.
 - `hello`: Client initiates connection with device identity and protocol version.
 - `pair.begin`: Transmits ephemeral secret and public key.
 - `pair.confirm`: Confirms certificate fingerprint storage.
