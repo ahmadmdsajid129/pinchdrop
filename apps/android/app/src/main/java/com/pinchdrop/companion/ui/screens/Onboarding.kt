@@ -42,6 +42,10 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.Contacts
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -188,6 +192,31 @@ private fun rememberRuntimePermission(permission: String?, refreshKey: Int): Pai
     return state to request
 }
 
+/** Several runtime permissions asked together (e.g. read + send + receive SMS). GRANTED only when all are. */
+@Composable
+private fun rememberRuntimePermissions(permissions: List<String>, refreshKey: Int): Pair<PermState, () -> Unit> {
+    val context = LocalContext.current
+    var asked by remember { mutableStateOf(false) }
+    var tick by remember { mutableIntStateOf(0) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { asked = true; tick++ }
+    val state = remember(permissions, refreshKey, tick) {
+        val missing = permissions.filterNot { context.granted(it) }
+        when {
+            missing.isEmpty() -> PermState.GRANTED
+            asked && missing.none { context.findActivity()?.shouldShowRequestPermissionRationale(it) == true } -> PermState.BLOCKED
+            else -> PermState.ASK
+        }
+    }
+    val request: () -> Unit = {
+        when (state) {
+            PermState.ASK -> launcher.launch(permissions.toTypedArray())
+            PermState.BLOCKED -> context.openAppSettings()
+            else -> Unit
+        }
+    }
+    return state to request
+}
+
 @SuppressLint("BatteryLife") // The user taps "Allow" on a row that explains exactly why.
 @Composable
 fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit) {
@@ -214,6 +243,19 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
         }.onFailure { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
         Unit
     }
+    // v2: the phone's notifications, messages and contacts on the PC.
+    val notifAccess = remember(resumeTick) {
+        if (com.pinchdrop.companion.phone.NotifyListener.accessGranted(context)) PermState.GRANTED else PermState.ASK
+    }
+    val askNotifAccess = {
+        runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+        Unit
+    }
+    val (sms, askSms) = rememberRuntimePermissions(
+        listOf(Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS), resumeTick,
+    )
+    val (contacts, askContacts) = rememberRuntimePermission(Manifest.permission.READ_CONTACTS, resumeTick)
+    val (calls, askCalls) = rememberRuntimePermission(Manifest.permission.CALL_PHONE, resumeTick)
     val autoOpen = remember(resumeTick) {
         if (com.pinchdrop.companion.transfer.AutoOpen.allowed(context)) PermState.GRANTED else PermState.ASK
     }
@@ -254,6 +296,27 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            Text("On your PC (optional)", color = c.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            PermissionRow(
+                Icons.Filled.NotificationsActive, "Notifications on your PC",
+                "Your phone's notifications appear on the PC's Island; reply or dismiss from there. Android calls this “Notification access”. Nothing is stored on the PC.",
+                notifAccess, askNotifAccess,
+            )
+            PermissionRow(
+                Icons.Filled.Sms, "Messages",
+                "Read and reply to text messages from the PC. Messages stay on your phone.",
+                sms, askSms,
+            )
+            PermissionRow(
+                Icons.Filled.Contacts, "Contacts",
+                "Search your contacts on the PC and see names instead of numbers.",
+                contacts, askContacts,
+            )
+            PermissionRow(
+                Icons.Filled.Call, "Calls from your PC",
+                "Click a contact on the PC and your phone starts the call.",
+                calls, askCalls,
+            )
             PermissionRow(
                 Icons.Filled.Folder, "Saving files",
                 if (storagePerm == null) "No permission needed — files go to Gallery and Downloads/PinchDrop."
