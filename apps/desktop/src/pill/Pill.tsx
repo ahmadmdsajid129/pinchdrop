@@ -4,10 +4,11 @@ import { ChevronUp, Hand, Smartphone, Upload, LayoutGrid } from 'lucide-react';
 import { api, inTauri, onEvent, usePhone, useReducedMotion, useSettings, useTheme, useTransfers } from '../shared/api';
 import { SendingIsland } from './SendingIsland';
 import { HoldIsland } from './HoldIsland';
+import { LiftIsland } from './LiftIsland';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
 import { sound } from '../shared/sound';
-import type { HoldView, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
+import type { HoldView, LiftView, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
 
 /** Transparent margin around the pill so its shadow isn't clipped. */
 const PAD = 8;
@@ -46,6 +47,10 @@ export function Pill() {
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [hold, setHold] = useState<HoldView | null>(null);
+  /** v2: something the phone lifted, waiting to be caught here. */
+  const [lift, setLift] = useState<LiftView | null>(null);
+  const liftRef = useRef<LiftView | null>(null);
+  liftRef.current = lift;
 
   // ---- a send in progress shows live on the Island, then "Delivered" for a moment
   const realTransfers = useTransfers();
@@ -62,7 +67,11 @@ export function Pill() {
   useEffect(() => {
     for (const t of transfers) {
       const active = t.state === 'sending' || t.state === 'offered' || t.state === 'paused';
-      if (active && !seenActive.current.has(t.id)) {
+      if (active && !seenActive.current.has(t.id) && t.direction === 'in') {
+        // Caught from the phone: the Island shows it arriving.
+        seenActive.current.add(t.id);
+        setExpanded(true);
+      } else if (active && !seenActive.current.has(t.id)) {
         // A new send started (caught by the phone or dropped on the app). First the lift-off plays
         // on its own, showing the item itself; when it lands at the top, the Island opens on the
         // live progress (already some % in) and carries on from there.
@@ -174,7 +183,7 @@ export function Pill() {
   useEffect(() => () => observer.current?.disconnect(), []);
 
   const collapse = useCallback(() => {
-    if (holdRef.current) return; // the countdown stays visible while something is held
+    if (holdRef.current || liftRef.current) return; // countdowns stay visible while something is in the air
     if (sessionRef.current) void api.gestureSessionStop(); // closing the Island switches the camera off
     setExpanded((was) => {
       if (was && settings?.gestures.sounds) sound.close();
@@ -213,6 +222,7 @@ export function Pill() {
         setGestureError(null);
         setSession(d.session as SessionView | null);
       } else if (d.type === 'hold') setHold(d.hold as HoldView | null);
+      else if (d.type === 'lift') setLift(d.lift as LiftView | null);
       else if (d.type === 'transfer') setDemoTransfer(d.transfer as TransferView | null);
     };
     window.addEventListener('pd-demo', on);
@@ -223,10 +233,18 @@ export function Pill() {
   useEffect(() => {
     if (!inTauri) return;
     void api.holdState().then(setHold);
+    void api.liftState().then((l) => {
+      setLift(l);
+      if (l) setExpanded(true);
+    });
     const offs = [
       onEvent<HoldView | null>('hold-changed', (h) => {
         setHold(h);
         if (!h) setExpanded(false);
+      }),
+      onEvent<LiftView | null>('lift-changed', (l) => {
+        setLift(l);
+        if (l) setExpanded(true);
       }),
       onEvent<null>('island-open', () => {
         // Opened by Rust for a hold: just show it.
@@ -252,10 +270,10 @@ export function Pill() {
   // ---- auto-close after N seconds when the pointer isn't on the Island
   useEffect(() => {
     const secs = settings?.pill.islandAutoCloseSecs ?? 4;
-    if (!expanded || hovered || secs === 0 || hold || session?.active || liveTransfer) return;
+    if (!expanded || hovered || secs === 0 || hold || lift || session?.active || liveTransfer) return;
     const t = window.setTimeout(collapse, secs * 1000);
     return () => clearTimeout(t);
-  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, session?.active, liveTransfer]);
+  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, lift, session?.active, liveTransfer]);
 
   // ---- close on Escape and when the pill window loses focus (click elsewhere)
   useEffect(() => {
@@ -411,6 +429,8 @@ export function Pill() {
               <div ref={contentRef} data-box="island" className="shrink-0">
               {hold ? (
                 <HoldIsland hold={hold} width={ISLAND_W} />
+              ) : lift ? (
+                <LiftIsland lift={lift} width={ISLAND_W} cameraOn={!!settings.gestures.enabled} />
               ) : liveTransfer ? (
                 <SendingIsland t={liveTransfer} width={ISLAND_W} reduced={reduced} />
               ) : (
