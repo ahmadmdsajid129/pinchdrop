@@ -6,6 +6,7 @@ import type { DeviceView, ItemPreviewData, LiftView } from '../shared/types';
 import { Smartphone } from 'lucide-react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import {
+  frameRect,
   PoseMachine,
   poseConfigFor,
   handShape,
@@ -140,7 +141,8 @@ function loadLandmarker(): Promise<HandLandmarker> {
       const opts = (delegate: 'GPU' | 'CPU') => ({
         baseOptions: { modelAssetPath: '/mediapipe/hand_landmarker.task', delegate },
         runningMode: 'VIDEO' as const,
-        numHands: 1,
+        // Two hands for the v2 screenshot frame; the closer hand drives everything else.
+        numHands: 2,
         minHandDetectionConfidence: 0.6,
         minTrackingConfidence: 0.5,
       });
@@ -293,6 +295,8 @@ export function Overlay() {
   // v2 · What the phone has in the air (shown big while the webcam waits for an open hand).
   const [lift, setLift] = useState<LiftView | null>(null);
   const [catchProgress, setCatchProgress] = useState(0);
+  /** v2 · Two "L" hands framing part of the screen (screen px) and how long it's been held. */
+  const [frame, setFrame] = useState<{ x: number; y: number; w: number; h: number; progress: number } | null>(null);
   const [caught, setCaught] = useState(false);
   useEffect(() => {
     if (!inTauri) return;
@@ -364,6 +368,25 @@ export function Overlay() {
     let farSince = 0;
     let hintShown = false;
     let frameErrors = 0;
+
+    const FRAME_HOLD_MS = 700;
+    const frameState: { box: { x: number; y: number; w: number; h: number } | null; since: number; coolUntil: number } = { box: null, since: 0, coolUntil: 0 };
+    async function captureFrame(box: { x: number; y: number; w: number; h: number }) {
+      busy = true;
+      activity();
+      setFrame(null);
+      if (arm?.sounds) sound.pop();
+      const items = await invoke<Grabbed>('capture_region', { x: box.x, y: box.y, w: box.w, h: box.h }).catch(() => null);
+      busy = false;
+      frameState.box = null;
+      if (!items) {
+        flash('Couldn’t take the screenshot');
+        return;
+      }
+      // Straight into the air for the phone, like a grabbed file.
+      const held = await invoke('hold_start', { items }).catch(() => null);
+      flash(held ? '📸 Screenshot — open your hand over your phone' : '📸 Saved, but no phone is connected');
+    }
 
     async function onGrab() {
       busy = true;
@@ -502,7 +525,39 @@ export function Overlay() {
           if (++frameErrors > 30) reportError('Hand tracking stopped working. Turn the camera on again from the pill.', true);
           return;
         }
-        const raw = res.landmarks?.[0];
+        const all = res.landmarks ?? [];
+        // v2 · Two-hand screenshot: both hands make an "L", framing an area; hold still to capture.
+        if (all.length >= 2 && arm?.mode === 'grab' && !machine.holding && !busy) {
+          const r = frameRect(all[0], all[1]);
+          if (r) {
+            // Camera space → screen px (the image is mirrored, so x flips).
+            const a = cameraToScreen(r.x0, r.y0);
+            const b = cameraToScreen(r.x1, r.y1);
+            const W2 = window.innerWidth;
+            const H2 = window.innerHeight;
+            const box = { x: Math.min(a.x, b.x) * W2, y: Math.min(a.y, b.y) * H2, w: Math.abs(a.x - b.x) * W2, h: Math.abs(a.y - b.y) * H2 };
+            const f = frameState;
+            const moved = !f.box || Math.abs(f.box.x - box.x) + Math.abs(f.box.y - box.y) + Math.abs(f.box.w - box.w) + Math.abs(f.box.h - box.h) > 0.04 * W2;
+            if (moved) {
+              f.box = box;
+              f.since = now;
+            }
+            const held = f.box ?? box;
+            const progress = Math.min(1, (now - f.since) / FRAME_HOLD_MS);
+            setFrame({ ...held, progress });
+            if (progress >= 1 && now > f.coolUntil) {
+              f.coolUntil = now + 4000;
+              void captureFrame(held);
+            }
+            setHandIfChanged(null);
+            return;
+          }
+        }
+        if (frameState.box) {
+          frameState.box = null;
+          setFrame(null);
+        }
+        const raw = all.length > 1 ? (handScale(all[0]) >= handScale(all[1]) ? all[0] : all[1]) : all[0];
         if (!raw || raw.length < 21) {
           fx = new OneEuroFilter(POINTER);
           fy = new OneEuroFilter(POINTER);
@@ -664,6 +719,19 @@ export function Overlay() {
       {/* Never shown: the camera feeds MediaPipe directly. */}
       <video ref={videoRef} className="hidden" muted playsInline />
 
+
+      {/* v2 · the area two "L" hands are framing; it fills up, then it's captured */}
+      {frame && (
+        <div
+          className="absolute rounded-[14px] border-[3px] border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.25)]"
+          style={{ left: frame.x, top: frame.y, width: frame.w, height: frame.h }}
+        >
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white text-[#1D1D1F] text-[12px] font-semibold whitespace-nowrap">
+            📸 Hold still… {Math.round(frame.progress * 100)}%
+          </div>
+          <div className="absolute bottom-0 left-0 h-1 bg-[#30D158] rounded-full" style={{ width: `${frame.progress * 100}%` }} />
+        </div>
+      )}
 
       {/* v2 · device chips while carrying (several phones / tablets) */}
       <AnimatePresence>
