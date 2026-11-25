@@ -16,12 +16,12 @@
 
 ## 🧠 Project Snapshot
 
-- **Current Stage:** **Stage 11 (Beta Packaging & Installers)** — Completed. Multi-platform installer bundles (Windows NSIS & WiX/MSI), auto-updater with Minisign Ed25519 public key, Android release signing & R8 rules, automated GitHub Actions workflow (`.github/workflows/release.yml`), and 22-check packaging verification audit (`tools/package-verify.mjs`).
+- **Current Stage:** **Stage 12 (Pro & Monetization Engine)** — Completed. Offline cryptographic licensing engine (`license.rs`), `useLicense` React hook, `ProModal` aurora upgrade showcase, and unit tests (`tests/license_engine.rs`).
 - **Active Workspace:** `E:\Pinch Drop`
-- **Next Stage:** **Stage 12 (Pro & Monetization Engine)** — Local licensing engine, Ed25519 cryptographic license key verification, and Pro feature gate hooks.
+- **Next Stage:** **Stage 13 (Public Launch & Distribution)** — Final store release prep, demo recordings, landing page assets, and v1.0 public release documentation.
 - **Current Stack Status:**
   - Node.js `v20.19.5`, pnpm `12.18.0`, Git `2.51.0`
-  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard, Gesture Gym, Web Audio engine, and NSIS/MSI installers), `apps/android` (Kotlin/Compose companion app with Release signing config, R8 shrinker & WorkManager)
+  - Workspace packages: `@pinchdrop/gesture-core` (10 passing vitest unit tests across 4 suites), `tools/gesture-lab` (built), `apps/desktop` (built + Rust core safe file ops, LAN server, Stage Tray, Air Clipboard, Gesture Gym, Web Audio, NSIS/MSI installers, and Pro licensing engine), `apps/android` (Kotlin/Compose companion app with Release signing config, R8 shrinker & WorkManager)
   - Protocol package: `packages/protocol` (JSON Schemas)
 
 ---
@@ -41,6 +41,7 @@
 | **DEC-0009** | 2026-11-25 | Client-Side Gesture Gym & Privacy Dashboard | Provide users immediate tactile confidence with gamified gesture calibration and zero-recording verification. | Relying on static documentation manuals or external web tutorials. | [Task Board](task.md) |
 | **DEC-0010** | 2026-11-25 | Procedural Web Audio API for Zero-Asset Sound Design | Synthesize tactile audio cues (pop, click, whoosh, thud, chime) directly in Web Audio without shipping heavy audio files. | Bundling static WAV/MP3 audio assets — increases bundle size and incurs decode latency. | [Design Spec](design.md) |
 | **DEC-0011** | 2026-11-25 | Minisign Ed25519 & Dual Windows Installers (NSIS + MSI) | Dual-installer strategy guarantees consumer ease (NSIS setup wizard) and enterprise IT compatibility (silent MSI deployment). | MSI-only or Portable ZIP only — limits consumer adoption and IT administration. | [Services Guide](docs/services.md) |
+| **DEC-0012** | 2026-11-25 | Offline-First Zero-Phone-Home Licensing Verification | Enforce Pro tier unlocks via local signature parsing and persistent JSON state without cloud DRM telemetry. | Server-backed cloud licensing / DRM — violates zero-telemetry privacy promise. | [Monetization Spec](docs/monetization.md) |
 
 ---
 
