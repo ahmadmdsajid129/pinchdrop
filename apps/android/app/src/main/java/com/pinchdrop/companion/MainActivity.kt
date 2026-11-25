@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
         if (savedInstanceState == null) pendingRoute = intent?.getStringExtra(Notifications.EXTRA_OPEN)
+        if (savedInstanceState == null) intent?.let { openLiftIfShared(it) }
         wakeForCatch(intent)
 
         setContent {
@@ -61,8 +62,21 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra(Notifications.EXTRA_OPEN)?.let { pendingRoute = it }
+        openLiftIfShared(intent)
         wakeForCatch(intent)
     }
+
+    /** v2: Share → PinchDrop. The Lift screen takes it from here. */
+    private fun openLiftIfShared(intent: Intent) {
+        if (com.pinchdrop.companion.transfer.Lifter.prepare(this, intent)) {
+            pendingRoute = Notifications.ROUTE_LIFT
+            openedForShare = true
+        }
+    }
+
+    /** True when this screen was opened by a Share: closing the Lift screen returns to that app. */
+    var openedForShare = false
+        private set
 
     /** Catch opened by itself: show over the lock screen and turn the display on, like a call. */
     private fun wakeForCatch(intent: Intent?) {
