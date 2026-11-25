@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Component, Path};
 
-/// Largest chunk the PC sends in one frame.
-pub const CHUNK_MAX: u64 = 524_288;
+/// Largest chunk the PC sends in one frame (2 MiB: fast mode, LINK-v1 §6.7; older phones ask for 512 KiB).
+pub const CHUNK_MAX: u64 = 2_097_152;
+/// Chunk size the PC asks the phone for when pulling a lift (§6.5).
+pub const LIFT_CHUNK: u64 = 524_288;
 /// Stop listing a folder after this many files.
 const MAX_FILES: usize = 200_000;
 /// How many finished transfers to keep in history.
