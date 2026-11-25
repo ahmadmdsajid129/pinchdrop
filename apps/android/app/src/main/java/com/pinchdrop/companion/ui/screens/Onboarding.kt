@@ -255,7 +255,10 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
         listOf(Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS), resumeTick,
     )
     val (contacts, askContacts) = rememberRuntimePermission(Manifest.permission.READ_CONTACTS, resumeTick)
-    val (calls, askCalls) = rememberRuntimePermission(Manifest.permission.CALL_PHONE, resumeTick)
+    val (calls, askCalls) = rememberRuntimePermissions(
+        listOf(Manifest.permission.CALL_PHONE, Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_CALL_LOG, Manifest.permission.ANSWER_PHONE_CALLS),
+        resumeTick,
+    )
     val autoOpen = remember(resumeTick) {
         if (com.pinchdrop.companion.transfer.AutoOpen.allowed(context)) PermState.GRANTED else PermState.ASK
     }
@@ -313,8 +316,8 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
                 contacts, askContacts,
             )
             PermissionRow(
-                Icons.Filled.Call, "Calls from your PC",
-                "Click a contact on the PC and your phone starts the call.",
+                Icons.Filled.Call, "Calls on your PC",
+                "See who's calling on the PC's pill; answer (open palm), reject (swipe) or silence (fist). Click a contact to call. The call stays on your phone.",
                 calls, askCalls,
             )
             PermissionRow(
