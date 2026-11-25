@@ -27,7 +27,7 @@ export class ThrowDetector {
     this.history = this.history.filter((s) => timestampMs - s.timestampMs <= this.windowMs);
   }
 
-  public evaluateRelease(timestampMs: number): ThrowResult {
+  public evaluateRelease(_timestampMs?: number): ThrowResult {
     if (this.history.length < 3) {
       return { isThrow: false, velocity: 0, direction: 'NONE' };
     }
