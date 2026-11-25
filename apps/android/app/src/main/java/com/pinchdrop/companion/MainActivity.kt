@@ -52,6 +52,13 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         PcLink.setForeground(true)
+        com.pinchdrop.companion.phone.FindPhone.stop(this)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Android only lets us read the clipboard while we have focus.
+        if (hasFocus) com.pinchdrop.companion.phone.ClipSync.onForeground(this)
     }
 
     override fun onStop() {
