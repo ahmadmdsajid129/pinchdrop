@@ -49,6 +49,9 @@ pub struct ArmState {
     pub sensitivity: u8,
     pub show_ring: bool,
     pub sounds: bool,
+    /// "grab": pinch to pick up the selection. "catch" (v2): something from the phone is in the
+    /// air; an open hand at the webcam takes it.
+    pub mode: String,
 }
 
 /// Sent to the overlay on a pinch and handed back by it on release (hence Deserialize too).
@@ -302,7 +305,26 @@ impl Grab {
             }
         };
 
+        // v2: the phone lifted something; the webcam watches for an open hand until it's caught
+        // or expires. The user started this on the phone (Share → pinch), so it counts as asking.
+        let lifting =
+            g.enabled && !holding && crate::link_of(app).is_some_and(|l| l.lift_pending());
+        if lifting {
+            crate::force_show_pill(app, 3);
+        }
+        let (want, label, mode) = if lifting {
+            (
+                true,
+                crate::link_of(app)
+                    .and_then(|l| l.lift_view())
+                    .map(|v| v.label),
+                "catch",
+            )
+        } else {
+            (want, label, "grab")
+        };
         let next = ArmState {
+            mode: mode.into(),
             armed: want,
             label,
             camera_id: g.camera_id.clone(),
