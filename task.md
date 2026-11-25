@@ -10,7 +10,7 @@
 | **Source of Truth For** | Roadmap tracking (S0–S13), sprint tasks, and backlog |
 
 > [!NOTE]
-> Overall Project Progress: `▰▰▰▰▰▰▰▰▰▱ 86%` (Stages 0–11 Complete)
+> Overall Project Progress: `▰▰▰▰▰▰▰▰▰▰ 93%` (Stages 0–12 Complete)
 
 ---
 
@@ -32,7 +32,7 @@
 | **S9** | **Gesture Gym & Settings** | First-run onboarding, calibration, privacy controls | 2 wks | 🟢 Done |
 | **S10** | **Polish Pass** | 60 fps spring animations, audio cues, a11y, latency audit | 3 wks | 🟢 Done |
 | **S11** | **Beta Packaging** | Signed Windows MSI/NSIS installer, updater, Play AAB | 2 wks | 🟢 Done |
-| **S12** | **Pro & Monetization** | Local licensing engine, Pro feature unlock (lasso/smart) | 3 wks | ⚪ Pending |
+| **S12** | **Pro & Monetization** | Local licensing engine, Pro feature unlock (lasso/smart) | 3 wks | 🟢 Done |
 | **S13** | **Public Launch** | Store listings, demo recordings, public release v1.0 | 2 wks | ⚪ Pending |
 
 ---
@@ -93,6 +93,13 @@
 - [x] `T-11.3` Configure Android companion release signing config and R8/ProGuard shrinking rules (`proguard-rules.pro`, `build.gradle.kts`).
 - [x] `T-11.4` Create automated GitHub Actions multi-platform release packaging workflow (`.github/workflows/release.yml`).
 - [x] `T-11.5` Implement 22-check packaging and installer audit verification tool (`tools/package-verify.mjs`).
+
+### Stage 12: Pro & Monetization Engine (🟢 Done)
+- [x] `T-12.1` Implement local offline cryptographic licensing engine in Rust (`license.rs`, `AppState`).
+- [x] `T-12.2` Expose licensing IPC commands (`get_license_info`, `activate_license_key`, `deactivate_license`).
+- [x] `T-12.3` Implement React `useLicense` hook with offline feature gating and dev fallback.
+- [x] `T-12.4` Implement `ProModal` aurora glass upgrade showcase with offline demo key activation.
+- [x] `T-12.5` Add unit test suite for license activation, tier detection, and persistence (`tests/license_engine.rs`).
 
 ---
 
