@@ -437,6 +437,28 @@ fn hold_state(app: AppHandle) -> Option<grab::HoldView> {
     app.try_state::<grab::Grab>().and_then(|g| g.hold_view())
 }
 
+/// v2 · Lift: what the phone has in the air, if anything.
+#[tauri::command]
+fn lift_state(app: AppHandle) -> Option<link::lift::LiftView> {
+    link_of(&app).and_then(|l| l.lift_view())
+}
+
+/// Open hand at the webcam, or Take it on the Island.
+#[tauri::command]
+fn lift_catch(app: AppHandle, id: Option<String>) -> Result<(), String> {
+    link_of(&app)
+        .ok_or("The connection service didn't start")?
+        .lift_catch(id.as_deref())
+}
+
+/// "Not now" on the Island.
+#[tauri::command]
+fn lift_dismiss(app: AppHandle) {
+    if let Some(l) = link_of(&app) {
+        l.lift_drop(None, "cancelled");
+    }
+}
+
 #[tauri::command]
 fn hold_cancel(app: AppHandle) {
     if let Some(g) = app.try_state::<grab::Grab>() {
@@ -811,6 +833,9 @@ pub fn run() {
             hold_start,
             hold_state,
             hold_cancel,
+            lift_state,
+            lift_catch,
+            lift_dismiss,
             hold_send_now,
             gesture_session_start,
             gesture_session_stop,
