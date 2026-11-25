@@ -136,3 +136,12 @@ html {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* v2: the pill's phone icon "vibrates" while a call rings */
+@keyframes pd-shake {
+  0%, 50%, 100% { transform: rotate(0deg); }
+  5%, 15%, 25%, 35% { transform: rotate(-14deg); }
+  10%, 20%, 30%, 40% { transform: rotate(14deg); }
+}
+.pd-shake { animation: pd-shake 1.1s ease-in-out infinite; transform-origin: 50% 60%; }
+@media (prefers-reduced-motion: reduce) { .pd-shake { animation: none; } }
