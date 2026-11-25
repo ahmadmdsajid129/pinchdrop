@@ -88,6 +88,31 @@ Spec: [LINK-v1 §6.4](packages/protocol/LINK-v1.md).
 - [x] `P6.5` Practice the catch (Settings) uses the real camera with a pretend folder; nothing is sent.
 - [ ] `P6.6` Founder check: the whole loop — click the pill, select CPP, pinch, carry, open your hand over the phone; it arrives.
 
+### v1.1 · Founder feedback after the first real test (2026-11-25)
+Pairing, live battery and sending were confirmed working on a POCO F7 + HP laptop.
+- [x] Recent on Home shows real sends; stale "Coming in Phase 5" badge removed.
+- [x] Fresh white Apple-style look on both apps (graphite / true-black dark optional); existing installs switch once.
+- [x] Pill + Island jet black with a hairline ring; the clipped rectangular shadow is gone.
+- [x] Camera state only inside the Island (green indicator, countdown, Stop); no separate on-screen badge.
+- [x] Setting: when the Island opens, start the camera or show **Start gestures**. **Ctrl+Shift+Space** opens/closes the Island.
+- [x] Drag lag: one responsive pointer filter + motion prediction, detection once per camera frame, 640×360 up to 60 fps.
+- [x] Full-screen lift-off animation when a send starts; "landed" burst for big sends.
+- [x] Clipboard: pinch with nothing selected sends a copied link (opens on the phone), a short note, a long text as `.txt` (exact text), or formatted text as `.html`.
+- [ ] Founder check of v1.1 on the real laptop + phone (feel of the drag, colours, Island).
+
+## 🚀 v2 backlog (agreed 2026-11-25, not started)
+| # | Feature | Notes |
+|---|---|---|
+| 1 | Phone → PC with gestures | Share → PinchDrop on the phone (camera sees the pinch while it's on screen), open hand at the laptop webcam; opens on the PC (photo, link, note) |
+| 2 | Phone notifications on the PC | Shown in the Island (NotificationListenerService) |
+| 3 | SMS read + reply from the PC | Fine for direct APK installs; Play Store allows it only for default SMS apps |
+| 4 | Contacts on the PC | |
+| 5 | Calls: caller on the Island, open palm = answer, swipe = reject | Answering on the phone first; call audio through the PC (Bluetooth hands-free) is a later, bigger project |
+| 6 | Fast mode for big files | Parallel streams, Wi-Fi Direct, no compression of media |
+| 7 | Proximity-sensor catch | Hover over the phone's top to catch without the camera or opening the app |
+| 8 | Several phones / tablets at once | Whichever device you open your hand over catches it; Island shows all devices |
+| 9 | Laptop ↔ laptop / desktop | Two PCs on one desk pair like a phone; catch with the other PC's webcam |
+
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
 
 *Estimates based on solo part-time development (15–20 hours/week):*
