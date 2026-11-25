@@ -10,6 +10,7 @@ export * from './replay.js';
 export * from './throw.js';
 export * from './grab.js';
 export * from './catch.js';
+export * from './poses.js';
 
 export const GESTURE_CONFIG = {
   VERSION: '0.1.0',
