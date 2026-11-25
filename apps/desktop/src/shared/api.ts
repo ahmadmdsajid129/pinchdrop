@@ -120,13 +120,15 @@ export const api = {
   pairingClose: () => (inTauri ? invoke<void>('pairing_close') : Promise.resolve()),
   pairingRequest: (): Promise<PairRequest | null> => (inTauri ? invoke('pairing_request') : Promise.resolve(null)),
   pairingRespond: (accept: boolean) => (inTauri ? invoke<void>('pairing_respond', { accept }) : Promise.resolve()),
+  /** v2 · Dropped on a device chip: straight to that device. */
+  sendToDevice: (items: unknown, deviceId: string): Promise<string> => (inTauri ? invoke('send_to_device', { items, deviceId }) : Promise.resolve('')),
   listDevices: (): Promise<DeviceView[]> => (inTauri ? invoke('list_devices') : Promise.resolve([])),
   unpairDevice: (id: string) => (inTauri ? invoke<void>('unpair_device', { id }) : Promise.resolve()),
 
   // Phase 4 transfers.
-  sendItems: (paths: string[], texts: string[], destination: 'auto' | 'downloads'): Promise<string> =>
+  sendItems: (paths: string[], texts: string[], destination: 'auto' | 'downloads', deviceId?: string | null): Promise<string> =>
     inTauri
-      ? invoke('send_items', { paths, texts, destination })
+      ? invoke('send_items', { paths, texts, destination, deviceId: deviceId ?? null })
       : Promise.reject(new Error('Sending works only in the PinchDrop app, not in a browser preview.')),
   listTransfers: (): Promise<TransferView[]> => (inTauri ? invoke('list_transfers') : Promise.resolve([])),
   cancelTransfer: (id: string) => (inTauri ? invoke<void>('cancel_transfer', { id }) : Promise.resolve()),
