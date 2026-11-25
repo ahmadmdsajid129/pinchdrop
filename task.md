@@ -109,6 +109,8 @@ Pairing, live battery and sending were confirmed working on a POCO F7 + HP lapto
 - [ ] Founder check of v1.1 on the real laptop + phone (feel of the drag, colours, Island).
 
 ## 🚀 v2 backlog (agreed 2026-11-25, not started)
+Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](docs/v2-plan.md).
+
 | # | Feature | Notes |
 |---|---|---|
 | 1 | Phone → PC with gestures | Share → PinchDrop on the phone (camera sees the pinch while it's on screen), open hand at the laptop webcam; opens on the PC (photo, link, note) |
