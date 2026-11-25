@@ -114,9 +114,9 @@ Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](
 | # | Feature | Notes |
 |---|---|---|
 | 1 | Phone → PC with gestures — 🟢 **built (v2.0), founder check open** | Share → PinchDrop → pinch at the phone → open hand at the laptop webcam (or Take it) → saved in Downloads\PinchDrop and opened; links open in the browser, notes go to the clipboard. LINK-v1 §6.5. Not yet: drop onto a pointed-at Explorer folder |
-| 2 | Phone notifications on the PC | Shown in the Island (NotificationListenerService) |
-| 3 | SMS read + reply from the PC | Fine for direct APK installs; Play Store allows it only for default SMS apps |
-| 4 | Contacts on the PC | |
+| 2 | Phone notifications on the PC — 🟢 **built (v2.0), founder check open** | Island banner with Reply / Dismiss; Notifications screen. Needs “Notification access” on the phone (Permissions screen). In memory only |
+| 3 | SMS read + reply from the PC — 🟢 **built (v2.0), founder check open** | Messages screen: conversations, bubbles, reply with Enter, new message. SMS only (not MMS/RCS chats). Works for the direct APK; Play Store would restrict it |
+| 4 | Contacts on the PC — 🟢 **built (v2.0), founder check open** | Contacts screen: search, Text (opens Messages), Call (the phone dials; or a tap-to-call notification if Android blocks it) |
 | 5 | Calls: caller on the Island, open palm = answer, swipe = reject | Answering on the phone first; call audio through the PC (Bluetooth hands-free) is a later, bigger project |
 | 6 | Fast mode for big files | Parallel streams, Wi-Fi Direct, no compression of media |
 | 7 | Proximity-sensor catch | Hover over the phone's top to catch without the camera or opening the app |
