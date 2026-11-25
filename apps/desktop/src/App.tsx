@@ -3,21 +3,22 @@ import { EdgeZone, ZoneType } from './components/EdgeZone';
 import { FileCard, FileCardData } from './components/FileCard';
 import { PointerRing } from './components/PointerRing';
 import { UndoToast } from './components/UndoToast';
-import { Smartphone, ShieldCheck, Folder } from 'lucide-react';
-import { GestureStateMachine } from '@pinchdrop/gesture-core';
+import { Smartphone, ShieldCheck, Folder, Globe } from 'lucide-react';
+import { GestureStateMachine, ThrowDetector } from '@pinchdrop/gesture-core';
 
 export default function App() {
   const fsmRef = useRef<GestureStateMachine>(new GestureStateMachine());
+  const throwDetectorRef = useRef<ThrowDetector>(new ThrowDetector(0.60));
 
-  // Workspace Files
+  // Workspace Files (including URLs and text notes)
   const [files, setFiles] = useState<FileCardData[]>([
     { id: 'f1', name: 'Annual_Report.pdf', size: '14 MB', type: 'pdf' },
     { id: 'f2', name: 'Hero_Broll.mp4', size: '1.2 GB', type: 'video' },
     { id: 'f3', name: 'Design_System.png', size: '4.8 MB', type: 'image' },
-    { id: 'f4', name: 'Sprint_Notes.docx', size: '820 KB', type: 'doc' },
+    { id: 'f4', name: 'https://pinchdrop.app', size: 'Web Link', type: 'doc' },
   ]);
 
-  // Pointer & Interaction State (Driven by Mouse / Gesture FSM)
+  // Pointer & Interaction State
   const [pointerPos, setPointerPos] = useState({ x: 600, y: 400 });
   const [isGrabbing, setIsGrabbing] = useState(false);
   const [grabbedCardId, setGrabbedCardId] = useState<string | null>(null);
@@ -35,10 +36,19 @@ export default function App() {
   const [phoneArmed, setPhoneArmed] = useState(false);
   const [armedCountdown, setArmedCountdown] = useState(30);
 
-  // Simulate Mouse Movement as Air Pointer
+  // Track pointer motion for G3b Throw evaluation
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      const now = performance.now();
+      const normX = e.clientX / window.innerWidth;
+      const normY = e.clientY / window.innerHeight;
+
       setPointerPos({ x: e.clientX, y: e.clientY });
+
+      // Add sample to ThrowDetector while holding an item
+      if (isGrabbing) {
+        throwDetectorRef.current.addSample(normX, normY, now);
+      }
 
       // Hit-test edge zones
       const w = window.innerWidth;
@@ -59,9 +69,27 @@ export default function App() {
 
     const handleMouseDown = () => {
       setIsGrabbing(true);
+      throwDetectorRef.current.reset();
     };
 
     const handleMouseUp = () => {
+      const now = performance.now();
+      const throwResult = throwDetectorRef.current.evaluateRelease(now);
+
+      if (throwResult.isThrow && grabbedCardId) {
+        const thrownFile = files.find((f) => f.id === grabbedCardId);
+        if (thrownFile) {
+          const target = throwResult.direction === 'LEFT_PHONE' ? 'Phone' : 'Inbox';
+          setFiles((prev) => prev.filter((f) => f.id !== grabbedCardId));
+          setUndoToast({
+            visible: true,
+            message: `💨 Threw "${thrownFile.name}" to ${target} (${throwResult.velocity}x speed)`,
+            remaining: 8,
+            file: thrownFile,
+          });
+        }
+      }
+
       setIsGrabbing(false);
     };
 
@@ -74,15 +102,14 @@ export default function App() {
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [isGrabbing, grabbedCardId, files]);
 
-  // Handle Drop Action when grabbing ends
+  // Handle Drop Action when grabbing ends normally
   useEffect(() => {
     if (!isGrabbing && grabbedCardId) {
       const droppedFile = files.find((f) => f.id === grabbedCardId);
 
       if (activeZone === 'trash' && droppedFile) {
-        // Move to Recycle Bin with Undo Toast
         setFiles((prev) => prev.filter((f) => f.id !== grabbedCardId));
         setUndoToast({
           visible: true,
@@ -91,12 +118,16 @@ export default function App() {
           file: droppedFile,
         });
       } else if (activeZone === 'phone' && droppedFile) {
-        alert(`Streamed "${droppedFile.name}" to Paired Phone via Local TLS!`);
+        if (droppedFile.name.startsWith('http')) {
+          alert(`Pushed URL "${droppedFile.name}" to Phone Clipboard!`);
+        } else {
+          alert(`Streamed "${droppedFile.name}" to Paired Phone via Local TLS!`);
+        }
       }
 
       setGrabbedCardId(null);
     }
-  }, [isGrabbing, grabbedCardId, activeZone]);
+  }, [isGrabbing, grabbedCardId, activeZone, files]);
 
   // Undo Timer countdown
   useEffect(() => {
@@ -113,7 +144,6 @@ export default function App() {
     return () => clearInterval(timer);
   }, [undoToast.visible, undoToast.remaining]);
 
-  // Undo Action
   const handleUndo = () => {
     if (undoToast.file) {
       setFiles((prev) => [undoToast.file!, ...prev]);
@@ -121,13 +151,12 @@ export default function App() {
     }
   };
 
-  // Simulate Phone "Grab" button (triggers ARMED state)
   const triggerPhoneGrab = () => {
     setPhoneArmed(true);
     setArmedCountdown(30);
     fsmRef.current.transition({
       type: 'PHONE_HELD',
-      itemId: 'phone_photo_49',
+      itemId: 'phone_link_49',
       timestampMs: performance.now(),
     });
   };
@@ -144,7 +173,7 @@ export default function App() {
             <span className="w-2.5 h-2.5 rounded-full bg-[#34D399] animate-pulse" />
             <span className="text-sm font-semibold text-[#22D3EE]">PinchDrop Air Workspace</span>
           </div>
-          <span className="text-xs text-[#8B94B8]">Stage 3 Desktop Shell</span>
+          <span className="text-xs text-[#8B94B8]">Stage 8 · Air Clipboard &amp; Throw</span>
         </div>
 
         {/* Center Breadcrumb */}
@@ -180,16 +209,14 @@ export default function App() {
           <EdgeZone
             type="phone"
             label="Phone Zone"
-            sublabel="Drop to Send to Phone"
+            sublabel="Drop to Send / Clipboard"
             isHovered={activeZone === 'phone'}
-            isActive={true}
           />
           <EdgeZone
             type="rename"
             label="Rename Zone"
             sublabel="Peace-Hold (600ms)"
             isHovered={activeZone === 'rename'}
-            isActive={false}
           />
         </div>
 
@@ -218,16 +245,14 @@ export default function App() {
           <EdgeZone
             type="inbox"
             label="Inbox Zone"
-            sublabel="Drop or Throw (Flick)"
+            sublabel="💨 Flick to Throw (Instant)"
             isHovered={activeZone === 'inbox'}
-            isActive={true}
           />
           <EdgeZone
             type="trash"
             label="Recycle Bin"
             sublabel="Hold 600ms to Trash"
             isHovered={activeZone === 'trash'}
-            isActive={false}
           />
         </div>
       </div>
@@ -238,8 +263,9 @@ export default function App() {
           <span className="font-semibold text-[#8B94B8]">Stage Tray:</span>
           {phoneArmed ? (
             <div className="flex items-center space-x-2 px-3 py-1 rounded-lg bg-[#FBBF24]/20 border border-[#FBBF24] text-[#FBBF24]">
-              <span>📷 1 Photo Ready from Phone</span>
-              <span className="font-mono text-[10px] font-bold">Pinch to Catch</span>
+              <Globe className="w-3.5 h-3.5 text-[#22D3EE]" />
+              <span>🔗 Link Ready from Phone</span>
+              <span className="font-mono text-[10px] font-bold">Pinch anywhere to Catch</span>
             </div>
           ) : (
             <span className="text-[#8B94B8]/60 italic">Tray is empty — items caught from phone appear here</span>
@@ -247,8 +273,8 @@ export default function App() {
         </div>
 
         <div className="text-[11px] text-[#8B94B8] flex items-center space-x-4">
-          <span>✋ Air Gestures + Mouse Fallback Active</span>
-          <span className="text-[#34D399]">● 60 FPS Spring UI</span>
+          <span>💨 G3b Ballistic Throw Active (≥ 0.6x speed)</span>
+          <span className="text-[#34D399]">● Air Clipboard Ready</span>
         </div>
       </footer>
 
