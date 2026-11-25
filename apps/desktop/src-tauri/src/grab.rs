@@ -465,6 +465,20 @@ pub fn set_overlay_visible(app: &AppHandle, visible: bool) {
     }
 }
 
+/// Shows the click-through overlay for a short send animation, then hides it again unless the
+/// camera needs it meanwhile.
+pub fn flash_overlay(app: &AppHandle, ms: u64) {
+    set_overlay_visible(app, true);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(ms.min(5000)));
+        let armed = app.try_state::<Grab>().and_then(|g| g.arm_state()).map(|a| a.armed).unwrap_or(false);
+        if !armed {
+            set_overlay_visible(&app, false);
+        }
+    });
+}
+
 /// Ctrl+Shift+Space opens / closes the Island from anywhere (Settings → Pill & Island → Shortcut).
 /// Registered only while that setting is on, so the keys stay free for other apps otherwise.
 pub fn spawn_hotkey_thread(app: AppHandle) {

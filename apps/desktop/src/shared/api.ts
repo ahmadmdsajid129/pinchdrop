@@ -138,6 +138,15 @@ export const api = {
   gestureSessionStop: () => (inTauri ? invoke<void>('gesture_session_stop') : Promise.resolve()),
   gestureSessionState: (): Promise<SessionView | null> => (inTauri ? invoke('gesture_session_state') : Promise.resolve(null)),
 
+  /** Plays a full-screen send animation on the click-through overlay. */
+  playSendFx: async (detail: Record<string, unknown>) => {
+    if (!inTauri) return;
+    await invoke<void>('overlay_flash', { ms: detail.kind === 'landed' ? 1500 : 1800 });
+    const { emitTo } = await import('@tauri-apps/api/event');
+    // Give the just-shown overlay a frame to wake up before it starts animating.
+    window.setTimeout(() => void emitTo('overlay', 'send-fx', detail), 70);
+  },
+
   // Phase 5 grab-and-hold.
   holdState: (): Promise<HoldView | null> => (inTauri ? invoke('hold_state') : Promise.resolve(null)),
   holdCancel: () => (inTauri ? invoke<void>('hold_cancel') : Promise.resolve()),

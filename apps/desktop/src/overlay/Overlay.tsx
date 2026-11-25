@@ -12,6 +12,8 @@ import {
   handScale,
 } from '@pinchdrop/gesture-core';
 import { formatBytes, inTauri, onEvent } from '../shared/api';
+import { SendFx } from './SendFx';
+import type { SendFxEvent } from './SendFx';
 import { sound } from '../shared/sound';
 
 /** Mirrors grab::ArmState. */
@@ -125,6 +127,12 @@ export function Overlay() {
   };
   const [card, setCard] = useState<Card | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [fx, setFx] = useState<SendFxEvent | null>(null);
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const off = onEvent<SendFxEvent>('send-fx', (e) => setFx({ ...e, reduced }));
+    return () => void off.then((u) => u());
+  }, []);
   // Camera problems are reported to the Island (gesture_error); kept here only to stop retries.
   const [, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -149,6 +157,7 @@ export function Overlay() {
         }
         setHandIfChanged(h ? { pinched: h.pinched } : null);
       } else if (d.type === 'card') setCard(d.card as Card | null);
+      else if (d.type === 'sendfx') setFx(d.fx as SendFxEvent);
     };
     window.addEventListener('pd-demo', on);
     return () => window.removeEventListener('pd-demo', on);
@@ -377,6 +386,8 @@ export function Overlay() {
 
   return (
     <div className="fixed inset-0 pointer-events-none select-none overflow-hidden">
+      <SendFx ev={fx} onDone={() => setFx(null)} />
+
       {/* Never shown: the camera feeds MediaPipe directly. */}
       <video ref={videoRef} className="hidden" muted playsInline />
 

@@ -26,6 +26,17 @@ async function currentWindow() {
   return getCurrentWindow();
 }
 
+/** What the overlay's send animation needs: what's flying and where the Island is on screen. */
+function fxInfo(t: TransferView) {
+  return {
+    label: t.label,
+    fileCount: t.fileCount,
+    totalBytes: t.totalBytes,
+    isFolder: t.fileCount > 1,
+    target: { x: window.screenX + window.innerWidth / 2, y: window.screenY + 30 },
+  };
+}
+
 export function Pill() {
   const { settings, update } = useSettings();
   const phone = usePhone();
@@ -50,11 +61,14 @@ export function Pill() {
     for (const t of transfers) {
       const active = t.state === 'sending' || t.state === 'offered' || t.state === 'paused';
       if (active && !seenActive.current.has(t.id)) {
-        // A new send started (caught by the phone or sent from the app): open the Island on it.
+        // A new send started (caught by the phone or sent from the app): play the lift-off and open the Island on it.
         seenActive.current.add(t.id);
         setExpanded(true);
+        void api.playSendFx({ kind: 'launch', ...fxInfo(t) });
       } else if (!active && seenActive.current.has(t.id)) {
         seenActive.current.delete(t.id);
+        // Big sends get a "landed" burst at the Island.
+        if (t.state === 'done' && t.totalBytes >= 50 * 1024 * 1024) void api.playSendFx({ kind: 'landed', ...fxInfo(t) });
         setShownDone(t.id);
         const id = t.id;
         window.setTimeout(() => {

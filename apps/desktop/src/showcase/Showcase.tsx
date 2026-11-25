@@ -147,7 +147,10 @@ export function Showcase() {
         id: 't1', deviceName: 'Demo phone', label: 'CPP', createdAt: Date.now() / 1000, finishedAt: null, error: null,
         mode: 'copy' as const, fileCount: 12, textCount: 0, totalBytes: 48 * MB, moved: false, firstName: 'main.cpp',
       };
-      say(7, 'Open your hand over the phone — caught! The Island shows the send live.');
+      say(7, 'Open your hand over the phone — caught! It lifts off into the Island, which shows the send live.');
+      const target = { x: window.screenX + innerWidth / 2, y: window.screenY + 30 };
+      send(O(), { type: 'sendfx', fx: { kind: 'launch', label: 'CPP', fileCount: 12, totalBytes: 48 * MB, isFolder: true, target } });
+      await sleep(1300);
       const total = 48 * MB;
       for (let i = 0; i <= 40 && !cancelled; i++) {
         const k = i / 40;
@@ -158,6 +161,7 @@ export function Showcase() {
         await sleep(110);
       }
       send(P(), { type: 'transfer', transfer: { ...base, state: 'done', bytesDone: total, filesDone: 12, finishedAt: Date.now() / 1000 } });
+      send(O(), { type: 'sendfx', fx: { kind: 'landed', label: 'CPP', fileCount: 12, totalBytes: 48 * MB, isFolder: true, target: { x: window.screenX + innerWidth / 2, y: window.screenY + 30 } } });
       say(8, 'Delivered. The Island folds back into the pill a moment later.');
       await sleep(3200);
       send(P(), { type: 'transfer', transfer: null });

@@ -344,6 +344,12 @@ fn gesture_error(app: AppHandle, message: String, fatal: bool) {
     }
 }
 
+/// Shows the overlay window for a send animation (the pill then tells it what to play).
+#[tauri::command]
+fn overlay_flash(app: AppHandle, ms: u64) {
+    grab::flash_overlay(&app, ms);
+}
+
 #[tauri::command]
 fn hold_state(app: AppHandle) -> Option<grab::HoldView> {
     app.try_state::<grab::Grab>().and_then(|g| g.hold_view())
@@ -725,7 +731,8 @@ pub fn run() {
             gesture_session_stop,
             gesture_session_state,
             gesture_activity,
-            gesture_error
+            gesture_error,
+            overlay_flash
         ])
         .run(tauri::generate_context!())
         .expect("error while running PinchDrop");
