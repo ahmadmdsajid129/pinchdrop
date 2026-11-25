@@ -312,6 +312,15 @@ impl Grab {
         if lifting {
             crate::force_show_pill(app, 3);
         }
+        // v2: while the phone rings, the webcam listens for palm / swipe / fist (no grabbing).
+        let ringing = g.enabled
+            && !holding
+            && !lifting
+            && s.phone.call_gestures
+            && crate::link::phone_live::ringing();
+        if ringing {
+            crate::force_show_pill(app, 3);
+        }
         let (want, label, mode) = if lifting {
             (
                 true,
@@ -320,6 +329,8 @@ impl Grab {
                     .map(|v| v.label),
                 "catch",
             )
+        } else if ringing && !want {
+            (true, None, "attention")
         } else {
             (want, label, "grab")
         };
