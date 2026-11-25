@@ -13,6 +13,7 @@ mod phone;
 mod pill;
 mod preview;
 mod settings;
+mod shot;
 
 use phone::PhoneStatus;
 use serde::Serialize;
@@ -456,6 +457,52 @@ fn gesture_error(app: AppHandle, message: String, fatal: bool) {
 #[tauri::command]
 fn overlay_flash(app: AppHandle, ms: u64) {
     grab::flash_overlay(&app, ms);
+}
+
+/// v2 · Two-hand screenshot: captures the framed area (overlay CSS pixels) and returns it as
+/// a grabbed item. The overlay is hidden for a moment so it isn't in the picture.
+#[tauri::command]
+async fn capture_region(
+    app: AppHandle,
+    x: f64,
+    y: f64,
+    w: f64,
+    h: f64,
+) -> Result<grab::GrabbedItems, String> {
+    let win = app.get_webview_window("overlay").ok_or("No overlay")?;
+    let pos = win.outer_position().map_err(|e| e.to_string())?;
+    let k = win.scale_factor().unwrap_or(1.0);
+    let (px, py) = (
+        pos.x + (x * k).round() as i32,
+        pos.y + (y * k).round() as i32,
+    );
+    let (pw, ph) = ((w * k).round() as i32, (h * k).round() as i32);
+    let _ = win.hide();
+    let dir = outbox_dir(&app);
+    let shot = tauri::async_runtime::spawn_blocking(move || {
+        std::thread::sleep(std::time::Duration::from_millis(160));
+        shot::capture(&dir, px, py, pw, ph)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let _ = win.show();
+    let path = shot?.to_string_lossy().into_owned();
+    let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    let label = std::path::Path::new(&path)
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Screenshot.png".into());
+    Ok(grab::GrabbedItems {
+        preview: preview::for_paths(std::slice::from_ref(&path)),
+        paths: vec![path],
+        texts: Vec::new(),
+        open_on_arrival: true,
+        label,
+        file_count: 1,
+        total_bytes: size,
+        is_folder: false,
+        partial: false,
+    })
 }
 
 #[tauri::command]
@@ -1000,6 +1047,7 @@ pub fn run() {
             phone_dial,
             phone_live,
             send_to_device,
+            capture_region,
             clear_missed,
             call_action,
             find_phone,
