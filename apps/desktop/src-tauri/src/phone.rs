@@ -9,6 +9,9 @@ use serde::Serialize;
 pub struct PhoneStatus {
     /// "none" | "connected" | "offline"
     pub state: String,
+    /// v2: which phone this is, and the other connected ones (the pill's "+1 ⌄").
+    pub device_id: Option<String>,
+    pub others: Vec<OtherPhone>,
     pub name: Option<String>,
     pub model: Option<String>,
     pub battery: Option<u8>,
@@ -18,9 +21,19 @@ pub struct PhoneStatus {
     pub is_demo: bool,
 }
 
+/// Another connected phone, for switching the pill to it.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OtherPhone {
+    pub id: String,
+    pub name: String,
+}
+
 impl PhoneStatus {
     pub fn none() -> Self {
         Self {
+            device_id: None,
+            others: Vec::new(),
             state: "none".into(),
             name: None,
             model: None,
@@ -34,6 +47,8 @@ impl PhoneStatus {
 
     pub fn demo() -> Self {
         Self {
+            device_id: None,
+            others: Vec::new(),
             state: "connected".into(),
             name: Some("Demo phone".into()),
             model: Some("Preview only · not a real connection".into()),
