@@ -63,7 +63,7 @@ import com.pinchdrop.companion.data.ThemeMode
 
 /** Every screen of the phone app. Tabs have a bottom bar; the rest are full-screen. */
 enum class Route(val tab: Boolean = false) {
-    WELCOME, PERMISSIONS, ONBOARD_PAIR,
+    WELCOME, PERMISSIONS, ONBOARD_PAIR, ONBOARD_FEATURES, ONBOARD_GUIDE, GUIDE,
     HOME(tab = true), RECEIVED(tab = true), SETTINGS(tab = true),
     PAIR, PROFILE, PERMISSIONS_CHECK,
     CATCH_DEMO, RECEIVING_DEMO, ARRIVED_DEMO,
@@ -77,6 +77,9 @@ private fun backOf(r: Route): Route? = when (r) {
     Route.WELCOME, Route.HOME -> null
     Route.PERMISSIONS -> Route.WELCOME
     Route.ONBOARD_PAIR -> Route.PERMISSIONS
+    Route.ONBOARD_FEATURES -> Route.ONBOARD_PAIR
+    Route.ONBOARD_GUIDE -> Route.ONBOARD_FEATURES
+    Route.GUIDE -> Route.HOME
     Route.RECEIVED, Route.SETTINGS, Route.RECEIVING, Route.CATCH, Route.LIFT -> Route.HOME
     Route.ARRIVED -> Route.RECEIVED
     Route.PAIR, Route.PROFILE, Route.PERMISSIONS_CHECK, Route.CATCH_DEMO, Route.RECEIVING_DEMO, Route.ARRIVED_DEMO -> Route.SETTINGS
@@ -216,17 +219,23 @@ fun PinchDropApp(
                             Route.PERMISSIONS -> PermissionsScreen(step = "STEP 1 OF 2", onContinue = { go(Route.ONBOARD_PAIR) }, onBack = back)
                             Route.ONBOARD_PAIR -> PairScreen(
                                 settings = settings, update = update, onboarding = true,
-                                onDone = finishOnboarding, onBack = back,
+                                onDone = { go(Route.ONBOARD_FEATURES) }, onBack = back,
                             )
+                            Route.ONBOARD_FEATURES -> com.pinchdrop.companion.ui.screens.FeaturesScreen(
+                                onboarding = true, onDone = { go(Route.ONBOARD_GUIDE) }, onBack = back,
+                            )
+                            Route.ONBOARD_GUIDE -> com.pinchdrop.companion.ui.screens.GuideScreen(onDone = finishOnboarding, onBack = back, onboarding = true)
+                            Route.GUIDE -> com.pinchdrop.companion.ui.screens.GuideScreen(onDone = back, onBack = back, onboarding = false)
                             Route.HOME -> HomeScreen(
                                 settings, pc, notice = notice, clearNotice = clearNotice,
                                 onPair = { go(Route.PAIR) }, onSeeAll = { go(Route.RECEIVED) }, onProfile = { go(Route.PROFILE) },
+                                onFeatures = { go(Route.PERMISSIONS_CHECK) }, onGuide = { go(Route.GUIDE) },
                             )
                             Route.RECEIVED -> ReceivedScreen()
                             Route.SETTINGS -> SettingsScreen(
                                 settings = settings, pc = pc, update = update,
                                 onPair = { go(Route.PAIR) }, onProfile = { go(Route.PROFILE) },
-                                onPermissions = { go(Route.PERMISSIONS_CHECK) }, onDemo = openDemo,
+                                onPermissions = { go(Route.PERMISSIONS_CHECK) }, onDemo = openDemo, onGuide = { go(Route.GUIDE) },
                             )
                             Route.PAIR -> PairScreen(settings = settings, update = update, onboarding = false, onDone = back, onBack = back)
                             Route.PROFILE -> ProfileScreen(settings, update, onReset = { reset(); route = Route.WELCOME }, onBack = back)
