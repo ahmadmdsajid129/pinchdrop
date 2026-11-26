@@ -112,34 +112,28 @@ Unsigned installers show "Windows protected your PC / Unknown publisher". Option
 
 Once a certificate or Trusted Signing account exists, the build signs automatically (`bundle.windows.signCommand` or certificate thumbprint). The APK needs a release keystore for the Play Store.
 
-## 9. "PinchDrop Huddle": the hackathon idea
+## 9. "PinchDrop Huddle": the hackathon idea (no gestures, just drag and drop)
 
-**The problem:** at a hackathon 4 people sit at one table, and code moves through WhatsApp ("bhai paste kar de"), screenshots, half-finished GitHub pushes and pen drives. Venue Wi-Fi is overloaded or blocks devices from seeing each other. Nobody has time to set up Live Share or explain git rebase at 3 a.m.
+**One line:** your teammates appear as faces on the edge of your screen; drag anything onto a face and it lands in the right place on their laptop. No internet, no accounts, no WhatsApp.
 
-**The idea:** Huddle turns the laptops at one table into an offline team mesh, driven by gestures and aware of code.
+**The problem:** at a hackathon, moving one code snippet takes about 30–60 seconds: open WhatsApp Web, find the group, paste, they copy, find the right file, paste, and fix the formatting WhatsApp broke. Sharing work in progress means commit → push → they pull → conflicts. Showing your running app means deploy it or set up ngrok. And the venue Wi-Fi is down half the time. A team does this 100+ times a night.
 
-1. **Start a huddle in 5 seconds.** One laptop shows a 4-digit code (or a QR); teammates type it. The laptops link directly: Wi-Fi Direct or one laptop's hotspot, so no venue Wi-Fi or internet is needed.
-2. **The table map.** Each laptop plays a short, silent, ultrasonic chirp; the others hear it and work out who sits where (left, right, across). The pill then shows teammates in their real positions.
-3. **Throw code at a teammate.** Select code in your editor, pinch, and flick towards where that person sits. It lands at the cursor in their VS Code (a small extension), as a suggestion they accept with Tab, not a paste that breaks their file.
-4. **Hand over your work, not a file: "git beam".** Pinch your branch. Huddle packs your uncommitted changes plus local commits into a patch. The teammate's PinchDrop checks whether it applies cleanly to their code, then applies it in a new git worktree so their work is untouched. No push, no internet, no merge panic.
-5. **Share your running app.** Pinch the `localhost:3000` tab. Every teammate gets it open in their browser through the local link: like ngrok, but offline and instant. Perfect for "check my frontend" and for judges' demos.
-6. **Team shelf.** Anything dropped on the shelf (API keys, .env lines, links, designs, error messages) is visible to the team. Secrets are blurred until clicked and wiped when the huddle ends.
-7. **Error beam.** Two-hand frame a stack trace on your screen; it drops onto the teammate who owns that part of the code.
-8. **Judging mode.** One gesture puts the demo laptop's screen on every teammate's screen (or on the judges' laptop) for the pitch.
+**How it works: 4 moves, nothing to learn**
 
-**Why it doesn't exist yet:** existing tools solve one slice and need internet or accounts:
-- Live Share and Tuple: remote pairing.
-- LocalSend and AirDrop: generic files, not code.
-- GitHub: needs a push and a working internet connection.
-- ngrok: internet tunnel.
+| Move | What you do | What happens | Time saved |
+|---|---|---|---|
+| **1. Join** | Click "Start huddle". Teammates on the same Wi-Fi or hotspot see "Join Rahul's huddle?" and click Yes | Everyone's face appears on a strip at the screen edge | No group, no link, no sign-up |
+| **2. Drop text or code** | Select code, drag it onto a face (or onto "Everyone") | It's on their clipboard with formatting intact; a small note says "From Rahul: 24 lines. Ctrl+V". Also saved on the team shelf | ~45 s → 2 s |
+| **3. Drop your changes** | Drag your project folder onto a face | PinchDrop sends only the files you changed (it reads git). They see "Rahul changed 3 files: Accept" and one click puts them in place. If they also edited the same file, it shows both versions side by side | Commit, push, pull and fix conflicts: ~3 min → 10 s |
+| **4. Drop your running app** | Drag your `localhost:3000` browser tab onto a face | Your app opens in their browser, running live from your laptop | Deploy or ngrok: ~5 min → 3 s |
 
-As far as we know, none combines offline team links, spatial "where is my teammate", gesture throws, and payloads that understand git and localhost.
+**Plus**
+- **Team shelf:** everything shared in the huddle, newest first and searchable. API keys and `.env` values are blurred until clicked. Everything is wiped when the huddle ends.
+- **Ask for it:** click a teammate's face → "Get Rahul's latest" pulls their changed files without waiting for them.
+- **Works without internet:** if the venue Wi-Fi blocks laptops from seeing each other, one laptop turns on a hotspot and the rest join it automatically.
 
-**Business:** free for up to 4 laptops per huddle (spreads through hackathons, colleges and college clubs); Pro or "Huddle for Teams" for bigger groups and organisers. Sponsoring hackathons with it gets PinchDrop in front of thousands of developers.
+**Why it's new:** Live Share and Tuple are for remote pairing and need accounts; LocalSend and AirDrop move plain files and don't understand code; GitHub needs a push and internet; ngrok needs internet. As far as we know, nothing gives a table of laptops "drag onto a face" sharing that understands code changes and running apps, offline.
 
-**What we already have that makes it feasible:** local discovery and pairing, PC ↔ PC links (v2), hand gestures, the pill, transfers with progress. Missing pieces:
-- the VS Code extension
-- git patch packing and applying
-- the localhost relay
-- ultrasonic seat mapping
-- a quick-join flow for huddles
+**Business:** free for up to 4 laptops per huddle, which spreads it through hackathons and college clubs. Paid "Huddle for Teams" for bigger teams and organisers. Sponsoring hackathons puts it in front of thousands of developers.
+
+**What we already have:** local discovery and pairing, PC ↔ PC links, transfers with progress, the pill (it becomes the face strip). To build: the huddle join flow, the clipboard drop, git-aware "changed files" sending with Accept, the localhost relay, the team shelf, hotspot fallback.
