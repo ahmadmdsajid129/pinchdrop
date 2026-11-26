@@ -257,8 +257,15 @@ impl Link {
             .map(|x| x.device_id.clone())
     }
 
-    /// A phone went away: forget its notifications.
-    pub(super) fn phone_data_gone(&self, dev: &str) {
+    /// A phone went away (Wi-Fi drop, restart…). Its notifications stay until they're handled:
+    /// when it reconnects it sends its current list (`notif.sync`), which replaces these, so
+    /// anything opened or cleared on the phone meanwhile disappears here too.
+    pub(super) fn phone_data_gone(&self, _dev: &str) {
+        self.emit_notifications();
+    }
+
+    /// The phone was unpaired: its notifications go.
+    pub fn notifications_forget_device(&self, dev: &str) {
         if let Ok(mut list) = NOTIFS.lock() {
             list.retain(|x| x.device_id != dev);
         }
