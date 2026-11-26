@@ -45,7 +45,8 @@ object Receiver {
     private const val CHUNK_TIMEOUT_MS = 30_000L
 
     /** The arrival animation the PC asked for (only known packs). */
-    private fun fxOf(o: Offer): String = o.raw.optString("fx").takeIf { it in setOf("plane", "portal", "comet") } ?: "default"
+    private fun fxOf(o: Offer): String =
+        o.raw.optString("fx").takeIf { it in setOf("plane", "portal", "comet", "blackhole", "origami", "pixel", "ink", "liquid") } ?: "default"
 
     data class OfferFile(val index: Int, val segments: List<String>, val size: Long)
 

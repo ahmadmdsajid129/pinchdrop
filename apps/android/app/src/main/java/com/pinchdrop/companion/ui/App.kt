@@ -286,6 +286,8 @@ fun PinchDropApp(
                 if (landed != null) landed = null else hiddenTransfer = progress?.id
             },
             onCancel = { Receiver.cancelCurrent() },
+            sound = settings.arrivalSound,
+            vibrate = settings.vibrate,
         )
         }
     }

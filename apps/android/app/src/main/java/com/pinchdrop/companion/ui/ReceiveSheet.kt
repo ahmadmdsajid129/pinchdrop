@@ -75,7 +75,7 @@ sealed interface SheetState {
  * (the send carries on; the notification keeps the progress).
  */
 @Composable
-fun ReceiveSheet(state: SheetState?, onHide: () -> Unit, onCancel: () -> Unit) {
+fun ReceiveSheet(state: SheetState?, onHide: () -> Unit, onCancel: () -> Unit, sound: Boolean = false, vibrate: Boolean = true) {
     val c = Pd.colors
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(state != null, enter = fadeIn(tween(200)), exit = fadeOut(tween(200))) {
@@ -118,7 +118,7 @@ fun ReceiveSheet(state: SheetState?, onHide: () -> Unit, onCancel: () -> Unit) {
                 ) { st ->
                     when (st) {
                         is SheetState.Receiving -> ReceivingBody(st.p, onHide, onCancel)
-                        is SheetState.Done -> DoneBody(st.a, onHide)
+                        is SheetState.Done -> DoneBody(st.a, onHide, sound, vibrate)
                     }
                 }
             }
@@ -165,11 +165,13 @@ private fun ReceivingBody(p: Receiver.Progress, onHide: () -> Unit, onCancel: ()
 }
 
 @Composable
-private fun DoneBody(a: Receiver.Arrived, onClose: () -> Unit) {
+private fun DoneBody(a: Receiver.Arrived, onClose: () -> Unit, sound: Boolean, vibrate: Boolean) {
     val c = Pd.colors
     val context = LocalContext.current
     val tick = remember(a) { Animatable(0f) }
     LaunchedEffect(a) {
+        // The pack's own vibration and sound, in time with its animation.
+        PackFeedback.arrival(context, a.fx, sound, vibrate)
         // With an animation pack, the tick pops once the arrival has played.
         val wait = arrivalMillis(a.fx)
         if (wait > 0) kotlinx.coroutines.delay(wait - 150)
