@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion';
-import { BatteryFull, BatteryLow, ClipboardCheck, KeyRound } from 'lucide-react';
+import { BatteryFull, BatteryLow, ClipboardCheck, KeyRound, Users } from 'lucide-react';
 
 /** v2 · Something small to tell: a one-time code copied, battery low / full, clipboard arrived. */
 export type Info =
   | { kind: 'otp'; code: string; from: string; deviceName: string }
   | { kind: 'battery_low' | 'battery_full'; level: number; deviceName: string }
-  | { kind: 'clip'; deviceName: string; chars: number };
+  | { kind: 'clip'; deviceName: string; chars: number }
+  /** v2 · Huddle: a teammate dropped something on you (or your drop went through). */
+  | { kind: 'huddle'; from: string; text: string };
 
 export function InfoIsland({ info, width, showDevice }: { info: Info; width: number; showDevice: boolean }) {
   let icon: React.ReactNode;
@@ -36,6 +38,12 @@ export function InfoIsland({ info, width, showDevice }: { info: Info; width: num
       tint = 'bg-[#5E5CE6]';
       title = `Copied from ${info.deviceName}`;
       sub = `${info.chars} character${info.chars === 1 ? '' : 's'} · paste with Ctrl+V`;
+      break;
+    case 'huddle':
+      icon = <Users size={20} />;
+      tint = 'bg-[#FF9F0A]';
+      title = info.from;
+      sub = info.text;
       break;
   }
   return (

@@ -10,6 +10,7 @@ import { CallIsland } from './CallIsland';
 import { InfoIsland, type Info } from './InfoIsland';
 import { NowPlaying, PlayingBars } from './NowPlaying';
 import { usePro } from '../shared/pro';
+import { huddleApi, initials, useHuddle, type HuddleView } from '../shared/huddle';
 import { DEFAULT_PILL_STYLE, ThemeLayer, shellLook, shellRadius, type PillMood, type PillShape, type PillThemeId } from '../shared/pillThemes';
 import { PhotoStrip } from './PhotoStrip';
 import { PhonesIsland } from './PhonesIsland';
@@ -50,6 +51,7 @@ export function Pill() {
   const { settings, update } = useSettings();
   const phone = usePhone();
   const pro = usePro();
+  const huddle = useHuddle();
   /** v2 Pro: the send animation pack (Classic lift-off without Pro). */
   const packRef = useRef<string>('default');
   packRef.current = pro.active ? settings?.pill.style?.fx ?? 'default' : 'default';
@@ -364,6 +366,8 @@ export function Pill() {
       onEvent<{ code: string; from: string; deviceName: string }>('otp', (o) => showInfo({ kind: 'otp', ...o })),
       onEvent<{ kind: 'battery_low' | 'battery_full'; level: number; deviceName: string }>('phone-alert', (a) => showInfo(a)),
       onEvent<{ deviceName: string; chars: number }>('phone-clip', (c) => showInfo({ kind: 'clip', ...c })),
+      // v2 Huddle: a teammate dropped something on this laptop.
+      onEvent<{ from: string; text: string }>('huddle-drop', (d) => showInfo({ kind: 'huddle', from: d.from, text: d.text })),
       onEvent<null>('island-open', () => {
         // Opened by Rust for a hold: just show it.
         setExpanded(true);
@@ -675,6 +679,13 @@ export function Pill() {
             >
               <div ref={contentRef} data-box="pill" className="shrink-0">
                 <PillButton
+                  huddle={huddle}
+                  onFace={(id, name) =>
+                    void huddleApi
+                      .sendClipboard(id)
+                      .then(() => showInfo({ kind: 'huddle', from: `Sent to ${name}`, text: 'Your clipboard is on their clipboard' }))
+                      .catch((e) => showInfo({ kind: 'huddle', from: name, text: String(e instanceof Error ? e.message : e) }))
+                  }
                   clock={pro.active && style.clock}
                   settings={settings}
                   phone={phone}
@@ -700,6 +711,8 @@ export function Pill() {
 }
 
 function PillButton({
+  huddle,
+  onFace,
   clock,
   settings,
   phone,
@@ -712,6 +725,8 @@ function PillButton({
   onPointerMove,
   onContextMenu,
 }: {
+  huddle: HuddleView;
+  onFace: (id: string, name: string) => void;
   clock: boolean;
   settings: Settings;
   phone: PhoneStatus;
@@ -818,6 +833,27 @@ function PillButton({
       >
         <PhoneMissed size={size.icon - 2} aria-hidden="true" />
       </button>
+    )}
+    {/* v2 Huddle: teammates' faces; click one to send them your clipboard */}
+    {huddle.active && huddle.members.length > 0 && (
+      <span className="mr-1.5 inline-flex items-center -space-x-1.5">
+        {huddle.members.slice(0, 5).map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            title={`Send your clipboard to ${m.name}`}
+            aria-label={`Send your clipboard to ${m.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onFace(m.id, m.name);
+            }}
+            className={`rounded-full border-2 border-black text-white font-bold flex items-center justify-center hover:scale-110 hover:z-10 transition-transform ${m.online ? '' : 'opacity-40'}`}
+            style={{ width: size.h - 10, height: size.h - 10, background: m.color, fontSize: (size.h - 10) * 0.4 }}
+          >
+            {initials(m.name)}
+          </button>
+        ))}
+      </span>
     )}
     {multi && (
       <button
