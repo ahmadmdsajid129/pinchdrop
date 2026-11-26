@@ -51,7 +51,12 @@ object LocationWatcher {
     private fun sendOnce() {
         if (!app.has(Manifest.permission.ACCESS_FINE_LOCATION) && !app.has(Manifest.permission.ACCESS_COARSE_LOCATION)) return
         val lm = app.getSystemService(LocationManager::class.java) ?: return
-        val send = { l: Location? ->
+        // No fresh fix (indoors, location just switched on): the newest last-known one from any source.
+        val lastKnown = {
+            lm.getProviders(true).mapNotNull { p -> runCatching { lm.getLastKnownLocation(p) }.getOrNull() }.maxByOrNull { it.time }
+        }
+        val send = { fresh: Location? ->
+            val l = fresh ?: lastKnown()
             if (l != null) {
                 PhoneData.push(
                     "location",
@@ -63,7 +68,7 @@ object LocationWatcher {
             Build.VERSION.SDK_INT >= 31 && lm.isProviderEnabled(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
             lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
             lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-            else -> return
+            else -> { send(null); return }
         }
         runCatching {
             if (Build.VERSION.SDK_INT >= 30) {
