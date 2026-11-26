@@ -7,6 +7,7 @@ import { Button, Card, PageTitle, Toggle } from '../ui';
 import { pickFiles, pickFolder } from '../pickers';
 import { useState } from 'react';
 import { PhoneChips, useConnectedPhones } from '../PhoneChips';
+import { FlyHero } from '../Illustrations';
 
 const ACTIVE = new Set<TransferView['state']>(['offered', 'sending', 'paused']);
 
@@ -63,11 +64,35 @@ export function Home() {
     <>
       <PageTitle>Home</PageTitle>
 
+      {/* v2: first steps, until a phone is paired */}
+      {phone.state === 'none' && (
+        <section className="flex items-center gap-6 flex-wrap p-6 rounded-[20px] bg-gradient-to-br from-primary/[0.08] to-accent/[0.06] border border-line">
+          <div className="flex-[1_1_320px] flex flex-col gap-3">
+            <div className="font-display text-[24px] font-semibold leading-snug">Let's connect your phone</div>
+            <ol className="m-0 pl-5 text-[14px] text-soft leading-relaxed flex flex-col gap-1">
+              <li>Install <b className="text-text">PinchDrop</b> on your Android phone.</li>
+              <li>Open it and tap <b className="text-text">Pair with PC</b>.</li>
+              <li>Scan the code PinchDrop shows here. Done: same Wi-Fi, no account.</li>
+            </ol>
+            <div className="flex gap-2.5 flex-wrap">
+              <Button variant="primary" onClick={() => go('pair')}>Pair a phone</Button>
+              <Button onClick={() => go('guide')}>How to use</Button>
+            </div>
+          </div>
+          <div className="flex-[1_1_340px] flex justify-center">
+            <FlyHero compact />
+          </div>
+        </section>
+      )}
+
       <div className="flex flex-wrap gap-5">
         {/* Manual send drop area */}
         <section className="flex-[999_1_420px] min-w-0 min-h-[280px] p-7 rounded-[20px] border-2 border-dashed border-line bg-bg2 flex flex-col items-center justify-center gap-3.5 text-center">
-          <div className="w-[60px] h-[60px] rounded-[18px] bg-surface2 text-primary-ink flex items-center justify-center">
-            <Upload size={28} aria-hidden="true" />
+          <div className="relative w-[60px] h-[60px]">
+            <span aria-hidden="true" className="absolute inset-0 rounded-[18px] bg-primary/20 pd-ripple" />
+            <div className="relative w-[60px] h-[60px] rounded-[18px] bg-surface2 text-primary-ink flex items-center justify-center pd-float">
+              <Upload size={28} aria-hidden="true" />
+            </div>
           </div>
           <div className="font-display text-[20px] font-semibold">Send to {target}</div>
           <p className="m-0 text-[14px] text-muted max-w-[400px]">
@@ -156,6 +181,9 @@ export function Home() {
           <p className="m-0 text-[13px] text-muted leading-relaxed">
             Click the pill (or press Ctrl + Shift + Space) → select a file or folder → pinch in front of your webcam → open your hand over your phone.
           </p>
+          <button type="button" className="self-start text-[13px] font-semibold text-accent hover:underline" onClick={() => go('guide')}>
+            See all gestures
+          </button>
         </Card>
 
         <Card className="flex-[999_1_420px] min-w-0 p-5 flex flex-col gap-2">
