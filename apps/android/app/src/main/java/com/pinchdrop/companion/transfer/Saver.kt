@@ -31,12 +31,26 @@ object Saver {
         return parts.map { seg -> seg.map { c -> if (c in "\"*:<>?|" || c.code < 32) '_' else c }.joinToString("").take(200) }
     }
 
-    data class Placement(val kind: ItemKind, val relativeDir: String, val name: String, val label: String)
+    /** `direct` = written straight into a folder the user picked on the PC (Phone files; needs All files access). */
+    data class Placement(val kind: ItemKind, val relativeDir: String, val name: String, val label: String, val direct: Boolean = false)
+
+    /** "folder:DCIM/Camera" from the PC → ["DCIM","Camera"] (empty = top of storage); null if not usable. */
+    fun folderOf(destination: String): List<String>? {
+        if (!destination.startsWith("folder:")) return null
+        val rel = destination.removePrefix("folder:").trim('/')
+        return if (rel.isEmpty()) emptyList() else safeSegments(rel)
+    }
 
     fun place(segments: List<String>, destination: String): Placement {
         val name = segments.last()
         val kind = Destinations.kindOf(name)
         val loose = segments.size == 1
+        // v2: dropped onto a folder in the PC's Phone files page: straight into that folder.
+        folderOf(destination)?.let { folder ->
+            val dir = (folder + segments.dropLast(1)).joinToString("/")
+            val where = folder.joinToString("/").ifEmpty { "Phone storage" }
+            return Placement(kind, dir, name, where, direct = true)
+        }
         return when {
             destination == "auto" && loose && kind == ItemKind.PHOTO ->
                 Placement(kind, "Pictures/PinchDrop", name, Destinations.labelFor(ItemKind.PHOTO))
@@ -56,7 +70,7 @@ object Saver {
 
     /** Creates an empty, hidden-until-finished destination. Returns its URI as a string. */
     fun create(context: Context, p: Placement, clash: NameClash): String {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) createMediaStore(context, p, clash) else createLegacy(p)
+        return if (p.direct || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) createLegacy(p) else createMediaStore(context, p, clash)
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
