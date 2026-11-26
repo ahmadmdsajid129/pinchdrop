@@ -804,7 +804,7 @@ impl Link {
             .map(|ts| {
                 ts.iter()
                     .filter(|t| t.device_id == device.id && t.state == "offered")
-                    .map(offer_message)
+                    .map(|t| offer_message(t, &current_fx(&self.app)))
                     .collect()
             })
             .unwrap_or_default();
@@ -1416,7 +1416,7 @@ impl Link {
             direction: "out".into(),
         };
         let id = t.id.clone();
-        let msg = offer_message(&t);
+        let msg = offer_message(&t, &current_fx(&self.app));
         if let Ok(mut ts) = self.transfers.lock() {
             ts.push(t);
         }
@@ -1677,7 +1677,16 @@ pub fn folder_destination(d: &str) -> String {
     "auto".into()
 }
 
-fn offer_message(t: &Transfer) -> String {
+/// Pro: the animation pack, so the phone plays the matching arrival.
+fn current_fx(app: &AppHandle) -> String {
+    if crate::license::is_pro() {
+        crate::current_settings(app).pill.style.fx
+    } else {
+        "default".to_string()
+    }
+}
+
+fn offer_message(t: &Transfer, fx: &str) -> String {
     let files: Vec<Value> = t
         .files
         .iter()
@@ -1695,6 +1704,7 @@ fn offer_message(t: &Transfer) -> String {
             "totalBytes": t.total_bytes,
             "files": files,
             "texts": t.texts,
+            "fx": fx,
         }),
     )
 }

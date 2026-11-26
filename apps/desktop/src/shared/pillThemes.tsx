@@ -13,9 +13,20 @@ export interface PillStyle {
   shape: PillShape;
   /** A clock at the start of the pill. */
   clock: boolean;
+  /** Send / receive animation pack (the phone plays the matching arrival). */
+  fx: FxPack;
 }
 
-export const DEFAULT_PILL_STYLE: PillStyle = { theme: 'classic', shape: 'pill', clock: false };
+export type FxPack = 'default' | 'plane' | 'portal' | 'comet';
+
+export const DEFAULT_PILL_STYLE: PillStyle = { theme: 'classic', shape: 'pill', clock: false, fx: 'default' };
+
+export const FX_PACKS: { id: FxPack; name: string; tagline: string; pro: boolean }[] = [
+  { id: 'default', name: 'Lift-off', tagline: 'The item rises and streaks up into the pill. Free.', pro: false },
+  { id: 'plane', name: 'Paper Plane', tagline: 'Folds into a paper plane that loops up to the pill; lands and unfolds on the phone.', pro: true },
+  { id: 'portal', name: 'Portal', tagline: 'A swirling portal opens at the pill and pulls it in; it drops out of a portal on the phone.', pro: true },
+  { id: 'comet', name: 'Comet', tagline: 'Shrinks to a glowing comet and streaks away; bursts into the file on the phone.', pro: true },
+];
 
 export interface ThemeMeta {
   id: PillThemeId;

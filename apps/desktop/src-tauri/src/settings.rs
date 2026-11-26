@@ -36,6 +36,9 @@ pub struct PillStyle {
     pub theme: String, // "classic" | "aurora" | "glass" | "neon" | "cassette"
     pub shape: String, // "pill" | "soft" | "notch"
     pub clock: bool,
+    /// Send / receive animation pack: "default" | "plane" | "portal" | "comet". The phone plays
+    /// the matching arrival.
+    pub fx: String,
 }
 
 impl Default for PillStyle {
@@ -44,6 +47,7 @@ impl Default for PillStyle {
             theme: "classic".into(),
             shape: "pill".into(),
             clock: false,
+            fx: "default".into(),
         }
     }
 }
