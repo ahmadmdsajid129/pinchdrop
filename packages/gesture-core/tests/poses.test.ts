@@ -62,6 +62,13 @@ describe('poses from landmarks', () => {
     expect(classifyPose(handShape(hand({ index: true }, 'out'))!)).toBe('l_shape');
   });
 
+  it('a hand closing into a pinch is never a fist', () => {
+    const lm = hand({}, 'in');
+    // thumb tip on the curled index tip
+    lm[4] = { ...lm[8] };
+    expect(classifyPose(handShape(lm)!)).not.toBe('fist');
+  });
+
   it('frames a rectangle with two L hands', () => {
     const left = hand({ index: true }, 'out', 0.3, 0.6);
     const right = hand({ index: true }, 'out', 0.7, 0.5);
