@@ -102,6 +102,29 @@ pub struct PhoneSettings {
     pub call_gestures: bool,
     /// v2: the phone the pill shows (and Messages / Contacts use) when several are connected.
     pub selected: Option<String>,
+    /// v2: play a sound on the PC for phone messages, texts and calls.
+    pub sounds_on: bool,
+    /// v2: which sound for each phone (by device id; "default" for any other).
+    pub sounds: std::collections::HashMap<String, PhoneSounds>,
+}
+
+/// v2 · The sounds for one phone (names from the PC's built-in set).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PhoneSounds {
+    pub message: String,
+    pub sms: String,
+    pub call: String,
+}
+
+impl Default for PhoneSounds {
+    fn default() -> Self {
+        Self {
+            message: "glass".into(),
+            sms: "drop".into(),
+            call: "soft".into(),
+        }
+    }
 }
 
 impl Default for PhoneSettings {
@@ -110,6 +133,8 @@ impl Default for PhoneSettings {
             clipboard_sync: false,
             call_gestures: true,
             selected: None,
+            sounds_on: true,
+            sounds: Default::default(),
         }
     }
 }
