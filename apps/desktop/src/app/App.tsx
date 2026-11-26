@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlyHero, Guide } from './Illustrations';
 import { ProGate, ProPage, UpgradeDialog } from './Pro';
+import { StudioPage } from './Studio';
 import { PageTitle } from './ui';
 import { Upload } from 'lucide-react';
 import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
@@ -90,6 +91,7 @@ export function App() {
     profile: <Profile />,
     guide: <GuidePage />,
     pro: <ProPage />,
+    studio: <StudioPage />,
     files: <ProGate feature="files"><PhoneFiles /></ProGate>,
     map: <ProGate feature="map"><MapScreen /></ProGate>,
     onboarding: null,
