@@ -18,10 +18,17 @@ export interface HuddleView {
   me: HuddleMember | null;
   members: HuddleMember[];
   maxFree: number;
+  /** Join code, 8 characters (shown as KX7Q-49MZ). */
+  code: string | null;
+  /** This laptop shares its hotspot for the huddle. */
+  hotspot: boolean;
+  /** This laptop joined through a teammate's hotspot. */
+  onHotspot: boolean;
 }
 
 export interface FoundHuddle {
   hid: string;
+  code: string;
   name: string;
   hostName: string;
   count: number;
@@ -78,7 +85,7 @@ export interface JoinRequest {
   code: string;
 }
 
-const EMPTY: HuddleView = { active: false, hid: null, name: null, host: false, me: null, members: [], maxFree: 4 };
+const EMPTY: HuddleView = { active: false, hid: null, name: null, host: false, me: null, members: [], maxFree: 4, code: null, hotspot: false, onHotspot: false };
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!inTauri) throw new Error('Huddle works in the PinchDrop app.');
@@ -91,6 +98,9 @@ export const huddleApi = {
   start: (name?: string) => call<HuddleView>('huddle_start', { name: name ?? null }),
   find: () => (inTauri ? call<FoundHuddle[]>('huddle_find') : Promise.resolve([] as FoundHuddle[])),
   join: (ip: string, port: number) => call<HuddleView>('huddle_join', { ip, port }),
+  /** Joins by code: on this Wi-Fi, or through the host's hotspot. */
+  joinCode: (code: string) => call<HuddleView>('huddle_join_code', { code }),
+  hotspot: (on: boolean) => call<HuddleView>('huddle_hotspot', { on }),
   answer: (reqId: string, ok: boolean) => call<void>('huddle_answer', { reqId, ok }),
   leave: () => call<void>('huddle_leave'),
   sendText: (to: string | null, text: string) => call<string>('huddle_send_text', { to, text }),
@@ -149,3 +159,6 @@ export const initials = (name: string) =>
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase())
     .join('') || '?';
+
+/** KX7Q49MZ → KX7Q-49MZ */
+export const showCode = (c: string | null) => (c && c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c ?? '');

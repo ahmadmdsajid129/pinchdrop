@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, ClipboardPaste, Copy, Crown, Download, ExternalLink, FileText, Folder, GitBranch, Globe, LogOut, Radar, Users, Wifi, X } from 'lucide-react';
+import { Check, ClipboardPaste, Copy, Crown, Download, ExternalLink, FileText, Folder, GitBranch, Globe, KeyRound, LogOut, Radar, Router, Users, Wifi, X } from 'lucide-react';
 import { onEvent } from '../../shared/api';
 import { askUpgrade, usePro } from '../../shared/pro';
 import {
   huddleApi,
   initials,
+  showCode,
   looksSecret,
   useHuddle,
   useHuddleInbox,
@@ -83,6 +84,8 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
   const [found, setFound] = useState<FoundHuddle[] | null>(null);
   const [joining, setJoining] = useState<{ hid: string; code: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
+  const [via, setVia] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -92,7 +95,10 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
     };
     void scan();
     const t = window.setInterval(() => void scan(), 6000);
-    const off = onEvent<{ code: string }>('huddle-joining', (d) => setJoining((j) => (j ? { ...j, code: d.code } : j)));
+    const off = onEvent<{ code: string | null; via?: string }>('huddle-joining', (d) => {
+      if (d.via) setVia(d.via);
+      if (d.code) setJoining((j) => (j ? { ...j, code: d.code } : j));
+    });
     return () => {
       alive = false;
       window.clearInterval(t);
@@ -108,6 +114,19 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
       say(false, err(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function joinByCode() {
+    setJoining({ hid: '__code', code: null });
+    setVia(null);
+    try {
+      await huddleApi.joinCode(code);
+    } catch (e) {
+      say(false, err(e));
+    } finally {
+      setJoining(null);
+      setVia(null);
     }
   }
 
@@ -184,6 +203,41 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
           </div>
         )}
       </Card>
+
+      <Card className="p-5 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <KeyRound size={18} className="text-accent" aria-hidden="true" />
+          <span className="font-semibold">Join with a code</span>
+          <span className="text-[12px] text-muted">Can't see your team's huddle? Type the code from the host's screen.</span>
+        </div>
+        <form
+          className="flex gap-2 flex-wrap"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void joinByCode();
+          }}
+        >
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="KX7Q-49MZ"
+            aria-label="Join code"
+            maxLength={9}
+            autoComplete="off"
+            spellCheck={false}
+            className="w-[180px] h-11 px-4 rounded-xl bg-bg2 border border-line text-[17px] font-mono tracking-[0.15em] outline-none focus:border-primary"
+          />
+          <Button variant="primary" type="submit" disabled={!!joining || code.replace(/[^A-Za-z0-9]/g, '').length !== 8}>
+            {joining?.hid === '__code' ? (via ? 'Joining through the hotspot…' : 'Looking for it…') : 'Join'}
+          </Button>
+        </form>
+        {via && (
+          <div className="p-3 rounded-2xl bg-bg2 text-[12.5px] text-soft flex items-center gap-2" role="status">
+            <Router size={15} className="text-accent" aria-hidden="true" />
+            Connected to the host's hotspot <b>{via}</b>. Your usual Wi-Fi comes back when you leave the huddle.
+          </div>
+        )}
+      </Card>
     </>
   );
 }
@@ -198,6 +252,17 @@ function InHuddle({ say }: { say: (ok: boolean, t: string) => void }) {
   const [address, setAddress] = useState('localhost:3000');
   const [shareTo, setShareTo] = useState<string>(ALL);
   const laptops = h.members.length + 1;
+  const [hotspotBusy, setHotspotBusy] = useState(false);
+  async function toggleHotspot() {
+    setHotspotBusy(true);
+    try {
+      await huddleApi.hotspot(!h.hotspot);
+    } catch (e) {
+      say(false, err(e));
+    } finally {
+      setHotspotBusy(false);
+    }
+  }
 
   const run = async (p: Promise<string | void>) => {
     try {
@@ -210,6 +275,33 @@ function InHuddle({ say }: { say: (ok: boolean, t: string) => void }) {
 
   return (
     <>
+      {/* Join code + hotspot fallback */}
+      <Card className="p-5 flex items-center gap-4 flex-wrap">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold tracking-wider text-muted">JOIN CODE</span>
+          <button
+            type="button"
+            title="Copy the code"
+            onClick={() => void navigator.clipboard.writeText(showCode(h.code)).then(() => say(true, 'Code copied'))}
+            className="font-mono text-[24px] font-bold tracking-[0.18em] text-left"
+          >
+            {showCode(h.code)}
+          </button>
+        </div>
+        <div className="flex-1 min-w-[260px] text-[13px] text-muted leading-relaxed">
+          {h.onHotspot
+            ? 'You joined through the host\'s hotspot. Your usual Wi-Fi comes back when you leave.'
+            : h.hotspot
+              ? `Your hotspot "PinchDrop-${(h.code ?? '').slice(0, 4)}" is on. Teammates type the code under Join with a code; their laptops connect to it by themselves.`
+              : "Teammates on this Wi-Fi see the huddle by itself. If they can't (some Wi-Fi keeps laptops apart), they type this code."}
+        </div>
+        {h.host && (
+          <Button onClick={() => void toggleHotspot()} disabled={hotspotBusy} variant={h.hotspot ? 'secondary' : 'primary'}>
+            <Router size={16} aria-hidden="true" /> {hotspotBusy ? 'One moment…' : h.hotspot ? 'Turn hotspot off' : "Team can't see it? Share a hotspot"}
+          </Button>
+        )}
+      </Card>
+
       {/* Faces: drop targets */}
       <Card className="p-5 flex flex-col gap-4">
         <div className="flex items-center gap-2 flex-wrap">
@@ -237,8 +329,11 @@ function InHuddle({ say }: { say: (ok: boolean, t: string) => void }) {
           </li>
           {h.members.map((m) => (
             <li key={m.id} data-huddle-member={m.id} data-huddle-name={m.name} className="pd-huddle-face rounded-[20px] border-2 border-transparent p-4 flex flex-col items-center gap-2 text-center bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-              <Face m={m} />
+              <span className={m.online ? '' : 'grayscale opacity-60'}>
+                <Face m={m} />
+              </span>
               <div className="font-semibold text-[14px] truncate max-w-full">{m.name}</div>
+              {!m.online && <div className="text-[11.5px] text-warn -mt-1">Reconnecting…</div>}
               <div className="flex gap-1.5">
                 <Button size="sm" disabled={!m.online} onClick={() => void run(huddleApi.sendClipboard(m.id))}>
                   <ClipboardPaste size={14} aria-hidden="true" /> Paste
