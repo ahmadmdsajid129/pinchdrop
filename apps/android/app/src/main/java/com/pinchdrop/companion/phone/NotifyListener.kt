@@ -71,7 +71,7 @@ class NotifyListener : NotificationListenerService() {
             return runCatching { l.activeNotifications.orEmpty() }.getOrDefault(emptyArray())
                 .filter { l.shouldMirror(it) }
                 .sortedByDescending { it.postTime }
-                .take(30)
+                .take(60)
                 .mapNotNull { payloadOf(l, it) }
         }
 
