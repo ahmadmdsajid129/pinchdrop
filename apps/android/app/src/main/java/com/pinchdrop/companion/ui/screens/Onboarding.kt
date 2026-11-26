@@ -268,6 +268,16 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
     val (bgLocation, askBgLocation) = rememberRuntimePermission(bgLocPerm, resumeTick)
     val photosPerm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
     val (photos, askPhotos) = rememberRuntimePermission(photosPerm, resumeTick)
+    val allFiles = remember(resumeTick) {
+        if (Build.VERSION.SDK_INT < 30) PermState.NOT_NEEDED
+        else if (com.pinchdrop.companion.phone.PhoneFiles.allowed()) PermState.GRANTED else PermState.ASK
+    }
+    val askAllFiles = {
+        runCatching {
+            context.startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}")))
+        }.onFailure { runCatching { context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) } }
+        Unit
+    }
     val autoOpen = remember(resumeTick) {
         if (com.pinchdrop.companion.transfer.AutoOpen.allowed(context)) PermState.GRANTED else PermState.ASK
     }
@@ -341,6 +351,11 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
                     bgLocation, askBgLocation,
                 )
             }
+            PermissionRow(
+                Icons.Filled.Folder, "All files on your PC",
+                "Browse this phone's files on the PC and drag them to the PC or another phone. Android calls this “All files access”.",
+                allFiles, askAllFiles,
+            )
             PermissionRow(
                 Icons.Filled.PhotoLibrary, "Recent photos on your PC",
                 "Your latest photos show on the PC's Island; click one to bring it over.",
