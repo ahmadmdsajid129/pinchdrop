@@ -1387,11 +1387,7 @@ impl Link {
             state: "offered".into(),
             error: None,
             mode: settings.transfers.mode.clone(),
-            destination: if destination == "downloads" {
-                "downloads".into()
-            } else {
-                "auto".into()
-            },
+            destination: folder_destination(&destination),
             open_first: open_first.unwrap_or(settings.transfers.open_first),
             total_bytes: files.iter().map(|f| f.size).sum(),
             files,
@@ -1643,6 +1639,28 @@ pub fn battery_alert(prev: u8, now: u8, charging: bool) -> Option<&'static str> 
     }
 }
 
+/// "downloads", "auto", or v2 "folder:<path>" (a folder picked in the Phone files page; the
+/// phone checks it again and only uses it with All files access).
+pub fn folder_destination(d: &str) -> String {
+    if d == "downloads" {
+        return "downloads".into();
+    }
+    if let Some(rel) = d.strip_prefix("folder:") {
+        let parts: Vec<&str> = rel.split('/').filter(|p| !p.is_empty()).collect();
+        let safe = rel.len() <= 300
+            && !rel.contains('\\')
+            && parts.iter().all(|p| {
+                *p != "."
+                    && *p != ".."
+                    && !p.chars().any(|c| c.is_control() || "\":*?<>|".contains(c))
+            });
+        if safe {
+            return format!("folder:{}", parts.join("/"));
+        }
+    }
+    "auto".into()
+}
+
 fn offer_message(t: &Transfer) -> String {
     let files: Vec<Value> = t
         .files
@@ -1676,5 +1694,19 @@ mod battery_tests {
         assert_eq!(b(16, 15, true), None);
         assert_eq!(b(99, 100, true), Some("battery_full"));
         assert_eq!(b(100, 100, true), None);
+    }
+}
+
+#[cfg(test)]
+mod folder_tests {
+    #[test]
+    fn folder_destinations_are_cleaned() {
+        use super::folder_destination as f;
+        assert_eq!(f("folder:DCIM/Camera"), "folder:DCIM/Camera");
+        assert_eq!(f("folder:/Documents//Work/"), "folder:Documents/Work");
+        assert_eq!(f("folder:../Android"), "auto");
+        assert_eq!(f(r"folder:a\b"), "auto");
+        assert_eq!(f("downloads"), "downloads");
+        assert_eq!(f("anything"), "auto");
     }
 }
