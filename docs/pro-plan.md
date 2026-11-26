@@ -116,6 +116,8 @@ Once a certificate or Trusted Signing account exists, the build signs automatica
 
 ## 9. "PinchDrop Huddle": the hackathon idea (no gestures, just drag and drop)
 
+**Built (2026-11-26), inside PinchDrop:** see [huddle.md](huddle.md). Not yet: hotspot fallback, reconnect, file drops on the pill's faces.
+
 **One line:** your teammates appear as faces on the edge of your screen; drag anything onto a face and it lands in the right place on their laptop. No internet, no accounts, no WhatsApp.
 
 **The problem:** at a hackathon, moving one code snippet takes about 30–60 seconds: open WhatsApp Web, find the group, paste, they copy, find the right file, paste, and fix the formatting WhatsApp broke. Sharing work in progress means commit → push → they pull → conflicts. Showing your running app means deploy it or set up ngrok. And the venue Wi-Fi is down half the time. A team does this 100+ times a night.
