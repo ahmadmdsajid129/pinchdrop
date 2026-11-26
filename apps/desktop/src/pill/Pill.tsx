@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronUp, Hand, Smartphone, Upload, LayoutGrid, MessageSquare, PhoneCall, PhoneMissed } from 'lucide-react';
+import { ChevronDown, ChevronUp, Hand, Smartphone, Upload, LayoutGrid, MessageSquare, PhoneCall, PhoneMissed } from 'lucide-react';
 import { api, inTauri, onEvent, usePhone, usePhoneLive, useReducedMotion, useSettings, useTheme, useTransfers } from '../shared/api';
 import { SendingIsland } from './SendingIsland';
 import { HoldIsland } from './HoldIsland';
@@ -59,9 +59,15 @@ export function Pill() {
   /** The banner opened the Island (so closing the banner closes it again). */
   const bannerOpened = useRef(false);
   const [replyNonce, setReplyNonce] = useState(0);
-  /** v2: unread texts and calls from the phone. */
-  const live = usePhoneLive();
-  const ringing = live.call === 'ringing';
+  /** v2: unread texts and calls, per phone. The pill shows the selected phone; a call on any phone shows up. */
+  const lives = usePhoneLive();
+  const live: PhoneLive =
+    lives.find((l) => l.deviceId === phone?.deviceId) ??
+    { deviceId: '', deviceName: '', unread: 0, call: 'idle', callerName: null, callerNumber: null, callApp: null, missed: null, missedApp: null };
+  const ringingLive = lives.find((l) => l.call === 'ringing') ?? null;
+  const missedLive = lives.find((l) => l.missed) ?? null;
+  const manyPhones = (phone?.others?.length ?? 0) > 0 || lives.length > 1;
+  const ringing = !!ringingLive;
   const ringingRef = useRef(false);
   const wasRinging = useRef(false);
 
@@ -271,6 +277,7 @@ export function Pill() {
           if (g === 'palm_hold') void api.callAction('answer');
           else if (g === 'swipe_left' || g === 'swipe_right') void api.callAction('reject');
           else if (g === 'fist_hold') void api.callAction('silence');
+          // (the PC sends these to whichever phone is ringing)
           return;
         }
         const b = bannerRef.current;
@@ -508,9 +515,9 @@ export function Pill() {
               ) : lift ? (
                 <LiftIsland lift={lift} width={ISLAND_W} cameraOn={!!settings.gestures.enabled} />
               ) : ringing ? (
-                <CallIsland live={live} width={ISLAND_W} listening={!!settings.gestures.enabled && !!settings.phone?.callGestures} />
+                <CallIsland live={ringingLive!} width={ISLAND_W} showDevice={manyPhones} listening={!!settings.gestures.enabled && !!settings.phone?.callGestures} />
               ) : banner ? (
-                <NotifIsland n={banner} width={ISLAND_W} onClose={closeBanner} onReplying={setReplying} replyNonce={replyNonce} />
+                <NotifIsland n={banner} width={ISLAND_W} onClose={closeBanner} onReplying={setReplying} replyNonce={replyNonce} showDevice={manyPhones} />
               ) : liveTransfer ? (
                 <SendingIsland t={liveTransfer} width={ISLAND_W} reduced={reduced} />
               ) : (
@@ -549,6 +556,9 @@ export function Pill() {
                   settings={settings}
                   phone={phone}
                   live={live}
+                  ringingLive={ringingLive}
+                  missedLive={missedLive}
+                  onSwitchPhone={(id) => void update({ phone: { selected: id } })}
                   onClick={onPillClick}
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
@@ -567,6 +577,9 @@ function PillButton({
   settings,
   phone,
   live,
+  ringingLive,
+  missedLive,
+  onSwitchPhone,
   onClick,
   onPointerDown,
   onPointerMove,
@@ -575,6 +588,9 @@ function PillButton({
   settings: Settings;
   phone: PhoneStatus;
   live: PhoneLive;
+  ringingLive: PhoneLive | null;
+  missedLive: PhoneLive | null;
+  onSwitchPhone: (id: string) => void;
   onClick: () => void;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
@@ -597,7 +613,23 @@ function PillButton({
       ? 'PinchDrop: no phone paired. Click to expand, double-click to open the app.'
       : `PinchDrop: ${phone.name} ${phone.state}${phone.battery != null ? `, battery ${phone.battery} percent` : ''}. Click to expand, double-click to open the app.`;
 
-  const ringing = live.call === 'ringing';
+  const ringing = !!ringingLive;
+  const others = phone.others ?? [];
+  const multi = others.length > 0;
+  /** "+1 ⌄": pick which phone the pill shows. */
+  async function pickPhone(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!inTauri) {
+      if (others[0]) onSwitchPhone(others[0].id);
+      return;
+    }
+    const { Menu, MenuItem } = await import('@tauri-apps/api/menu');
+    const items = await Promise.all(
+      others.map((o) => MenuItem.new({ text: `Show ${o.name}`, action: () => onSwitchPhone(o.id) })),
+    );
+    const menu = await Menu.new({ items });
+    await menu.popup();
+  }
   const badge = 'inline-flex items-center gap-1 rounded-full px-2 h-[70%] font-semibold cursor-pointer select-none';
   return (
     <div className="inline-flex items-center" style={{ height: size.h }}>
@@ -645,21 +677,40 @@ function PillButton({
         <MessageSquare size={size.icon - 2} aria-hidden="true" /> {live.unread > 9 ? '9+' : live.unread}
       </button>
     )}
-    {ringing && (
-      <span className={`${badge} ${size.text} mr-1.5 bg-[#30D158]/20 text-[#5BE07F]`} role="status" aria-label={`Incoming call from ${live.callerName ?? live.callerNumber ?? 'unknown'}`}>
+    {ringingLive && (
+      <span
+        className={`${badge} ${size.text} mr-1.5 bg-[#30D158]/20 text-[#5BE07F]`}
+        role="status"
+        aria-label={`Incoming ${ringingLive.callApp ?? ''} call from ${ringingLive.callerName ?? ringingLive.callerNumber ?? 'unknown'} on ${ringingLive.deviceName}`}
+      >
         <PhoneCall size={size.icon - 2} className="pd-shake" aria-hidden="true" />
-        <span className="max-w-[140px] truncate">{live.callerName ?? live.callerNumber ?? 'Calling'}</span>
+        <span className="max-w-[150px] truncate">
+          {ringingLive.callerName ?? ringingLive.callerNumber ?? 'Calling'}
+          {(multi || ringingLive.deviceId !== live.deviceId) && <span className="opacity-70"> · {ringingLive.deviceName}</span>}
+        </span>
       </span>
     )}
-    {!ringing && live.missed && (
+    {!ringing && missedLive?.missed && (
       <button
         type="button"
-        title={`Missed call from ${live.missed} (click to clear)`}
-        aria-label={`Missed call from ${live.missed}. Clear`}
-        onClick={() => void api.clearMissed()}
+        title={`Missed ${missedLive.missedApp ? `${missedLive.missedApp} ` : ''}call from ${missedLive.missed}${multi ? ` on ${missedLive.deviceName}` : ''} (click to clear)`}
+        aria-label={`Missed call from ${missedLive.missed}. Clear`}
+        onClick={() => void api.clearMissed(missedLive.deviceId)}
         className={`${badge} ${size.text} mr-1 text-[#FF6961] hover:bg-white/10`}
       >
         <PhoneMissed size={size.icon - 2} aria-hidden="true" />
+      </button>
+    )}
+    {multi && (
+      <button
+        type="button"
+        title={`${others.length} more phone${others.length === 1 ? '' : 's'} connected: ${others.map((o) => o.name).join(', ')}. Click to switch.`}
+        aria-label={`Switch phone. ${others.length} more connected`}
+        onClick={(e) => void pickPhone(e)}
+        className={`${badge} ${size.text} mr-1.5 bg-white/10 text-soft hover:text-text hover:bg-white/15`}
+      >
+        +{others.length}
+        <ChevronDown size={size.icon - 3} aria-hidden="true" />
       </button>
     )}
     </div>
