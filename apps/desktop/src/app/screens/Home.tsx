@@ -5,6 +5,8 @@ import { useApp } from '../context';
 import { Battery } from '../../shared/Battery';
 import { Button, Card, PageTitle, Toggle } from '../ui';
 import { pickFiles, pickFolder } from '../pickers';
+import { useState } from 'react';
+import { PhoneChips, useConnectedPhones } from '../PhoneChips';
 
 const ACTIVE = new Set<TransferView['state']>(['offered', 'sending', 'paused']);
 
@@ -46,6 +48,13 @@ function RecentRow({ t }: { t: TransferView }) {
 
 export function Home() {
   const { phone, go, settings, update, addPaths } = useApp();
+  // v2: several phones → pick which one the card shows.
+  const phones = useConnectedPhones();
+  const [shownId, setShownId] = useState<string | null>(null);
+  const d = phones.find((x) => x.id === (shownId ?? phone.deviceId)) ?? null;
+  const shown = d
+    ? { name: d.name, model: d.model, battery: d.battery, charging: d.charging, network: d.network, freeSpaceGb: d.freeSpaceGb, isDemo: false }
+    : phone;
   const recent = useTransfers().slice(0, 4);
   const connected = phone.state === 'connected';
   const target = connected ? phone.name : 'your phone';
@@ -76,7 +85,7 @@ export function Home() {
         {/* Connected phone panel */}
         <Card className="flex-[1_1_300px] p-[22px] flex flex-col gap-3.5" aria-label="Connected phone">
           <div className="flex items-center justify-between">
-            <span className="text-[12px] font-bold text-muted tracking-wide">CONNECTED PHONE</span>
+            <span className="text-[12px] font-bold text-muted tracking-wide">{phones.length > 1 ? `${phones.length} PHONES CONNECTED` : 'CONNECTED PHONE'}</span>
             {connected ? (
               <span className="text-[12px] font-semibold text-success flex items-center gap-1.5">
                 <span className="w-[7px] h-[7px] rounded-full bg-success" />
@@ -89,32 +98,33 @@ export function Home() {
 
           {connected ? (
             <>
+              <PhoneChips value={shownId ?? phone.deviceId ?? null} onChange={setShownId} layoutId="home-phone" />
               <div className="flex items-center gap-3.5">
                 <div className="w-[52px] h-[52px] rounded-2xl bg-surface2 text-accent flex items-center justify-center">
                   <Smartphone size={26} aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-display font-semibold text-[18px] truncate">{phone.name}</div>
-                  <div className="text-[13px] text-muted truncate">{phone.model}</div>
+                  <div className="font-display font-semibold text-[18px] truncate">{shown.name}</div>
+                  <div className="text-[13px] text-muted truncate">{shown.model}</div>
                 </div>
               </div>
-              {phone.battery != null && (
+              {shown.battery != null && (
                 <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between text-[13px]">
                     <span className="text-muted">Battery</span>
                     <span className="font-semibold flex items-center gap-1.5">
-                      <Battery level={phone.battery} charging={phone.charging} size={16} />
-                      {phone.battery}%{phone.charging ? ' · charging' : ''}
+                      <Battery level={shown.battery} charging={shown.charging} size={16} />
+                      {shown.battery}%{shown.charging ? ' · charging' : ''}
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-surface2 overflow-hidden">
-                    <div className="h-1.5 w-full bg-success origin-left transition-transform duration-500 ease-out" style={{ transform: `scaleX(${phone.battery / 100})` }} />
+                    <div className="h-1.5 w-full bg-success origin-left transition-transform duration-500 ease-out" style={{ transform: `scaleX(${shown.battery / 100})` }} />
                   </div>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2.5 text-[13px]">
-                <div className="p-2.5 rounded-xl bg-bg2"><div className="text-muted text-[11px]">Network</div><div className="font-semibold">{phone.network ?? '—'}</div></div>
-                <div className="p-2.5 rounded-xl bg-bg2"><div className="text-muted text-[11px]">Free space</div><div className="font-semibold">{phone.freeSpaceGb != null ? `${phone.freeSpaceGb} GB` : '—'}</div></div>
+                <div className="p-2.5 rounded-xl bg-bg2"><div className="text-muted text-[11px]">Network</div><div className="font-semibold">{shown.network ?? '—'}</div></div>
+                <div className="p-2.5 rounded-xl bg-bg2"><div className="text-muted text-[11px]">Free space</div><div className="font-semibold">{shown.freeSpaceGb != null ? `${shown.freeSpaceGb} GB` : '—'}</div></div>
               </div>
               <button type="button" className="self-start text-[13px] font-semibold text-accent hover:underline" onClick={() => go('devices')}>
                 Manage devices
