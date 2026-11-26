@@ -41,6 +41,12 @@ export function App() {
     return () => off?.();
   }, [addPaths, go]);
 
+  // v2: the window appears only once this page has drawn (no blank flash on first run).
+  useEffect(() => {
+    if (!inTauri) return;
+    requestAnimationFrame(() => void import('@tauri-apps/api/core').then(({ invoke }) => invoke('main_ready').catch(() => undefined)));
+  }, []);
+
   if (!settings.onboarded || route === 'onboarding') return <Onboarding />;
 
   const screen = {
