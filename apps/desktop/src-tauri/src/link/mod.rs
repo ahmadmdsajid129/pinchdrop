@@ -1051,11 +1051,13 @@ impl Link {
                 .sessions
                 .lock()
                 .map(|s| {
-                    s.keys()
-                        .filter(|k| **k != id)
-                        .map(|k| crate::phone::OtherPhone {
+                    s.iter()
+                        .filter(|(k, _)| **k != id)
+                        .map(|(k, x)| crate::phone::OtherPhone {
                             id: k.clone(),
                             name: self.device_name(k),
+                            battery: x.report.battery,
+                            charging: x.report.charging,
                         })
                         .collect()
                 })
