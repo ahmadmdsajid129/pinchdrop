@@ -797,6 +797,59 @@ fn send_from_shell(app: AppHandle, device: String, files: Vec<String>) {
     });
 }
 
+/// v2 · Phone files: one folder on a phone ("" = top).
+#[tauri::command]
+async fn phone_files(
+    app: AppHandle,
+    device_id: String,
+    path: String,
+) -> Result<serde_json::Value, String> {
+    link_or_err(&app)?
+        .phone_request_to(
+            Some(&device_id),
+            "files.list",
+            serde_json::json!({ "path": path }),
+            "all files",
+        )
+        .await
+}
+
+/// v2 · A small preview of a picture / video on a phone.
+#[tauri::command]
+async fn phone_file_thumb(
+    app: AppHandle,
+    device_id: String,
+    path: String,
+) -> Result<serde_json::Value, String> {
+    link_or_err(&app)?
+        .phone_request_to(
+            Some(&device_id),
+            "files.thumb",
+            serde_json::json!({ "path": path }),
+            "all files",
+        )
+        .await
+}
+
+/// v2 · Bring a phone's file to this PC, or (with `to`) pass it to another phone / PC.
+#[tauri::command]
+async fn phone_file_send(
+    app: AppHandle,
+    device_id: String,
+    path: String,
+    to: Option<String>,
+) -> Result<(), String> {
+    link_or_err(&app)?
+        .phone_request_to(
+            Some(&device_id),
+            "files.send",
+            serde_json::json!({ "path": path, "relay": to.unwrap_or_default() }),
+            "all files",
+        )
+        .await
+        .map(|_| ())
+}
+
 /// v2 · Every phone's last known place, for the map.
 #[tauri::command]
 fn phone_places(app: AppHandle) -> Vec<link::places::PlaceView> {
@@ -1315,6 +1368,9 @@ pub fn run() {
             find_phone,
             media_cmd,
             phone_places,
+            phone_files,
+            phone_file_thumb,
+            phone_file_send,
             phone_photos,
             phone_photo_send,
             hold_send_now,
