@@ -14,7 +14,7 @@ function Icon({ n }: { n: NotifView }) {
   );
 }
 
-function Item({ n }: { n: NotifView }) {
+function Item({ n, showDevice }: { n: NotifView; showDevice: boolean }) {
   const [replying, setReplying] = useState(false);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,6 +44,7 @@ function Item({ n }: { n: NotifView }) {
           <span className="font-semibold uppercase tracking-wide truncate">{n.app}</span>
           <span>·</span>
           <span className="shrink-0">{shortAgo(n.time)}</span>
+          {showDevice && n.deviceName && <span className="shrink-0 truncate">· {n.deviceName}</span>}
         </div>
         {n.title && <div className="font-semibold text-[14px]">{n.title}</div>}
         {n.text && <div className="text-[13.5px] text-soft whitespace-pre-wrap break-words">{n.text}</div>}
@@ -88,6 +89,7 @@ function Item({ n }: { n: NotifView }) {
 export function PhoneNotifications() {
   const { phone, go } = useApp();
   const items = useNotifications();
+  const showDevice = new Set(items.map((i) => i.deviceId)).size > 1;
   return (
     <>
       <PageTitle>Notifications</PageTitle>
@@ -104,7 +106,7 @@ export function PhoneNotifications() {
         ) : (
           <ul className="divide-y divide-line">
             {items.map((n) => (
-              <Item key={n.key} n={n} />
+              <Item key={`${n.deviceId}:${n.key}`} n={n} showDevice={showDevice} />
             ))}
           </ul>
         )}
