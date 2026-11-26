@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PoseMachine, classifyPose, frameRect, handShape, poseConfigFor, type HandShape } from '../src/poses';
+import { PoseMachine, callPoseConfigFor, classifyPose, frameRect, handShape, poseConfigFor, type HandShape } from '../src/poses';
 
 type P = { x: number; y: number; z: number };
 
@@ -138,7 +138,7 @@ describe('PoseMachine', () => {
   it('a slow drift is not a swipe', () => {
     const m = new PoseMachine(cfg);
     const slow = Array.from({ length: 60 }, (_, i) => [i * 33, shape('open', 0.3 + i * 0.008)] as [number, HandShape]);
-    expect(feed(m, slow).filter((e) => e.startsWith('swipe'))).toEqual([]);
+    expect(feed(m, slow).filter((e) => e!.startsWith('swipe'))).toEqual([]);
   });
 
   it('side to side twice is a wave', () => {
@@ -154,5 +154,59 @@ describe('PoseMachine', () => {
     const unsure = Array.from({ length: 60 }, (_, i) => [i * 33, shape('fist', 0.5, 0.5, { score: 0.2 })] as [number, HandShape]);
     expect(feed(m, unsure)).toEqual([]);
     expect(feed(m, [[0, null]])).toEqual([]);
+  });
+});
+
+describe('call gestures (easier while the phone rings)', () => {
+  const cfg = callPoseConfigFor(50);
+  const noThumb = (x = 0.5): HandShape => ({ ...shape('open', x), fingers: { thumb: false, index: true, middle: true, ring: true, pinky: true }, pinchRatio: 0.6 });
+
+  it('an open palm with the thumb hidden still answers', () => {
+    const m = new PoseMachine(cfg);
+    const frames = Array.from({ length: 40 }, (_, i) => [i * 33, noThumb()] as [number, HandShape]);
+    expect(feed(m, frames)).toEqual(['palm_hold']);
+  });
+
+  it('answers sooner than the normal palm hold', () => {
+    expect(cfg.holdMs.open).toBeLessThan(poseConfigFor(50).holdMs.open);
+  });
+
+  it('a slightly shaky palm still answers', () => {
+    const m = new PoseMachine(cfg);
+    const shaky = Array.from({ length: 50 }, (_, i) => [i * 33, shape('open', 0.5 + (i % 2 ? 0.006 : -0.006))] as [number, HandShape]);
+    expect(feed(m, shaky)).toEqual(['palm_hold']);
+  });
+
+  it('a couple of lost frames do not restart the hold', () => {
+    const m = new PoseMachine(cfg);
+    const frames: [number, HandShape | null][] = [];
+    for (let i = 0; i < 40; i++) frames.push([i * 33, i === 8 || i === 9 ? null : shape('open')]);
+    const evs = feed(m, frames);
+    expect(evs).toEqual(['palm_hold']);
+    // fired by ~hold time + the gap, not hold time after the gap
+    const m2 = new PoseMachine(cfg);
+    let firedAt = -1;
+    for (const [t, h] of frames) if (m2.step(t, h) && firedAt < 0) firedAt = t;
+    expect(firedAt).toBeLessThan(cfg.holdMs.open + 120);
+  });
+
+  it('raising a hand into view is not a swipe', () => {
+    const m = new PoseMachine(cfg);
+    const sweep = Array.from({ length: 8 }, (_, i) => [i * 33, shape('open', 0.75 - i * 0.06)] as [number, HandShape]);
+    expect(feed(m, sweep)).toEqual([]);
+  });
+
+  it('a deliberate swipe once the hand is in view rejects', () => {
+    const m = new PoseMachine(cfg);
+    const frames: [number, HandShape][] = [];
+    for (let i = 0; i < 16; i++) frames.push([i * 33, shape('point', 0.75)]);
+    for (let i = 0; i < 10; i++) frames.push([528 + i * 33, shape('open', 0.75 - i * 0.05)]);
+    expect(feed(m, frames)).toEqual(['swipe_right']);
+  });
+
+  it('never waves', () => {
+    const m = new PoseMachine(cfg);
+    const wave = Array.from({ length: 60 }, (_, i) => [i * 33, shape('open', 0.5 + 0.08 * Math.sin(i / 2))] as [number, HandShape]);
+    expect(feed(m, wave)).not.toContain('wave');
   });
 });
