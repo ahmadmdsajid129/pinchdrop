@@ -150,7 +150,16 @@ fn patch_settings(app: &AppHandle, patch: Value) -> Result<Settings, String> {
 
 /// Shows or hides the pill according to settings, "hide for 1 hour" and
 /// whether a full-screen app is in front.
+///
+/// Always done on the main (UI) thread: a window created hidden and first shown from another
+/// thread can come up with a blank WebView2 (the transparent pill then looks missing, the main
+/// window looks white). That's what happened on first run.
 fn refresh_pill_visibility(app: &AppHandle) {
+    let h = app.clone();
+    let _ = app.run_on_main_thread(move || refresh_pill_now(&h));
+}
+
+fn refresh_pill_now(app: &AppHandle) {
     let Some(win) = pill_window(app) else { return };
     let state = app.state::<AppState>();
     let s = state.snapshot();
@@ -196,11 +205,17 @@ fn refresh_pill_visibility(app: &AppHandle) {
             std::thread::sleep(Duration::from_millis(260));
             let st = h.state::<AppState>();
             if st.pill_fading.load(std::sync::atomic::Ordering::Relaxed) {
-                if let Some(w) = pill_window(&h) {
-                    let _ = w.hide();
-                }
-                st.pill_fading
-                    .store(false, std::sync::atomic::Ordering::Relaxed);
+                let h2 = h.clone();
+                let _ = h.run_on_main_thread(move || {
+                    let st = h2.state::<AppState>();
+                    if st.pill_fading.load(std::sync::atomic::Ordering::Relaxed) {
+                        if let Some(w) = pill_window(&h2) {
+                            let _ = w.hide();
+                        }
+                        st.pill_fading
+                            .store(false, std::sync::atomic::Ordering::Relaxed);
+                    }
+                });
             }
         });
     }
@@ -280,14 +295,45 @@ fn place_pill_initially(app: &AppHandle) {
     }
 }
 
+/// The window is 1200 × 800; on a small laptop screen that runs past the edges (title bar
+/// buttons off screen). Shrink it to fit the work area and centre it.
+fn fit_to_screen(win: &WebviewWindow) {
+    let Some(mon) = win.current_monitor().ok().flatten() else {
+        return;
+    };
+    let wa = mon.work_area();
+    let Ok(size) = win.outer_size() else { return };
+    let (max_w, max_h) = (wa.size.width * 92 / 100, wa.size.height * 92 / 100);
+    let w = size.width.min(max_w);
+    let h = size.height.min(max_h);
+    if w != size.width || h != size.height {
+        let _ = win.set_size(tauri::PhysicalSize::new(w, h));
+    }
+    let x = wa.position.x + (wa.size.width as i32 - w as i32) / 2;
+    let y = wa.position.y + (wa.size.height as i32 - h as i32) / 2;
+    let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
+}
+
 fn open_main_at(app: &AppHandle, route: &str) {
+    // On the UI thread, for the same reason as the pill (see refresh_pill_visibility).
+    let h = app.clone();
+    let route = route.to_string();
+    let _ = app.run_on_main_thread(move || open_main_now(&h, &route));
+}
+
+fn open_main_now(app: &AppHandle, route: &str) {
     if let Some(win) = main_window(app) {
         let _ = win.unminimize();
         let _ = win.show();
+        // Once, after the first show (its real DPI size is known only then).
+        static FITTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !FITTED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            fit_to_screen(&win);
+        }
         let _ = win.set_focus();
         let _ = win.emit("navigate", route);
     }
-    refresh_pill_visibility(app);
+    refresh_pill_now(app);
 }
 
 /// The main window's page has drawn: show it now if it's waiting (first run), so it never
@@ -605,8 +651,10 @@ async fn notif_reply(app: AppHandle, key: String, text: String) -> Result<(), St
         serde_json::json!({ "key": key, "text": text }),
         "notification access",
     )
-    .await
-    .map(|_| ())
+    .await?;
+    // Replied: handled, like replying on the phone. Clear it here and on the phone.
+    let _ = link.notif_dismiss(&key).await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -1285,14 +1333,14 @@ pub fn run() {
             }
 
             if first_run {
-                // Show the setup screen as soon as its page has drawn (main_ready), or after 4 s anyway.
+                // Show the setup screen as soon as its page has loaded (main_ready), or after 3 s anyway.
                 handle
                     .state::<AppState>()
                     .show_main_when_ready
                     .store(true, std::sync::atomic::Ordering::Relaxed);
                 let h = handle.clone();
                 std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_secs(4));
+                    std::thread::sleep(Duration::from_secs(3));
                     main_ready(h);
                 });
             }
