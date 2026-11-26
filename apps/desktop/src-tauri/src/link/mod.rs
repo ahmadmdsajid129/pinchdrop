@@ -891,6 +891,14 @@ impl Link {
             })
             .unwrap_or(false);
         if removed {
+            let name = self
+                .devices
+                .lock()
+                .ok()
+                .and_then(|d| d.get(&dev).map(|x| x.name.clone()));
+            if let Some(name) = name {
+                crate::toast::phone_disconnected(&self.app, &name);
+            }
             if let Ok(mut ds) = self.devices.lock() {
                 ds.touch(&dev, None, None, now_secs());
                 let _ = ds.save(&self.devices_path);
@@ -1191,7 +1199,9 @@ impl Link {
                 *last = Instant::now();
             }
         }
-        let _ = self.app.emit("transfers-changed", self.transfers_view());
+        let view = self.transfers_view();
+        crate::toast::transfers_changed(&self.app, &view);
+        let _ = self.app.emit("transfers-changed", view);
     }
 
     fn update_transfer<R>(&self, id: &str, f: impl FnOnce(&mut Transfer) -> R) -> Option<R> {

@@ -16,6 +16,7 @@ mod preview;
 mod sendto;
 mod settings;
 mod shot;
+mod toast;
 
 use phone::PhoneStatus;
 use serde::Serialize;
@@ -46,7 +47,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    fn snapshot(&self) -> Settings {
+    pub(crate) fn snapshot(&self) -> Settings {
         self.settings.lock().map(|s| s.clone()).unwrap_or_default()
     }
 }
