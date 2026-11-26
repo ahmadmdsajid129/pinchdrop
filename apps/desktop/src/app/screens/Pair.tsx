@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, QrCode, ShieldCheck, Smartphone } from 'lucide-react';
+import { CheckCircle2, Laptop, QrCode, ShieldCheck, Smartphone } from 'lucide-react';
 import { api, onEvent } from '../../shared/api';
 import type { PairInfo, PairRequest, PairResult } from '../../shared/types';
 import { useApp } from '../context';
@@ -80,12 +80,12 @@ export function PairPanel({ compact = false, onPaired }: { compact?: boolean; on
       <Card className="flex-[1_1_320px] p-7 flex flex-col items-center gap-4 text-center">
         {request ? (
           <>
-            <Smartphone size={40} className="text-accent" aria-hidden="true" />
+            {request.phoneModel === 'Windows PC' ? <Laptop size={40} className="text-accent" aria-hidden="true" /> : <Smartphone size={40} className="text-accent" aria-hidden="true" />}
             <div>
               <div className="font-semibold text-[16px]">{request.phoneName}</div>
               <div className="text-[13px] text-muted">{request.phoneModel}</div>
             </div>
-            <h2 className="m-0 text-[17px] font-semibold">Does your phone show this code?</h2>
+            <h2 className="m-0 text-[17px] font-semibold">Does {request.phoneModel === 'Windows PC' ? 'the other PC' : 'your phone'} show this code?</h2>
             <div className="font-mono text-[44px] font-bold tracking-[0.12em] text-text" aria-live="polite" aria-label={`Code ${request.code.split('').join(' ')}`}>
               {spaced(request.code)}
             </div>
