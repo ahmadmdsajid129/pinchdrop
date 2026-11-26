@@ -170,10 +170,10 @@ v1 has three gestures: **pinch** (grab), **carry** (move while pinched) and **op
 | **G5** | **Swipe** | Flat hand moving quickly sideways | **Reject call** · dismiss notification · next item | Ringing · banner showing | Must cross ⅓ of the frame in < 0.4 s |
 | **G6** | **Two fingers (✌️) hold** | Index + middle up, ~0.6 s | **Reply** (opens quick reply box) | Banner / SMS / missed call showing | Progress ring; any other pose cancels |
 | **G7** | **Thumbs up** | Fist with thumb up, ~0.5 s | **Confirm**: accept an incoming file, mark read, "yes" | A question is on screen | Thumb must point up (not sideways) |
-| **G8** | **Fist hold** | Closed fist, ~0.8 s | **Silence** a ringing call · **Do not disturb** on/off · pause camera | Any time the camera is on | Distinct from pinch (all fingers closed) |
+| **G8** | **Fist hold** | Closed fist, ~0.8 s | **Silence** a ringing call | Phone ringing | Distinct from pinch (thumb not on the index tip). *Not used while grabbing: curling into a pinch looked like a fist and switched the camera off (removed 2026-11-26).* |
 | **G9** | **Throw (flick)** | Pinch, then flick toward a device chip and open | Send straight to that device | Holding + 2 or more devices | Speed threshold + 8 s Undo |
 | **G10** | **Point & dwell** | Point under a device chip, hold ~0.4 s | Choose the target device | Holding + device chips showing | Chip glows; leave to cancel |
-| **G11** | **Wave** | Open palm side to side, twice in ~1 s | Open / close the Island (no keyboard) | Camera on | Frequency filter; must be 2 waves |
+| **G11** | **Wave** | Open palm side to side, twice in ~1 s | *(Recognised, not used yet)* | — | *Closing the Island by wave was removed 2026-11-26: moving the hand into position to pinch looked like a wave and closed the Island.* |
 | **G12** | **Two-hand frame** 🔵 | Both hands make an "L", framing an area | Screenshot that area (then pinch to carry it) | Camera on | Both hands visible and steady 0.5 s |
 | **Phone G13** | **Pinch at the phone** | Pinch in front of the phone's front camera | Lift a shared item into the air (phone → PC) | Share → PinchDrop screen is open | Same rules as G1 |
 | **Phone G14** | **Hover over the phone** | Hand over the top of the phone | Catch without the camera | Something is in the air | Near → far within 1.5 s |
