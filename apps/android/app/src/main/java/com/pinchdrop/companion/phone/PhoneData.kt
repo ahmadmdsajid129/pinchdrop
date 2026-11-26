@@ -57,11 +57,15 @@ object PhoneData {
         NotifyListener.resetIcons()
         sync()
         UnreadWatcher.start(app)
+        Calls.startListening(app)
+        // A call already ringing (seen in the notification shade) when we connect.
+        NotifyListener.instance?.let { l -> runCatching { l.activeNotifications.orEmpty().forEach { Calls.onCallNotification(app, it) } } }
         if (Calls.state != "idle") push("call.state", Calls.payload(app))
     }
 
     fun onDisconnected() {
         UnreadWatcher.stop()
+        if (::app.isInitialized) Calls.stopListening(app)
         ClipSync.onConfig(false)
         connected = false
         send = { false }
