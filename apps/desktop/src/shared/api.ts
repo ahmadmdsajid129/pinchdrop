@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { Contact, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
+import type { Contact, FoundPc, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -165,6 +165,11 @@ export const api = {
   contacts: async (): Promise<Contact[]> =>
     inTauri ? ((await invoke<{ contacts: Contact[] }>('contacts_list')).contacts ?? []) : DEMO_CONTACTS,
   dial: (number: string): Promise<{ how: string }> => (inTauri ? invoke('phone_dial', { number }) : Promise.resolve({ how: 'calling' })),
+
+  // v2 · Laptop ↔ laptop.
+  peerDiscover: (): Promise<FoundPc[]> => (inTauri ? invoke('peer_discover') : Promise.resolve([{ pcId: 'demo', name: 'Office laptop', hosts: ['192.168.1.20'], port: 47821, fingerprint: '', paired: false }])),
+  peerPairStart: (pcId: string) => (inTauri ? invoke<void>('peer_pair_start', { pcId }) : Promise.resolve()),
+  peerPairAnswer: (ok: boolean) => (inTauri ? invoke<void>('peer_pair_answer', { ok }) : Promise.resolve()),
 
   // v2 · Calls, unread badge, find my phone.
   phoneLive: (): Promise<PhoneLive> => (inTauri ? invoke('phone_live') : Promise.resolve(DEMO_LIVE)),
