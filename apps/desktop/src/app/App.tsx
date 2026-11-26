@@ -15,6 +15,7 @@ import { Profile } from './screens/Profile';
 import { Messages } from './screens/Messages';
 import { Contacts } from './screens/Contacts';
 import { PhoneNotifications } from './screens/PhoneNotifications';
+import { MapScreen } from './screens/MapScreen';
 
 export function App() {
   const { route, go, settings, addPaths } = useApp();
@@ -49,6 +50,7 @@ export function App() {
     messages: <Messages />,
     contacts: <Contacts />,
     notifications: <PhoneNotifications />,
+    map: <MapScreen />,
     devices: <Devices />,
     pair: <Pair />,
     settings: <SettingsScreen />,
