@@ -233,6 +233,26 @@ Events from the PC (no reply):
 - PCs without `caps` stay at 512 KiB / 4.
 - Lifts (§6.5) keep 512 KiB.
 
+## 6.8 Laptop ↔ laptop (v2)
+
+Every PC is a LINK-v1 server. To pair two PCs, PC **B** connects to PC **A** as a client, exactly like a phone:
+1. B finds A through mDNS (the `fp` TXT value is pinned).
+2. B sends `pair.request` `{ nonce, phone: { name: <B's name>, model: "Windows PC" } }` while A's pairing window is open.
+3. Both PCs show the §5 code. B's user confirms (`pair.confirm`) and A's user presses Pair (`pair.accept`).
+4. B stores A's `pcId`, fingerprint, `deviceId`, secret and last address, and reconnects with `auth` like a phone.
+
+That single connection carries both directions:
+- **A → B** works as with a phone: `hold.offer` → `hold.catch` → `push.offer` (accepted automatically) → `chunk.req` (up to 2 MiB, §6.7).
+  - B keeps the files' folders, with every path part cleaned, under `Downloads\PinchDrop`.
+  - B sends `file.done` for each file and `transfer.complete` at the end.
+- **B → A** uses lifts (§6.5):
+  - B's hold, or a direct send, goes to A as `lift.offer`. File `name`s may contain `/` folders, which A cleans the same way.
+  - A catches it (`lift.catch`) and pulls with `lift.req`. B serves only the files of that lift.
+  - When a lift is caught on A, B's own phones get `hold.cancel` `{ reason: "caught_elsewhere" }`. When a phone catches first, A gets `lift.cancel`.
+- B sends `status` `{ name, model: "Windows PC", battery, charging, network }`, with the laptop battery if it has one.
+- B answers phone-only requests with `phone.reply` `{ ok: false, error: "unknown" }`. A never sends them to a PC: texts, contacts and calls go to a phone.
+- `unpair` from either side removes the pairing on both.
+
 ## 7. Storage
 
 | Where | What |
