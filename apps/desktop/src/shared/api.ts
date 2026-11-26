@@ -3,13 +3,21 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
+import { proErrorMessage } from './pro';
 import type { Contact, FoundPc, PhoneFileEntry, PhonePhoto, PlaceView, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const core = await import('@tauri-apps/api/core');
-  return core.invoke<T>(cmd, args);
+  try {
+    return await core.invoke<T>(cmd, args);
+  } catch (e) {
+    // v2 Pro: a Pro-only command opens the upgrade prompt and fails with a friendly message.
+    const pro = proErrorMessage(e);
+    if (pro) throw new Error(pro);
+    throw e;
+  }
 }
 
 // ---------- browser mock ----------
