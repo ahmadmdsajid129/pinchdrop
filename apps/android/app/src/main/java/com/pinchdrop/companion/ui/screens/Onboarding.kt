@@ -95,56 +95,9 @@ fun ScreenHeader(title: String, onBack: (() -> Unit)? = null, eyebrow: String? =
     }
 }
 
-@Composable
-fun WelcomeScreen(onStart: () -> Unit) {
-    val c = Pd.colors
-    val drop = remember { Animatable(-40f) }
-    val alpha = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        alpha.animateTo(1f, tween(300))
-    }
-    LaunchedEffect(Unit) {
-        drop.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
-    }
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Spacer(Modifier.height(40.dp))
-        Box(Modifier.size(180.dp), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier.size(170.dp).clip(RoundedCornerShape(40.dp))
-                    .background(Brush.radialGradient(listOf(c.primary.copy(alpha = 0.35f), Color.Transparent))),
-            )
-            // A file card dropping into the phone.
-            Box(
-                Modifier.graphicsLayer { translationY = drop.value * density; this.alpha = alpha.value }
-                    .size(72.dp, 88.dp).clip(RoundedCornerShape(14.dp))
-                    .background(Brush.linearGradient(listOf(c.primary, c.accent))),
-                contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Filled.Folder, contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp)) }
-        }
-        Spacer(Modifier.height(28.dp))
-        Text(
-            "Catch files from your PC", color = c.text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center, lineHeight = 36.sp, modifier = Modifier.semantics { heading() },
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Pinch a file on your laptop, open your hand over this phone, and it lands here. Works on your home Wi-Fi — no cloud, no account.",
-            color = c.muted, fontSize = 16.sp, textAlign = TextAlign.Center, lineHeight = 24.sp,
-        )
-        Spacer(Modifier.height(36.dp))
-        PrimaryButton("Get started", onClick = onStart, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(12.dp))
-        Text("Needs PinchDrop for Windows on your PC", color = c.muted, fontSize = 13.sp)
-    }
-}
-
 // ---------- Permissions ----------
 
-private fun Context.findActivity(): Activity? {
+internal fun Context.findActivity(): Activity? {
     var ctx: Context? = this
     while (ctx is ContextWrapper) {
         if (ctx is Activity) return ctx
@@ -153,7 +106,7 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
-private fun Context.granted(permission: String) =
+internal fun Context.granted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
 private fun Context.ignoringBatteryOptimizations(): Boolean =
@@ -170,7 +123,7 @@ enum class PermState { GRANTED, ASK, BLOCKED, NOT_NEEDED }
  * pop-up; we detect that (no rationale + still denied after asking) and offer the App settings page.
  */
 @Composable
-private fun rememberRuntimePermission(permission: String?, refreshKey: Int): Pair<PermState, () -> Unit> {
+internal fun rememberRuntimePermission(permission: String?, refreshKey: Int): Pair<PermState, () -> Unit> {
     val context = LocalContext.current
     var asked by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
@@ -196,7 +149,7 @@ private fun rememberRuntimePermission(permission: String?, refreshKey: Int): Pai
 
 /** Several runtime permissions asked together (e.g. read + send + receive SMS). GRANTED only when all are. */
 @Composable
-private fun rememberRuntimePermissions(permissions: List<String>, refreshKey: Int): Pair<PermState, () -> Unit> {
+internal fun rememberRuntimePermissions(permissions: List<String>, refreshKey: Int): Pair<PermState, () -> Unit> {
     val context = LocalContext.current
     var asked by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
@@ -219,192 +172,3 @@ private fun rememberRuntimePermissions(permissions: List<String>, refreshKey: In
     return state to request
 }
 
-@SuppressLint("BatteryLife") // The user taps "Allow" on a row that explains exactly why.
-@Composable
-fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit) {
-    val c = Pd.colors
-    val context = LocalContext.current
-    var resumeTick by remember { mutableIntStateOf(0) }
-    LifecycleResumeEffect(Unit) {
-        resumeTick++
-        onPauseOrDispose { }
-    }
-
-    val notifPerm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.POST_NOTIFICATIONS else null
-    val nearbyPerm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.NEARBY_WIFI_DEVICES else null
-    val (notif, askNotif) = rememberRuntimePermission(notifPerm, resumeTick)
-    val (camera, askCamera) = rememberRuntimePermission(Manifest.permission.CAMERA, resumeTick)
-    val (nearby, askNearby) = rememberRuntimePermission(nearbyPerm, resumeTick)
-    // Android 8–9 only: saving into the public Download / Pictures folders needs this.
-    val storagePerm = if (Build.VERSION.SDK_INT < 29) Manifest.permission.WRITE_EXTERNAL_STORAGE else null
-    val (storage, askStorage) = rememberRuntimePermission(storagePerm, resumeTick)
-    val background = remember(resumeTick) { if (context.ignoringBatteryOptimizations()) PermState.GRANTED else PermState.ASK }
-    val askBackground = {
-        runCatching {
-            context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
-        }.onFailure { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
-        Unit
-    }
-    // v2: the phone's notifications, messages and contacts on the PC.
-    val notifAccess = remember(resumeTick) {
-        if (com.pinchdrop.companion.phone.NotifyListener.accessGranted(context)) PermState.GRANTED else PermState.ASK
-    }
-    val askNotifAccess = {
-        runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-        Unit
-    }
-    val (sms, askSms) = rememberRuntimePermissions(
-        listOf(Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS), resumeTick,
-    )
-    val (contacts, askContacts) = rememberRuntimePermission(Manifest.permission.READ_CONTACTS, resumeTick)
-    val (calls, askCalls) = rememberRuntimePermissions(
-        listOf(Manifest.permission.CALL_PHONE, Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_CALL_LOG, Manifest.permission.ANSWER_PHONE_CALLS),
-        resumeTick,
-    )
-    val (location, askLocation) = rememberRuntimePermissions(
-        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), resumeTick,
-    )
-    val bgLocPerm = if (Build.VERSION.SDK_INT >= 29) Manifest.permission.ACCESS_BACKGROUND_LOCATION else null
-    val (bgLocation, askBgLocation) = rememberRuntimePermission(bgLocPerm, resumeTick)
-    val photosPerm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-    val (photos, askPhotos) = rememberRuntimePermission(photosPerm, resumeTick)
-    val allFiles = remember(resumeTick) {
-        if (Build.VERSION.SDK_INT < 30) PermState.NOT_NEEDED
-        else if (com.pinchdrop.companion.phone.PhoneFiles.allowed()) PermState.GRANTED else PermState.ASK
-    }
-    val askAllFiles = {
-        runCatching {
-            context.startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}")))
-        }.onFailure { runCatching { context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) } }
-        Unit
-    }
-    val autoOpen = remember(resumeTick) {
-        if (com.pinchdrop.companion.transfer.AutoOpen.allowed(context)) PermState.GRANTED else PermState.ASK
-    }
-    val askAutoOpen = { com.pinchdrop.companion.transfer.AutoOpen.requestOverlay(context) }
-    // Before Android 13 there is no pop-up, but the user can still turn notifications off for the app.
-    val notifState = remember(notif, resumeTick) {
-        if (notif == PermState.NOT_NEEDED) {
-            if (Notifications.canPost(context)) PermState.GRANTED else PermState.BLOCKED
-        } else notif
-    }
-
-    Column(Modifier.fillMaxSize()) {
-        ScreenHeader(title = if (step != null) "Allow a few things" else "Permissions", onBack = onBack, eyebrow = step)
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("Android will show its own pop-up after each Allow.", color = c.muted, fontSize = 15.sp)
-            PermissionRow(Icons.Filled.Notifications, "Notifications", "“CPP is coming” alerts and progress", notifState, askNotif)
-            PermissionRow(Icons.Filled.CameraAlt, "Camera", "Sees your open hand to catch. Also scans the pairing QR. Nothing is recorded.", camera, askCamera)
-            PermissionRow(Icons.Filled.Wifi, "Nearby devices", "Finds your PC on this Wi-Fi", nearby, askNearby)
-            PermissionRow(
-                Icons.Filled.BatteryChargingFull, "Stay connected in background",
-                "Lets your PC show this phone's battery and reach it while the screen is off. Uses very little battery.",
-                background, askBackground,
-            )
-            PermissionRow(
-                Icons.Filled.PanTool, "Open PinchDrop by itself",
-                if (com.pinchdrop.companion.transfer.AutoOpen.isXiaomi)
-                    "Opens the catch camera the moment you pinch on your PC, and shows files as they arrive. Turn on “Display over other apps”, then in Other permissions “Open new windows while running in the background”."
-                else "Opens the catch camera the moment you pinch on your PC and shows files as they arrive, even while you use another app. Android calls this “Display over other apps”.",
-                autoOpen, askAutoOpen,
-            )
-            if (com.pinchdrop.companion.transfer.AutoOpen.isXiaomi && autoOpen == PermState.GRANTED) {
-                SecondaryButton(
-                    "Xiaomi: allow background windows",
-                    onClick = { com.pinchdrop.companion.transfer.AutoOpen.requestXiaomiBackgroundWindows(context) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Text("On your PC (optional)", color = c.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
-            PermissionRow(
-                Icons.Filled.NotificationsActive, "Notifications on your PC",
-                "Your phone's notifications appear on the PC's Island; reply or dismiss from there. Android calls this “Notification access”. Nothing is stored on the PC.",
-                notifAccess, askNotifAccess,
-            )
-            PermissionRow(
-                Icons.Filled.Sms, "Messages",
-                "Read and reply to text messages from the PC. Messages stay on your phone.",
-                sms, askSms,
-            )
-            PermissionRow(
-                Icons.Filled.Contacts, "Contacts",
-                "Search your contacts on the PC and see names instead of numbers.",
-                contacts, askContacts,
-            )
-            PermissionRow(
-                Icons.Filled.Call, "Calls on your PC",
-                "See who's calling on the PC's pill; answer (open palm), reject (swipe) or silence (fist). Click a contact to call. The call stays on your phone.",
-                calls, askCalls,
-            )
-            PermissionRow(
-                Icons.Filled.LocationOn, "Location on your PC",
-                "See this phone on the PC's map, and the last place it was if it goes missing. Stays between this phone and your PC.",
-                location, askLocation,
-            )
-            if (location == PermState.GRANTED && bgLocPerm != null) {
-                PermissionRow(
-                    Icons.Filled.LocationOn, "Location while closed",
-                    "Choose “Allow all the time” so the map stays up to date when PinchDrop isn't open.",
-                    bgLocation, askBgLocation,
-                )
-            }
-            PermissionRow(
-                Icons.Filled.Folder, "All files on your PC",
-                "Browse this phone's files on the PC and drag them to the PC or another phone. Android calls this “All files access”.",
-                allFiles, askAllFiles,
-            )
-            PermissionRow(
-                Icons.Filled.PhotoLibrary, "Recent photos on your PC",
-                "Your latest photos show on the PC's Island; click one to bring it over.",
-                photos, askPhotos,
-            )
-            PermissionRow(
-                Icons.Filled.Folder, "Saving files",
-                if (storagePerm == null) "No permission needed — files go to Gallery and Downloads/PinchDrop."
-                else "Lets PinchDrop save what you receive into Download/PinchDrop and Pictures/PinchDrop.",
-                storage, askStorage,
-            )
-            if (camera != PermState.GRANTED) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Filled.PanTool, contentDescription = null, tint = c.muted, modifier = Modifier.size(16.dp))
-                    Text("Without the camera you can still accept with a tap.", color = c.muted, fontSize = 13.sp)
-                }
-            }
-        }
-        PrimaryButton(if (step != null) "Continue" else "Done", onClick = onContinue, modifier = Modifier.fillMaxWidth().padding(20.dp))
-    }
-}
-
-@Composable
-private fun PermissionRow(icon: ImageVector, title: String, body: String, state: PermState, onAllow: () -> Unit) {
-    val c = Pd.colors
-    val ok = state == PermState.GRANTED || state == PermState.NOT_NEEDED
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(c.surface)
-            .border(1.dp, if (state == PermState.GRANTED) c.success.copy(alpha = 0.6f) else c.line, RoundedCornerShape(18.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(c.surface2), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = c.accent)
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            Text(body, color = c.muted, fontSize = 13.sp, lineHeight = 18.sp)
-            if (state == PermState.BLOCKED) Text("Turned off in Android settings.", color = c.warn, fontSize = 12.sp)
-        }
-        when {
-            state == PermState.GRANTED -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Check, contentDescription = null, tint = c.success, modifier = Modifier.size(18.dp))
-                Text("Allowed", color = c.success, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            }
-            state == PermState.NOT_NEEDED && title != "Saving files" -> Text("Not needed", color = c.muted, fontSize = 12.sp)
-            state == PermState.BLOCKED -> SecondaryButton("Settings", onClick = onAllow)
-            !ok -> SecondaryButton("Allow", onClick = onAllow)
-        }
-    }
-}
