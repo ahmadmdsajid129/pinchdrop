@@ -126,7 +126,8 @@ export const api = {
   unpairDevice: (id: string) => (inTauri ? invoke<void>('unpair_device', { id }) : Promise.resolve()),
 
   // Phase 4 transfers.
-  sendItems: (paths: string[], texts: string[], destination: 'auto' | 'downloads', deviceId?: string | null): Promise<string> =>
+  /** destination: "auto" | "downloads" | "folder:<path on the phone>" (Phone files page). */
+  sendItems: (paths: string[], texts: string[], destination: string, deviceId?: string | null): Promise<string> =>
     inTauri
       ? invoke('send_items', { paths, texts, destination, deviceId: deviceId ?? null })
       : Promise.reject(new Error('Sending works only in the PinchDrop app, not in a browser preview.')),
