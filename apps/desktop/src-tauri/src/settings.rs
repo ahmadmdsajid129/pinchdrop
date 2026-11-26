@@ -24,6 +24,28 @@ pub struct PillSettings {
     pub hide_in_fullscreen: bool,
     /// Ctrl+Shift+Space opens / closes the Island from anywhere.
     pub shortcut: bool,
+    /// v2 · Pill Studio.
+    pub style: PillStyle,
+}
+
+/// v2 · Pill Studio: how the pill looks. Designed themes need Pro (the pill shows Classic
+/// without it); the choice is kept either way.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct PillStyle {
+    pub theme: String, // "classic" | "aurora" | "glass" | "neon" | "cassette"
+    pub shape: String, // "pill" | "soft" | "notch"
+    pub clock: bool,
+}
+
+impl Default for PillStyle {
+    fn default() -> Self {
+        Self {
+            theme: "classic".into(),
+            shape: "pill".into(),
+            clock: false,
+        }
+    }
 }
 
 impl Default for PillSettings {
@@ -39,6 +61,7 @@ impl Default for PillSettings {
             island_auto_close_secs: 4,
             hide_in_fullscreen: true,
             shortcut: true,
+            style: PillStyle::default(),
         }
     }
 }

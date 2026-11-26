@@ -1,3 +1,4 @@
+import { DEFAULT_PILL_STYLE, type PillStyle } from './pillThemes';
 // Mirrors src-tauri/src/settings.rs and phone.rs (camelCase over IPC).
 
 export interface PillSettings {
@@ -12,6 +13,8 @@ export interface PillSettings {
   hideInFullscreen: boolean;
   /** Ctrl+Shift+Space opens / closes the Island. */
   shortcut: boolean;
+  /** v2 · Pill Studio: theme, shape, clock. */
+  style: PillStyle;
 }
 
 export interface GestureSettings {
@@ -327,6 +330,7 @@ export const DEFAULT_SETTINGS: Settings = {
     islandAutoCloseSecs: 4,
     hideInFullscreen: true,
     shortcut: true,
+    style: DEFAULT_PILL_STYLE,
   },
   gestures: {
     enabled: true,
