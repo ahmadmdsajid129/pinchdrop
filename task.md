@@ -118,6 +118,8 @@ v2.2 (2026-11-26) — founder bug round, built, check open:
 - Pill fades out while the app window is open and back in when it's closed/minimised; first run shows setup, never the pill; no blank window flash.
 - Smooth pill width change when switching phones; designed phone list (+1 ⌄) on the Island; designed dropdowns everywhere in Settings; styled sidebar hover labels.
 - Home, sidebar: every connected phone; Messages and Contacts: choose the phone; Notifications always name the phone with 2+ phones.
+- Drop files from Explorer onto a phone pane in Phone files → they land in the folder it shows (folder destination, All files access).
+- No autocomplete suggestion box under search / text fields.
 - Phone files page: browse each phone (All files access), previews, bring to PC, drag a file from one phone onto another (relayed through the PC, no copy kept).
 
 v2.1 (2026-11-26) — built, founder check open:
