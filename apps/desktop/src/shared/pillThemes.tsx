@@ -79,7 +79,7 @@ export function shellLook(theme: PillThemeId): { className: string; style: CSSPr
     case 'aurora':
       return { className: 'pd-theme-aurora', style: { background: '#050816' } };
     case 'glass':
-      return { className: 'pd-theme-glass', style: { background: 'rgba(22, 24, 32, 0.66)' } };
+      return { className: 'pd-theme-glass', style: { background: 'rgba(26, 28, 38, 0.9)' } };
     case 'neon':
       return { className: 'pd-theme-neon', style: { background: '#07040D' } };
     case 'cassette':
