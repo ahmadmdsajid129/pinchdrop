@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDownToLine, ChevronRight, File, FileText, Film, Folder, FolderOpen, Image as ImageIcon, Music, RefreshCw, Smartphone } from 'lucide-react';
-import { api, formatBytes } from '../../shared/api';
+import { api, formatBytes, useTransfers } from '../../shared/api';
 import type { PhoneFileEntry } from '../../shared/types';
 import { Button, Card, EmptyState, PageTitle, Select } from '../ui';
 import { useConnectedPhones } from '../PhoneChips';
@@ -85,6 +85,23 @@ function Pane({
     void load('');
   }, [load]);
 
+  // A send to this phone just finished (dropped from Explorer, or from the other phone): show it.
+  const transfers = useTransfers();
+  const seenDone = useRef<Set<string>>(new Set());
+  const pathRef = useRef(path);
+  pathRef.current = path;
+  useEffect(() => {
+    let fresh = false;
+    for (const t of transfers) {
+      if (t.deviceId === deviceId && t.state === 'done' && !seenDone.current.has(t.id)) {
+        if (seenDone.current.size > 0) fresh = true;
+        seenDone.current.add(t.id);
+      }
+    }
+    if (seenDone.current.size === 0) seenDone.current.add('_');
+    if (fresh) void load(pathRef.current);
+  }, [transfers, deviceId, load]);
+
   const crumbs = path ? path.split('/') : [];
   const toPc = async (e: PhoneFileEntry) => {
     setNote(null);
@@ -100,6 +117,7 @@ function Pane({
     <Card
       data-drop-device={deviceId}
       data-drop-name={deviceName}
+      data-drop-path={path}
       className={`flex-1 min-w-[320px] p-0 overflow-hidden flex flex-col transition-shadow ${dropHot ? 'ring-4 ring-primary/50 shadow-[0_20px_60px_rgba(0,113,227,0.25)]' : ''}`}
     >
       <div className="px-4 py-3 border-b border-line flex items-center gap-2">
@@ -204,6 +222,21 @@ export function PhoneFiles() {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [hot, setHot] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [osHot, setOsHot] = useState<string | null>(null);
+  useEffect(() => {
+    const over = (e: Event) => setOsHot((e as CustomEvent<string | null>).detail);
+    const dropped = (e: Event) => {
+      const d = (e as CustomEvent<{ name: string; path: string; count?: number; error?: string }>).detail;
+      setToast(d.error ?? `Sending ${d.count} item${d.count === 1 ? '' : 's'} to ${d.name} · ${d.path || 'top folder'}…`);
+      window.setTimeout(() => setToast(null), 5000);
+    };
+    window.addEventListener('pd-os-drag', over);
+    window.addEventListener('pd-os-drop', dropped);
+    return () => {
+      window.removeEventListener('pd-os-drag', over);
+      window.removeEventListener('pd-os-drop', dropped);
+    };
+  }, []);
 
   const l = phones.find((p) => p.id === left) ?? phones[0];
   const r = phones.find((p) => p.id === right && p.id !== l?.id) ?? phones.find((p) => p.id !== l?.id);
@@ -252,12 +285,12 @@ export function PhoneFiles() {
         <>
           <p className="m-0 text-[13px] text-muted">
             {phones.length > 1
-              ? 'Drag a file from one phone onto the other to send it across. Hover a file and click ↓ to bring it to this PC.'
-              : 'Hover a file and click ↓ to bring it to this PC. Connect a second phone to drag files between phones.'}
+              ? 'Drag a file from one phone onto the other, or drop files from Explorer onto a phone to put them in the folder it shows. Hover a file and click ↓ to bring it to this PC.'
+              : 'Drop files from Explorer onto the phone to put them in the folder it shows. Hover a file and click ↓ to bring it to this PC.'}
           </p>
           <div className="flex gap-4 flex-wrap">
-            {l && <Pane key={l.id} deviceId={l.id} deviceName={l.name} choices={choices} onPick={setLeft} onStartDrag={setDrag} dropHot={hot === l.id} />}
-            {r && <Pane key={r.id} deviceId={r.id} deviceName={r.name} choices={choices} onPick={setRight} onStartDrag={setDrag} dropHot={hot === r.id} />}
+            {l && <Pane key={l.id} deviceId={l.id} deviceName={l.name} choices={choices} onPick={setLeft} onStartDrag={setDrag} dropHot={hot === l.id || osHot === l.id} />}
+            {r && <Pane key={r.id} deviceId={r.id} deviceName={r.name} choices={choices} onPick={setRight} onStartDrag={setDrag} dropHot={hot === r.id || osHot === r.id} />}
           </div>
         </>
       )}
