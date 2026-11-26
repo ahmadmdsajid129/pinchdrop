@@ -439,9 +439,10 @@ impl Link {
                     self.on_notif_event(&dev, kind, &env.payload)
                 }
                 (Some(dev), "sms.new") => self.on_sms_new(&dev, &env.payload),
-                (Some(dev), kind @ ("call.state" | "status.messages" | "clip.set")) => {
-                    self.on_live_event(&dev, kind, &env.payload)
-                }
+                (
+                    Some(dev),
+                    kind @ ("call.state" | "status.messages" | "clip.set" | "media.state"),
+                ) => self.on_live_event(&dev, kind, &env.payload),
                 (Some(dev), "lift.cancel") => self.on_lift_cancel(&dev, &env.payload),
                 (Some(dev), "unpair") => {
                     self.forget(&dev, false);
@@ -825,10 +826,26 @@ impl Link {
             network: report.network.map(|n| n.chars().take(40).collect()),
             ..report
         };
+        let mut previous = None;
         if let Ok(mut s) = self.sessions.lock() {
             match s.get_mut(device_id) {
-                Some(sess) if sess.conn_id == conn_id => sess.report = report.clone(),
+                Some(sess) if sess.conn_id == conn_id => {
+                    previous = Some(sess.report.clone());
+                    sess.report = report.clone();
+                }
                 _ => return,
+            }
+        }
+        // v2: "POCO F7 at 15%" / "POCO F7 is fully charged" on the Island, once per crossing.
+        if let (Some(prev), Some(now)) = (previous.as_ref().and_then(|p| p.battery), report.battery)
+        {
+            let alert = battery_alert(prev, now, report.charging);
+            if let Some(kind) = alert {
+                let _ = self.app.emit(
+                    "phone-alert",
+                    json!({ "kind": kind, "level": now, "deviceName": self.device_name(device_id) }),
+                );
+                crate::force_show_pill(&self.app, 8);
             }
         }
         if let Ok(mut ds) = self.devices.lock() {
@@ -1572,6 +1589,18 @@ impl Link {
     }
 }
 
+/// v2 · Battery alerts: "low" when it drops to 15 % (and 5 %) unplugged, "full" when it reaches
+/// 100 % while charging. Only on the crossing, so it never repeats.
+pub fn battery_alert(prev: u8, now: u8, charging: bool) -> Option<&'static str> {
+    if !charging && ((prev > 15 && now <= 15) || (prev > 5 && now <= 5)) {
+        Some("battery_low")
+    } else if charging && prev < 100 && now >= 100 {
+        Some("battery_full")
+    } else {
+        None
+    }
+}
+
 fn offer_message(t: &Transfer) -> String {
     let files: Vec<Value> = t
         .files
@@ -1592,4 +1621,18 @@ fn offer_message(t: &Transfer) -> String {
             "texts": t.texts,
         }),
     )
+}
+
+#[cfg(test)]
+mod battery_tests {
+    #[test]
+    fn alerts_once_on_the_crossing() {
+        use super::battery_alert as b;
+        assert_eq!(b(16, 15, false), Some("battery_low"));
+        assert_eq!(b(15, 14, false), None);
+        assert_eq!(b(6, 5, false), Some("battery_low"));
+        assert_eq!(b(16, 15, true), None);
+        assert_eq!(b(99, 100, true), Some("battery_full"));
+        assert_eq!(b(100, 100, true), None);
+    }
 }
