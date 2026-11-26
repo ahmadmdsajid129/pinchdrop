@@ -106,8 +106,12 @@ pub fn tidy_outbox(dir: &Path) {
     let cutoff = std::time::SystemTime::now() - std::time::Duration::from_secs(2 * 24 * 3600);
     for e in entries.flatten() {
         if let Ok(m) = e.metadata() {
-            if m.is_file() && m.modified().map(|t| t < cutoff).unwrap_or(false) {
+            let old = m.modified().map(|t| t < cutoff).unwrap_or(false);
+            if m.is_file() && old {
                 let _ = std::fs::remove_file(e.path());
+            } else if m.is_dir() && old && e.file_name().to_string_lossy().starts_with("relay-") {
+                // A phone → phone copy that never got cleaned up (send failed, app closed…).
+                let _ = std::fs::remove_dir_all(e.path());
             }
         }
     }
