@@ -238,11 +238,40 @@ function useAsyncSubscription(effect: () => Promise<() => void>, deps: unknown[]
 }
 
 /** Live settings shared across both windows. */
+/**
+ * First run: the page can load before the app has finished starting (making its certificate
+ * takes a moment), and an early call then fails or never answers, which left a blank window.
+ * Keep asking until it answers.
+ */
+function untilAnswered<T>(call: () => Promise<T>): Promise<T> {
+  return new Promise((resolve) => {
+    let done = false;
+    const attempt = () => {
+      let moved = false;
+      const timer = window.setTimeout(retry, 2500);
+      function retry() {
+        window.clearTimeout(timer);
+        if (done || moved) return;
+        moved = true;
+        window.setTimeout(attempt, 300);
+      }
+      call().then((v) => {
+        window.clearTimeout(timer);
+        if (!done) {
+          done = true;
+          resolve(v);
+        }
+      }, retry);
+    };
+    attempt();
+  });
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    api.getSettings().then(setSettings);
+    void untilAnswered(api.getSettings).then(setSettings);
     const onLocal = (e: Event) => setSettings((e as CustomEvent<Settings>).detail);
     const onChannel = (e: MessageEvent) => e.data?.type === 'settings' && setSettings(e.data.next);
     window.addEventListener('pd-settings', onLocal);
@@ -268,7 +297,7 @@ export function useSettings() {
 export function usePhone() {
   const [phone, setPhone] = useState<PhoneStatus | null>(null);
   useEffect(() => {
-    api.getPhoneStatus().then(setPhone);
+    void untilAnswered(api.getPhoneStatus).then(setPhone);
     const refresh = () => api.getPhoneStatus().then(setPhone);
     window.addEventListener('pd-settings', refresh);
     channel?.addEventListener('message', refresh);
