@@ -171,7 +171,7 @@ The other direction. On the phone the user taps **Share → PinchDrop** and **pi
 
 ## 6.6 The phone's notifications, messages and contacts (v2)
 
-These all travel inside the authenticated session. The PC keeps them **in memory only**: nothing is written to disk, and everything is forgotten when the phone disconnects or PinchDrop closes. The phone only sends what the user has allowed on the phone, through Android's own permission switches.
+These all travel inside the authenticated session. The PC keeps them **in memory only**: nothing is written to disk. Notifications stay on the PC until they're handled (opened or cleared on the phone, dismissed or replied to on the PC), even while the phone is briefly disconnected; unpairing or closing PinchDrop forgets them. Messages and contacts are asked from the phone each time. The phone only sends what the user has allowed on the phone, through Android's own permission switches.
 
 ### Requests and replies
 The PC asks; the phone answers once.
@@ -201,7 +201,7 @@ Dates are milliseconds since 1970 (UTC). Phone numbers are passed exactly as the
   - Ongoing, silent and group-summary notifications, and the phone's own PinchDrop notifications, are not sent.
   - `icon` is the app's icon as `data:image/png;base64,…` (≤ 16 KB). It's sent the first time that app appears in a session.
 - `notif.removed` `{ key }`: the notification was cleared on the phone.
-- `notif.sync` `{ items: [ notif.posted payloads ] }`: everything currently showing, sent on connect (up to 30).
+- `notif.sync` `{ items: [ notif.posted payloads ] }`: everything currently showing, sent on connect (up to 60). It replaces whatever the PC still shows for that phone, so anything handled on the phone while disconnected disappears.
 - `sms.new` `{ threadId?, address, name?, body, date }`: a text message just arrived.
 
 ### Calls, unread texts, find my phone, clipboard (v2)
