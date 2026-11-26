@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Upload } from 'lucide-react';
 import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
 import { useApp } from './context';
@@ -94,17 +93,13 @@ export function App() {
     <div className="h-screen flex overflow-hidden bg-bg text-text">
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-y-auto [scrollbar-gutter:stable]">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={route}
-            className="max-w-[1100px] mx-auto px-8 py-7 flex flex-col gap-5"
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: reduced ? 0.08 : 0.18, ease: [0.2, 0, 0, 1] } }}
-            exit={{ opacity: 0, transition: { duration: reduced ? 0.05 : 0.08 } }}
-          >
-            {screen}
-          </motion.div>
-        </AnimatePresence>
+        {/* A plain CSS fade-in per page: it can never get stuck invisible waiting on a JS animation. */}
+        <div
+          key={route}
+          className={`max-w-[1100px] mx-auto px-8 py-7 flex flex-col gap-5 ${reduced ? '' : 'animate-[pd-page_200ms_cubic-bezier(0.2,0,0,1)]'}`}
+        >
+          {screen}
+        </div>
       </main>
       {dragOver && (
         <div className="fixed inset-0 z-50 bg-bg/90 flex items-center justify-center pointer-events-none animate-[pd-fade_120ms_ease-out]">
