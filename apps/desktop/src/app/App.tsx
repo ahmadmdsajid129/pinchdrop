@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { FlyHero, Guide } from './Illustrations';
+import { PageTitle } from './ui';
 import { Upload } from 'lucide-react';
 import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
 import { useApp } from './context';
@@ -87,6 +89,7 @@ export function App() {
     pair: <Pair />,
     settings: <SettingsScreen />,
     profile: <Profile />,
+    guide: <GuidePage />,
     onboarding: null,
   }[route];
 
@@ -111,5 +114,26 @@ export function App() {
         </div>
       )}
     </div>
+  );
+}
+
+/** v2 · How to use PinchDrop, on the PC and on the phone. */
+function GuidePage() {
+  return (
+    <>
+      <PageTitle>How to use PinchDrop</PageTitle>
+      <section className="flex items-center gap-6 flex-wrap p-6 rounded-[20px] bg-surface border border-line">
+        <div className="flex-[1_1_300px] flex flex-col gap-2">
+          <div className="font-display text-[22px] font-semibold leading-snug">Pinch it on your PC. Drop it on your phone.</div>
+          <p className="m-0 text-[14px] text-muted leading-relaxed">
+            Select something, pinch in front of the webcam, and open your hand over the phone. Everything below works with clicks too.
+          </p>
+        </div>
+        <div className="flex-[1_1_360px] flex justify-center">
+          <FlyHero compact />
+        </div>
+      </section>
+      <Guide />
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { Bell, Clock, FolderOpen, Hand, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users } from 'lucide-react';
+import { Bell, Clock, FolderOpen, Hand, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users, LifeBuoy } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useApp } from './context';
 import type { Route } from './context';
@@ -17,6 +17,7 @@ const NAV: { route: Route; label: string; icon: ReactNode }[] = [
   { route: 'map', label: 'Find my phones', icon: <MapPin size={18} aria-hidden="true" /> },
   { route: 'devices', label: 'Devices', icon: <Smartphone size={18} aria-hidden="true" /> },
   { route: 'settings', label: 'Settings', icon: <SlidersHorizontal size={18} aria-hidden="true" /> },
+  { route: 'guide', label: 'How to use', icon: <LifeBuoy size={18} aria-hidden="true" /> },
 ];
 
 export function initials(name: string): string {
