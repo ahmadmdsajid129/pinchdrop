@@ -263,7 +263,14 @@ object Receiver {
             id = id,
             label = p.optString("label").ifBlank { files.firstOrNull()?.segments?.first() ?: "Items" }.take(80),
             pcName = pcName,
-            destination = if (p.optString("destination") == "downloads") "downloads" else "auto",
+            destination = p.optString("destination").let { d ->
+                when {
+                    d == "downloads" -> "downloads"
+                    // A folder picked on the PC: only with All files access, and only a safe path.
+                    d.startsWith("folder:") && com.pinchdrop.companion.phone.PhoneFiles.allowed() && Saver.folderOf(d) != null -> d
+                    else -> "auto"
+                }
+            },
             openFirst = p.optBoolean("openFirst"),
             totalBytes = files.sumOf { it.size },
             files = files,
