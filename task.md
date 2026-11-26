@@ -111,6 +111,13 @@ Pairing, live battery and sending were confirmed working on a POCO F7 + HP lapto
 ## 🚀 v2 backlog (agreed 2026-11-25, not started)
 Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](docs/v2-plan.md).
 
+v2.1 (2026-11-26) — built, founder check open:
+- Several phones on the pill: "+N ⌄" switcher; the shown phone drives the badge, Messages, Contacts. A call on any phone shows with the phone's name.
+- WhatsApp / Instagram / Messenger calls: Answer / Reject / Silence (presses the app's own buttons); missed calls (SIM and apps) as a red icon per phone.
+- Sounds on the PC for chat messages, texts and calls; chosen per phone in Settings → Your phone.
+- OTP auto-copy, battery low / full notes, Now Playing with ✋ / 👉, recent photos strip (click to bring over), open the browser tab you're looking at on the phone (pinch), Explorer Send to → PinchDrop · <phone>, Scan to PC (phone), Copy to PC tile (phone), Find my phones map (live + last seen).
+- Not yet: pinching a photo out of the strip (click works), Instagram/Messenger call buttons depend on each app's notification.
+
 Also built in v2.0: the new gestures (palm hold, swipe, ✌️ reply, 👍 take it, fist, wave closes the Island, throw / point at a device chip, two-hand screenshot frame), clipboard both ways (Settings → Your phone, off by default) and find my phone.
 
 | # | Feature | Notes |
