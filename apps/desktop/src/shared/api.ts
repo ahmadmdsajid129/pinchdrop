@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { Contact, FoundPc, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
+import type { Contact, FoundPc, PhonePhoto, PlaceView, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -165,6 +165,12 @@ export const api = {
   contacts: async (): Promise<Contact[]> =>
     inTauri ? ((await invoke<{ contacts: Contact[] }>('contacts_list')).contacts ?? []) : DEMO_CONTACTS,
   dial: (number: string): Promise<{ how: string }> => (inTauri ? invoke('phone_dial', { number }) : Promise.resolve({ how: 'calling' })),
+
+  // v2 · Map and photos.
+  phonePlaces: (): Promise<PlaceView[]> => (inTauri ? invoke('phone_places') : Promise.resolve([])),
+  phonePhotos: async (deviceId?: string | null): Promise<PhonePhoto[]> =>
+    inTauri ? ((await invoke<{ photos: PhonePhoto[] }>('phone_photos', { deviceId: deviceId ?? null })).photos ?? []) : [],
+  phonePhotoSend: (id: number, deviceId?: string | null) => (inTauri ? invoke<void>('phone_photo_send', { id, deviceId: deviceId ?? null }) : Promise.resolve()),
 
   // v2 · Laptop ↔ laptop.
   peerDiscover: (): Promise<FoundPc[]> => (inTauri ? invoke('peer_discover') : Promise.resolve([{ pcId: 'demo', name: 'Office laptop', hosts: ['192.168.1.20'], port: 47821, fingerprint: '', paired: false }])),
