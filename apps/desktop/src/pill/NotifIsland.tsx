@@ -32,6 +32,7 @@ export function NotifIsland({
   onClose,
   onReplying,
   replyNonce = 0,
+  showDevice = false,
 }: {
   n: NotifView;
   width: number;
@@ -39,6 +40,8 @@ export function NotifIsland({
   onReplying: (on: boolean) => void;
   /** Bumped by the peace-sign gesture: open the reply box. */
   replyNonce?: number;
+  /** Several phones connected: say which one it's from. */
+  showDevice?: boolean;
 }) {
   const [replying, setReplying] = useState(false);
   const [text, setText] = useState('');
@@ -82,6 +85,7 @@ export function NotifIsland({
             <span className="truncate font-semibold uppercase tracking-wide">{n.app}</span>
             <span>·</span>
             <span className="shrink-0">{shortAgo(n.time)}</span>
+            {showDevice && n.deviceName && <span className="shrink-0 truncate opacity-80">· {n.deviceName}</span>}
           </div>
           {n.title && <div className="font-semibold text-[15px] truncate">{n.title}</div>}
           {n.text && <div className="text-[13px] text-soft line-clamp-2 break-words">{n.text}</div>}
