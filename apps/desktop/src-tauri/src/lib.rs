@@ -425,9 +425,13 @@ pub(crate) fn outbox_dir(app: &AppHandle) -> PathBuf {
 
 /// Called by the overlay when the hand opens with something grabbed.
 #[tauri::command]
-fn hold_start(app: AppHandle, items: grab::GrabbedItems) -> Option<grab::HoldView> {
+fn hold_start(
+    app: AppHandle,
+    items: grab::GrabbedItems,
+    target: Option<String>,
+) -> Option<grab::HoldView> {
     let g = app.try_state::<grab::Grab>()?;
-    let view = g.hold_start(&app, items);
+    let view = g.hold_start_to(&app, items, target.as_deref());
     raise_pill(&app);
     // Open the Island so the countdown is visible.
     let _ = app.emit_to("pill", "island-open", ());
