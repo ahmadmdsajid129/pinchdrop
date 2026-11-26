@@ -7,6 +7,8 @@ import { HoldIsland } from './HoldIsland';
 import { LiftIsland } from './LiftIsland';
 import { NotifIsland } from './NotifIsland';
 import { CallIsland } from './CallIsland';
+import { InfoIsland, type Info } from './InfoIsland';
+import { NowPlaying, PlayingBars } from './NowPlaying';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
 import { sound, playAlert, startRing, stopRing, DEFAULT_PHONE_SOUNDS } from '../shared/sound';
@@ -59,6 +61,9 @@ export function Pill() {
   /** The banner opened the Island (so closing the banner closes it again). */
   const bannerOpened = useRef(false);
   const [replyNonce, setReplyNonce] = useState(0);
+  /** v2: a small note (code copied, battery, clipboard) shown for a few seconds. */
+  const [info, setInfo] = useState<Info | null>(null);
+  const infoOpened = useRef(false);
   /** v2: unread texts and calls, per phone. The pill shows the selected phone; a call on any phone shows up. */
   const lives = usePhoneLive();
   const live: PhoneLive =
@@ -82,6 +87,8 @@ export function Pill() {
     return () => stopRing();
   }, [ringingDevice]); // eslint-disable-line react-hooks/exhaustive-deps
   const ringingRef = useRef(false);
+  const mediaRef = useRef<{ deviceId: string } | null>(null);
+  mediaRef.current = live.media ? { deviceId: live.deviceId } : null;
   const wasRinging = useRef(false);
 
   // ---- a send in progress shows live on the Island, then "Delivered" for a moment
@@ -303,6 +310,14 @@ export function Pill() {
         }
         if (liftRef.current && g === 'thumbs_up') {
           void api.liftCatch(liftRef.current.id).catch(() => undefined);
+          return;
+        }
+        // Music on the shown phone: palm = play / pause, swipe = next / previous.
+        const m = mediaRef.current;
+        if (m && !liftRef.current) {
+          if (g === 'palm_hold') void api.mediaCmd('toggle', m.deviceId).catch(() => undefined);
+          else if (g === 'swipe_right') void api.mediaCmd('next', m.deviceId).catch(() => undefined);
+          else if (g === 'swipe_left') void api.mediaCmd('previous', m.deviceId).catch(() => undefined);
         }
         // Nothing else: while the camera is on for grabbing, getting ready to pinch (moving the
         // hand around, curling the fingers) must never close the Island or switch the camera off.
@@ -321,6 +336,9 @@ export function Pill() {
         setExpanded(true);
       }),
       onEvent<string>('phone-notif-removed', (key) => setBanner((cur) => (cur?.key === key ? null : cur))),
+      onEvent<{ code: string; from: string; deviceName: string }>('otp', (o) => showInfo({ kind: 'otp', ...o })),
+      onEvent<{ kind: 'battery_low' | 'battery_full'; level: number; deviceName: string }>('phone-alert', (a) => showInfo(a)),
+      onEvent<{ deviceName: string; chars: number }>('phone-clip', (c) => showInfo({ kind: 'clip', ...c })),
       onEvent<null>('island-open', () => {
         // Opened by Rust for a hold: just show it.
         setExpanded(true);
@@ -353,6 +371,25 @@ export function Pill() {
     wasRinging.current = ringing;
   }, [ringing]);
 
+  // ---- small notes close by themselves after 5 s
+  const showInfo = useCallback((i: Info) => {
+    if (holdRef.current || liftRef.current || ringingRef.current) return;
+    setInfo((cur) => {
+      if (!cur) infoOpened.current = !expandedRef.current;
+      return i;
+    });
+    setExpanded(true);
+  }, []);
+  useEffect(() => {
+    if (!info || hovered) return;
+    const t = window.setTimeout(() => {
+      setInfo(null);
+      if (infoOpened.current && !holdRef.current && !liftRef.current && !sessionRef.current && !bannerRef.current) setExpanded(false);
+      infoOpened.current = false;
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [info, hovered]);
+
   // ---- a notification banner closes by itself after a few seconds (not while hovered or replying)
   const closeBanner = useCallback(() => {
     setBanner(null);
@@ -370,10 +407,10 @@ export function Pill() {
   // ---- auto-close after N seconds when the pointer isn't on the Island
   useEffect(() => {
     const secs = settings?.pill.islandAutoCloseSecs ?? 4;
-    if (!expanded || hovered || secs === 0 || hold || lift || banner || ringing || session?.active || liveTransfer) return;
+    if (!expanded || hovered || secs === 0 || hold || lift || banner || info || ringing || session?.active || liveTransfer) return;
     const t = window.setTimeout(collapse, secs * 1000);
     return () => clearTimeout(t);
-  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, lift, banner, ringing, session?.active, liveTransfer]);
+  }, [expanded, hovered, settings?.pill.islandAutoCloseSecs, collapse, hold, lift, banner, info, ringing, session?.active, liveTransfer]);
 
   // ---- close on Escape and when the pill window loses focus (click elsewhere)
   useEffect(() => {
@@ -533,12 +570,15 @@ export function Pill() {
                 <LiftIsland lift={lift} width={ISLAND_W} cameraOn={!!settings.gestures.enabled} />
               ) : ringing ? (
                 <CallIsland live={ringingLive!} width={ISLAND_W} showDevice={manyPhones} listening={!!settings.gestures.enabled && !!settings.phone?.callGestures} />
+              ) : info && !banner ? (
+                <InfoIsland info={info} width={ISLAND_W} showDevice={manyPhones} />
               ) : banner ? (
                 <NotifIsland n={banner} width={ISLAND_W} onClose={closeBanner} onReplying={setReplying} replyNonce={replyNonce} showDevice={manyPhones} />
               ) : liveTransfer ? (
                 <SendingIsland t={liveTransfer} width={ISLAND_W} reduced={reduced} />
               ) : (
                 <Island
+                  nowPlaying={live.media ? <NowPlaying media={live.media} deviceId={live.deviceId} /> : null}
                   settings={settings}
                   phone={phone}
                   update={update}
@@ -683,6 +723,11 @@ function PillButton({
       )}
     </button>
     {/* v2: what's happening on the phone: unread texts, ringing (with who), a missed call */}
+    {live.media?.playing && (
+      <span className="mr-1.5 inline-flex items-center" title={`Playing: ${live.media.title}`}>
+        <PlayingBars size={size.icon - 4} />
+      </span>
+    )}
     {live.unread > 0 && (
       <button
         type="button"
@@ -735,6 +780,7 @@ function PillButton({
 }
 
 function Island({
+  nowPlaying,
   settings,
   phone,
   update,
@@ -750,6 +796,7 @@ function Island({
   onDragStart: (e: React.PointerEvent) => void;
   onDragMove: (e: React.PointerEvent) => void;
   camera: React.ReactNode;
+  nowPlaying: React.ReactNode;
 }) {
   const connected = phone.state === 'connected';
   const gesturesOn = settings.gestures.enabled;
@@ -801,6 +848,8 @@ function Island({
           />
         </div>
       )}
+
+      {nowPlaying}
 
       {camera}
 
