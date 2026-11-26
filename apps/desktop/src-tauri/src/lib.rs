@@ -313,6 +313,12 @@ async fn send_items(
     device_id: Option<String>,
 ) -> Result<String, String> {
     let link = link_of(&app).ok_or("The connection service didn't start")?;
+    if let Some(d) = device_id
+        .as_deref()
+        .filter(|d| link::peer::is_peer_device_id(d))
+    {
+        return link.peer_send_now(d, paths, texts, None).await;
+    }
     link.send_items(paths, texts, destination, device_id).await
 }
 
@@ -324,6 +330,11 @@ async fn send_to_device(
     device_id: String,
 ) -> Result<String, String> {
     let link = link_of(&app).ok_or("The connection service didn't start")?;
+    if link::peer::is_peer_device_id(&device_id) {
+        return link
+            .peer_send_now(&device_id, items.paths, items.texts, Some(items.label))
+            .await;
+    }
     link.send_items_for_hold(
         items.paths,
         items.texts,
@@ -676,7 +687,37 @@ async fn hold_send_now(app: AppHandle) -> Result<String, String> {
 #[tauri::command]
 fn unpair_device(app: AppHandle, id: String) {
     if let Some(l) = link_of(&app) {
-        l.forget(&id, true);
+        if link::peer::is_peer_device_id(&id) {
+            l.peer_unpair(&id);
+        } else {
+            l.forget(&id, true);
+        }
+    }
+}
+
+// ---------- v2 · laptop ↔ laptop
+
+/// Other PinchDrop PCs on this Wi-Fi (takes ~2.5 s).
+#[tauri::command]
+async fn peer_discover(app: AppHandle) -> Result<Vec<link::peer::FoundPc>, String> {
+    let link = link_or_err(&app)?;
+    let own = link.identity.pc_id.clone();
+    tauri::async_runtime::spawn_blocking(move || link::peer::discover(&own))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Pair with one of them; progress comes as `peer-pair` events.
+#[tauri::command]
+fn peer_pair_start(app: AppHandle, pc_id: String) -> Result<(), String> {
+    link_or_err(&app)?.peer_pair_start(&pc_id)
+}
+
+/// The codes on both screens match (true) or not (false).
+#[tauri::command]
+fn peer_pair_answer(app: AppHandle, ok: bool) {
+    if let Some(l) = link_of(&app) {
+        l.peer_pair_answer(ok);
     }
 }
 
@@ -1048,6 +1089,9 @@ pub fn run() {
             phone_live,
             send_to_device,
             capture_region,
+            peer_discover,
+            peer_pair_start,
+            peer_pair_answer,
             clear_missed,
             call_action,
             find_phone,
