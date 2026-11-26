@@ -1,30 +1,32 @@
-//! v2 · Live phone status on the PC (LINK-v1 §6.6): who's calling, unread texts (the pill's
-//! 💬 badge), find my phone, and the clipboard both ways. In memory only.
+//! v2 · Live phone status on the PC (LINK-v1 §6.6), per phone: who's calling (SIM or an app
+//! like WhatsApp), unread texts (the pill's 💬 badge), missed calls, and the clipboard both
+//! ways. In memory only.
 
 use super::*;
+use std::collections::HashMap;
 use std::sync::LazyLock;
 
-/// What the pill and the call card show.
+/// One phone's live state, for the pill and the call card.
 #[derive(Debug, Clone, Default, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PhoneLive {
+    pub device_id: String,
+    pub device_name: String,
     /// Unread text messages on the phone.
     pub unread: u32,
     /// "ringing" | "active" | "idle"
     pub call: String,
     pub caller_name: Option<String>,
     pub caller_number: Option<String>,
-    /// A call rang out unanswered and hasn't been looked at yet.
+    /// The app the call came through ("WhatsApp", "Instagram"…); None = a normal SIM call.
+    pub call_app: Option<String>,
+    /// A call rang out unanswered and hasn't been looked at yet (who, and through which app).
     pub missed: Option<String>,
+    pub missed_app: Option<String>,
 }
 
-static LIVE: LazyLock<Mutex<PhoneLive>> = LazyLock::new(|| {
-    Mutex::new(PhoneLive {
-        call: "idle".into(),
-        ..Default::default()
-    })
-});
-/// Last text the phone put on our clipboard (so it isn't echoed straight back).
+static LIVE: LazyLock<Mutex<HashMap<String, PhoneLive>>> = LazyLock::new(Default::default);
+/// Last text a phone put on our clipboard (so it isn't echoed straight back).
 static FROM_PHONE: LazyLock<Mutex<Option<String>>> = LazyLock::new(Default::default);
 
 fn s(p: &Value, k: &str, max: usize) -> Option<String> {
@@ -34,15 +36,33 @@ fn s(p: &Value, k: &str, max: usize) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-pub fn live() -> PhoneLive {
-    LIVE.lock().map(|l| l.clone()).unwrap_or_default()
+/// Every connected phone's live state.
+pub fn all() -> Vec<PhoneLive> {
+    let mut v: Vec<PhoneLive> = LIVE
+        .lock()
+        .map(|l| l.values().cloned().collect())
+        .unwrap_or_default();
+    v.sort_by(|a, b| a.device_name.cmp(&b.device_name));
+    v
 }
 
+/// Any phone ringing (the webcam listens for answer / reject / silence).
 pub fn ringing() -> bool {
-    LIVE.lock().map(|l| l.call == "ringing").unwrap_or(false)
+    LIVE.lock()
+        .map(|l| l.values().any(|x| x.call == "ringing"))
+        .unwrap_or(false)
 }
 
-/// The phone put this on our clipboard; don't send it back.
+/// The phone that's ringing, if any.
+pub fn ringing_device() -> Option<String> {
+    LIVE.lock()
+        .ok()?
+        .values()
+        .find(|x| x.call == "ringing")
+        .map(|x| x.device_id.clone())
+}
+
+/// A phone put this on our clipboard; don't send it back.
 pub fn came_from_phone(text: &str) -> bool {
     FROM_PHONE
         .lock()
@@ -52,35 +72,57 @@ pub fn came_from_phone(text: &str) -> bool {
 
 impl Link {
     fn emit_live(&self) {
-        let _ = self.app.emit("phone-live", live());
+        let _ = self.app.emit("phone-live", all());
     }
 
-    pub(super) fn on_live_event(&self, kind: &str, p: &Value) {
+    fn live_entry<R>(&self, dev: &str, f: impl FnOnce(&mut PhoneLive) -> R) -> Option<R> {
+        let name = self.device_name(dev);
+        let mut l = LIVE.lock().ok()?;
+        let e = l.entry(dev.to_string()).or_insert_with(|| PhoneLive {
+            device_id: dev.to_string(),
+            call: "idle".into(),
+            ..Default::default()
+        });
+        e.device_name = name;
+        Some(f(e))
+    }
+
+    pub(super) fn on_live_event(&self, dev: &str, kind: &str, p: &Value) {
         match kind {
             "call.state" => {
                 let state = s(p, "state", 16).unwrap_or_default();
                 let name = s(p, "name", 80);
                 let number = s(p, "number", 40);
-                if let Ok(mut l) = LIVE.lock() {
-                    match state.as_str() {
-                        "ringing" | "active" => {
-                            l.call = state.clone();
-                            l.caller_name = name.or(l.caller_name.take());
-                            l.caller_number = number.or(l.caller_number.take());
-                        }
-                        "missed" => {
-                            l.missed = name.or(number).or(Some("Unknown caller".into()));
-                            l.call = "idle".into();
+                let app = s(p, "app", 40);
+                self.live_entry(dev, |l| match state.as_str() {
+                    "ringing" | "active" => {
+                        if state == "ringing" && l.call != "ringing" {
                             l.caller_name = None;
                             l.caller_number = None;
                         }
-                        _ => {
-                            l.call = "idle".into();
-                            l.caller_name = None;
-                            l.caller_number = None;
-                        }
+                        l.call = state.clone();
+                        l.caller_name = name.or(l.caller_name.take());
+                        l.caller_number = number.or(l.caller_number.take());
+                        l.call_app = app.clone().or(l.call_app.take());
                     }
-                }
+                    "missed" => {
+                        l.missed = name
+                            .or(number)
+                            .or(l.caller_name.take())
+                            .or(Some("Unknown caller".into()));
+                        l.missed_app = app.or(l.call_app.take());
+                        l.call = "idle".into();
+                        l.caller_name = None;
+                        l.caller_number = None;
+                        l.call_app = None;
+                    }
+                    _ => {
+                        l.call = "idle".into();
+                        l.caller_name = None;
+                        l.caller_number = None;
+                        l.call_app = None;
+                    }
+                });
                 if state == "ringing" {
                     // Visible even over full-screen apps while it rings.
                     crate::force_show_pill(&self.app, 40);
@@ -97,9 +139,7 @@ impl Link {
                     .and_then(Value::as_u64)
                     .unwrap_or(0)
                     .min(9999) as u32;
-                if let Ok(mut l) = LIVE.lock() {
-                    l.unread = n;
-                }
+                self.live_entry(dev, |l| l.unread = n);
             }
             "clip.set" => {
                 if !crate::current_settings(&self.app).phone.clipboard_sync {
@@ -110,6 +150,10 @@ impl Link {
                         *f = Some(t.clone());
                     }
                     crate::clip::write(&t);
+                    let _ = self.app.emit(
+                        "phone-clip",
+                        json!({ "deviceName": self.device_name(dev), "chars": t.chars().count() }),
+                    );
                 }
                 return;
             }
@@ -118,19 +162,23 @@ impl Link {
         self.emit_live();
     }
 
-    pub fn clear_missed(&self) {
+    /// Clears the missed-call mark on one phone (or on all).
+    pub fn clear_missed(&self, dev: Option<&str>) {
         if let Ok(mut l) = LIVE.lock() {
-            l.missed = None;
+            for (id, x) in l.iter_mut() {
+                if dev.map_or(true, |d| d == id) {
+                    x.missed = None;
+                    x.missed_app = None;
+                }
+            }
         }
         self.emit_live();
     }
 
-    pub(super) fn live_gone(&self) {
+    /// A phone disconnected: forget its live state.
+    pub(super) fn live_gone(&self, dev: &str) {
         if let Ok(mut l) = LIVE.lock() {
-            *l = PhoneLive {
-                call: "idle".into(),
-                ..Default::default()
-            };
+            l.remove(dev);
         }
         self.emit_live();
     }
@@ -162,7 +210,7 @@ impl Link {
     }
 }
 
-/// Watches the PC clipboard and passes new text to the phone while sharing is on.
+/// Watches the PC clipboard and passes new text to the phones while sharing is on.
 #[cfg(windows)]
 pub fn spawn_clipboard_watch(app: AppHandle) {
     use windows::Win32::System::DataExchange::GetClipboardSequenceNumber;
