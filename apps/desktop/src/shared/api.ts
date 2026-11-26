@@ -176,6 +176,8 @@ export const api = {
   clearMissed: (deviceId?: string | null) => (inTauri ? invoke<void>('clear_missed', { deviceId: deviceId ?? null }) : Promise.resolve()),
   callAction: (action: 'answer' | 'reject' | 'silence', deviceId?: string | null) =>
     inTauri ? invoke<void>('call_action', { action, deviceId: deviceId ?? null }) : Promise.resolve(),
+  mediaCmd: (action: 'play' | 'pause' | 'toggle' | 'next' | 'previous', deviceId?: string | null) =>
+    inTauri ? invoke<void>('media_cmd', { action, deviceId: deviceId ?? null }) : Promise.resolve(),
   findPhone: (stop = false) => (inTauri ? invoke<void>('find_phone', { stop }) : Promise.resolve()),
 
   // v2 · Lift (phone → PC).
