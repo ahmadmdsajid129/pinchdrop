@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BellOff, Hand, Phone, PhoneOff } from 'lucide-react';
-import { api } from '../shared/api';
+import { api, inTauri, onEvent } from '../shared/api';
 import type { PhoneLive } from '../shared/types';
 
 /**
@@ -25,11 +25,30 @@ export function CallIsland({ live, width, listening, showDevice = false }: { liv
     try {
       await api.callAction(a, live.deviceId);
     } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
+      const msg = String(e instanceof Error ? e.message : e);
+      setError(
+        /permission|allowed/i.test(msg)
+          ? 'Your phone needs “Calls on your PC” turned on (PinchDrop app → Settings → Features).'
+          : msg,
+      );
     } finally {
       setBusy(null);
     }
   }
+  const actRef = useRef(act);
+  actRef.current = act;
+
+  // v2: a gesture from the webcam (palm / swipe / fist), and which one is being held right now.
+  const [held, setHeld] = useState<{ pose: string | null; progress: number }>({ pose: null, progress: 0 });
+  useEffect(() => {
+    const onGesture = (e: Event) => void actRef.current((e as CustomEvent<'answer' | 'reject' | 'silence'>).detail);
+    window.addEventListener('pd-call-gesture', onGesture);
+    const off = inTauri ? onEvent<{ pose: string | null; progress: number }>('call-pose', setHeld) : null;
+    return () => {
+      window.removeEventListener('pd-call-gesture', onGesture);
+      void off?.then((u) => u());
+    };
+  }, []);
 
   return (
     <section aria-label={`Incoming call from ${who}`} style={{ width }} className="p-5 flex flex-col gap-4 text-text">
@@ -58,8 +77,40 @@ export function CallIsland({ live, width, listening, showDevice = false }: { liv
         </div>
       </div>
       {listening && (
-        <div className="flex items-center gap-1.5 text-[12px] text-accent">
-          <Hand size={13} aria-hidden="true" /> Open palm = answer · swipe = reject · fist = silence
+        <div className="flex flex-col gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5" aria-label="Hand gestures">
+            {(
+              [
+                { pose: 'open', emoji: '✋', label: 'Hold palm', does: 'Answer', color: '#34C759' },
+                { pose: 'swipe', emoji: '👋', label: 'Swipe', does: 'Reject', color: '#FF3B30' },
+                { pose: 'fist', emoji: '✊', label: 'Hold fist', does: 'Silence', color: '#A1A1AA' },
+              ] as const
+            ).map((g) => {
+              const on = held.pose === g.pose;
+              const p = on ? held.progress : 0;
+              return (
+                <div
+                  key={g.pose}
+                  className={`relative overflow-hidden rounded-xl px-2 py-1.5 text-center transition-colors ${on ? 'bg-white/[0.14]' : 'bg-white/[0.06]'}`}
+                >
+                  <span aria-hidden="true" className="absolute inset-y-0 left-0 transition-[width] duration-100" style={{ width: `${p * 100}%`, background: `${g.color}55` }} />
+                  <div className="relative text-[18px] leading-none">{g.emoji}</div>
+                  <div className="relative text-[11px] font-semibold mt-1">{g.does}</div>
+                  <div className="relative text-[10px] text-muted">{g.label}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1.5 text-[11.5px] text-accent" aria-live="polite">
+            <Hand size={12} aria-hidden="true" />
+            {held.pose === null
+              ? 'Raise your hand to the camera'
+              : held.pose === 'open'
+                ? 'Keep your palm still…'
+                : held.pose === 'fist'
+                  ? 'Keep your fist still…'
+                  : 'I see your hand. Hold your palm still to answer'}
+          </div>
         </div>
       )}
       <div className="flex gap-2">

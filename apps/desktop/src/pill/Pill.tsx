@@ -308,10 +308,9 @@ export function Pill() {
       // v2: gestures seen by the webcam act on whatever the Island is showing.
       onEvent<string>('gesture', (g) => {
         if (ringingRef.current) {
-          if (g === 'palm_hold') void api.callAction('answer');
-          else if (g === 'swipe_left' || g === 'swipe_right') void api.callAction('reject');
-          else if (g === 'fist_hold') void api.callAction('silence');
-          // (the PC sends these to whichever phone is ringing)
+          // The call card does it (for the phone that's ringing) and shows how it went.
+          const a = g === 'palm_hold' ? 'answer' : g === 'swipe_left' || g === 'swipe_right' ? 'reject' : g === 'fist_hold' ? 'silence' : null;
+          if (a) window.dispatchEvent(new CustomEvent('pd-call-gesture', { detail: a }));
           return;
         }
         const b = bannerRef.current;
