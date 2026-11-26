@@ -111,6 +111,15 @@ Pairing, live battery and sending were confirmed working on a POCO F7 + HP lapto
 ## 🚀 v2 backlog (agreed 2026-11-25, not started)
 Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](docs/v2-plan.md).
 
+v2.2 (2026-11-26) — founder bug round, built, check open:
+- Dropping on a phone's chip offers it to that phone only (its Catch screen); letting go elsewhere offers it to all, first to catch wins.
+- An app's outgoing call (e.g. Instagram "Calling…") is no longer shown as incoming; caller name taken from the text when the app titles it with its own name.
+- Island says "Sent to <phone>" / "Received from <phone>"; map lists connected phones without a location yet.
+- Pill fades out while the app window is open and back in when it's closed/minimised; first run shows setup, never the pill; no blank window flash.
+- Smooth pill width change when switching phones; designed phone list (+1 ⌄) on the Island; designed dropdowns everywhere in Settings; styled sidebar hover labels.
+- Home, sidebar: every connected phone; Messages and Contacts: choose the phone; Notifications always name the phone with 2+ phones.
+- Phone files page: browse each phone (All files access), previews, bring to PC, drag a file from one phone onto another (relayed through the PC, no copy kept).
+
 v2.1 (2026-11-26) — built, founder check open:
 - Several phones on the pill: "+N ⌄" switcher; the shown phone drives the badge, Messages, Contacts. A call on any phone shows with the phone's name.
 - WhatsApp / Instagram / Messenger calls: Answer / Reject / Silence (presses the app's own buttons); missed calls (SIM and apps) as a red icon per phone.
