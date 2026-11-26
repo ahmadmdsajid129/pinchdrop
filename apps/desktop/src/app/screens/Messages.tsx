@@ -161,7 +161,6 @@ export function Messages() {
                 setOpen(null);
                 setThreads(null);
               }}
-              layoutId="messages-phone"
             />
             <Button size="sm" onClick={() => void loadThreads()} disabled={loading}>
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
