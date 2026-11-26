@@ -52,6 +52,10 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <!-- v2: the latest photos on the PC's Island strip. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- v2: the phone's files on the PC (Phone files page, phone → phone). Asked on the Permissions screen. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
