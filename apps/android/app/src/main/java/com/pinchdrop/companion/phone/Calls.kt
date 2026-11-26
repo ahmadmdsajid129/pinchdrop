@@ -34,6 +34,18 @@ object Calls {
     @Volatile private var answered = false
     /** The dialer notification that said "incoming call", if that's how we noticed it. */
     @Volatile private var notifKey: String? = null
+    /** v2: a call through an app (WhatsApp, Instagram, Messenger…): its name and notification. */
+    @Volatile private var appName: String? = null
+    @Volatile private var appCall: StatusBarNotification? = null
+
+    /** The phone's own call screen (a SIM call), not an app. */
+    private val DIALERS = setOf(
+        "com.android.server.telecom", "com.android.incallui", "com.android.phone", "com.android.dialer",
+        "com.google.android.dialer", "com.samsung.android.incallui", "com.samsung.android.dialer", "com.miui.voip",
+    )
+
+    private fun isDialer(context: Context, pkg: String): Boolean =
+        pkg in DIALERS || runCatching { context.getSystemService(TelecomManager::class.java).defaultDialerPackage == pkg }.getOrDefault(false)
     private var mutedRing = false
     private var listening: Any? = null
 
@@ -43,6 +55,7 @@ object Calls {
             .put("state", state)
             .put("number", number ?: JSONObject.NULL)
             .put("name", name ?: JSONObject.NULL)
+            .put("app", appName ?: JSONObject.NULL)
     }
 
     /** Moves to a new state and tells the PC (once per change; a late number or name is passed on too). */
@@ -64,6 +77,8 @@ object Calls {
                 number = null
                 nameHint = null
                 notifKey = null
+                appName = null
+                appCall = null
                 return
             }
         }
@@ -123,18 +138,36 @@ object Calls {
         }
     }
 
-    /** The dialer's incoming-call notification: the caller's name as the phone shows it. */
+    private fun actionTitles(n: Notification) = n.actions.orEmpty().map { it.title?.toString()?.lowercase().orEmpty() }
+    private val ANSWER = Regex("answer|accept|pick up|join")
+    private val DECLINE = Regex("decline|reject|dismiss|ignore|hang ?up|end call|cancel")
+
+    /**
+     * A call notification: the phone's own (SIM, gives the caller's name) or an app's
+     * (WhatsApp, Instagram, Messenger… — the only way to see those calls at all).
+     */
     fun onCallNotification(context: Context, sbn: StatusBarNotification) {
         val n = sbn.notification
-        if (n.category != Notification.CATEGORY_CALL) return
-        val type = n.extras.getInt("android.callType", 0) // Notification.CallStyle: 1 = incoming
-        val incoming = type == 1 || (type == 0 && n.fullScreenIntent != null)
+        val titles = actionTitles(n)
+        val looksLikeCall = n.category == Notification.CATEGORY_CALL ||
+            (titles.any { ANSWER.containsMatchIn(it) } && titles.any { DECLINE.containsMatchIn(it) })
+        if (!looksLikeCall) return
+        val type = n.extras.getInt("android.callType", 0) // Notification.CallStyle: 1 = incoming, 2 = ongoing
+        val incoming = type == 1 || (type == 0 && (n.fullScreenIntent != null || titles.any { ANSWER.containsMatchIn(it) }))
         val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()
+        val fromApp = !isDialer(context, sbn.packageName)
         if (incoming) {
             notifKey = sbn.key
+            if (fromApp) {
+                appCall = sbn
+                appName = runCatching {
+                    val pm = context.packageManager
+                    pm.getApplicationLabel(pm.getApplicationInfo(sbn.packageName, 0)).toString()
+                }.getOrDefault("App")
+            }
             set(context, "ringing", name = title)
         } else if (state == "ringing" && sbn.key == notifKey) {
-            // Same notification turned into an ongoing call: answered.
+            // The same notification turned into an ongoing call: answered.
             set(context, "active")
         }
     }
@@ -142,21 +175,41 @@ object Calls {
     fun onCallNotificationRemoved(context: Context, sbn: StatusBarNotification) {
         if (sbn.key != notifKey) return
         notifKey = null
-        // Only decides on its own when Android's call state isn't available.
-        if (listening == null && state == "ringing") set(context, "idle")
+        // App calls are only known through their notification; SIM calls only decide here
+        // when Android's own call state isn't available.
+        if (appCall != null || listening == null) {
+            if (state == "ringing" || state == "active") set(context, "idle")
+        }
+    }
+
+    /** Presses a button on the app's call notification (Answer / Decline). */
+    private fun pressAppButton(context: Context, match: Regex): Boolean {
+        val sbn = appCall ?: return false
+        val a = sbn.notification.actions?.firstOrNull { match.containsMatchIn(it.title?.toString()?.lowercase().orEmpty()) } ?: return false
+        a.actionIntent.send(context, 0, Intent())
+        return true
     }
 
     @SuppressLint("MissingPermission")
     fun answer(context: Context) {
-        if (!context.has(Manifest.permission.ANSWER_PHONE_CALLS)) throw NoPermission()
         check(state == "ringing")
+        if (appCall != null) {
+            check(pressAppButton(context, ANSWER))
+            return
+        }
+        if (!context.has(Manifest.permission.ANSWER_PHONE_CALLS)) throw NoPermission()
         context.getSystemService(TelecomManager::class.java).acceptRingingCall()
     }
 
     @SuppressLint("MissingPermission")
     fun reject(context: Context) {
+        check(state == "ringing")
+        if (appCall != null) {
+            check(pressAppButton(context, DECLINE))
+            return
+        }
         if (!context.has(Manifest.permission.ANSWER_PHONE_CALLS)) throw NoPermission()
-        check(state == "ringing" && Build.VERSION.SDK_INT >= 28)
+        check(Build.VERSION.SDK_INT >= 28)
         context.getSystemService(TelecomManager::class.java).endCall()
     }
 
@@ -164,7 +217,8 @@ object Calls {
     @SuppressLint("MissingPermission")
     fun silence(context: Context) {
         check(state == "ringing")
-        val done = runCatching { context.getSystemService(TelecomManager::class.java).silenceRinger() }.isSuccess
+        // App calls ring through the ring stream too; muting it silences them.
+        val done = appCall == null && runCatching { context.getSystemService(TelecomManager::class.java).silenceRinger() }.isSuccess
         if (!done) {
             val audio = context.getSystemService(AudioManager::class.java)
             audio.adjustStreamVolume(AudioManager.STREAM_RING, AudioManager.ADJUST_MUTE, 0)
