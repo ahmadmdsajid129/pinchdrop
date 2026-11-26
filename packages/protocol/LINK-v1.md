@@ -97,7 +97,7 @@ The PC sends `push.offer`:
   - A file picked on its own is just its name.
   - Files in a picked folder start with the folder name.
   - The PC never sends absolute paths. The phone rejects `..`, empty segments and leading `/`.
-- `destination` is `auto` or `downloads`.
+- `destination` is `auto`, `downloads`, or (v2) `folder:<path>`: a folder in the phone's shared storage, picked in the PC's Phone files page. The phone uses it only with All files access and a safe path, and otherwise falls back to `auto`.
   - `auto`: a photo or video picked **on its own** goes to the Gallery (`Pictures/PinchDrop`, `Movies/PinchDrop`).
   - Everything else goes to `Download/PinchDrop/…`, keeping the folder structure.
 - `texts` are notes or links. They are saved to the phone's Received list straight away, and copied to the clipboard when the app is on screen.
