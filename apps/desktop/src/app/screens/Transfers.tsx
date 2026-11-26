@@ -124,7 +124,7 @@ export function Transfers() {
         actions={
           <>
             <label htmlFor="tsearch" className="sr-only">Search transfers</label>
-            <input
+            <input autoComplete="off" spellCheck={false}
               id="tsearch"
               value={query}
               onChange={(e) => setQuery(e.target.value)}

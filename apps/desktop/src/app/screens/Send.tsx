@@ -136,7 +136,7 @@ export function Send() {
             }}
           >
             <label htmlFor="send-text" className="sr-only">Text or link to send</label>
-            <input
+            <input autoComplete="off" spellCheck={false}
               id="send-text"
               value={text}
               onChange={(e) => setText(e.target.value)}

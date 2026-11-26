@@ -69,7 +69,7 @@ export function Profile() {
         <div className="flex-[1_1_320px] flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="pcname" className="text-[13px] text-muted">PC name shown on your phone</label>
-            <input
+            <input autoComplete="off" spellCheck={false}
               id="pcname"
               value={name}
               maxLength={40}

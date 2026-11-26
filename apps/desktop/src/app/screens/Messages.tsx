@@ -187,7 +187,7 @@ export function Messages() {
             <div className="p-3 border-b border-line">
               <label className="flex items-center gap-2 h-9 px-3 rounded-full bg-bg2 text-muted">
                 <Search size={14} />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="flex-1 bg-transparent outline-none text-[13px] text-text placeholder:text-muted" />
+                <input autoComplete="off" spellCheck={false} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="flex-1 bg-transparent outline-none text-[13px] text-text placeholder:text-muted" />
               </label>
             </div>
             <div className="flex-1 overflow-y-auto">

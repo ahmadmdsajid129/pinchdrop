@@ -110,7 +110,7 @@ export function Contacts() {
           <div className="p-3 border-b border-line">
             <label className="flex items-center gap-2 h-10 px-3.5 rounded-full bg-bg2 text-muted">
               <Search size={15} />
-              <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={list ? `Search ${list.length} contacts` : 'Search'} className="flex-1 bg-transparent outline-none text-[14px] text-text placeholder:text-muted" />
+              <input autoComplete="off" spellCheck={false} autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={list ? `Search ${list.length} contacts` : 'Search'} className="flex-1 bg-transparent outline-none text-[14px] text-text placeholder:text-muted" />
             </label>
           </div>
           {list === null && <div className="p-5 text-[13px] text-muted">Asking your phone…</div>}
