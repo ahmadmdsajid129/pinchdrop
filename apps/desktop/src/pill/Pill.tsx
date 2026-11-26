@@ -730,7 +730,8 @@ function PillButton({
       {shows === 'name_battery' && (
         <>
           {connected && <Smartphone size={size.icon} className="text-accent" aria-hidden="true" />}
-          <span>{label}</span>
+          {/* long names ("OnePlus Nord CE 3 Lite 5G") are shortened so the pill stays compact */}
+          <span className="max-w-[150px] truncate">{label}</span>
         </>
       )}
       {shows === 'battery' && phone.state === 'none' && <span>Pair a phone</span>}
