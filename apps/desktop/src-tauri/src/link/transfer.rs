@@ -81,6 +81,8 @@ impl Transfer {
 #[serde(rename_all = "camelCase")]
 pub struct TransferView {
     pub id: String,
+    /// Which device (v2: the Phone files page refreshes when a send to it finishes).
+    pub device_id: String,
     pub device_name: String,
     pub label: String,
     pub created_at: u64,
@@ -103,6 +105,7 @@ impl From<&Transfer> for TransferView {
     fn from(t: &Transfer) -> Self {
         Self {
             id: t.id.clone(),
+            device_id: t.device_id.clone(),
             device_name: t.device_name.clone(),
             label: t.label.clone(),
             created_at: t.created_at,
