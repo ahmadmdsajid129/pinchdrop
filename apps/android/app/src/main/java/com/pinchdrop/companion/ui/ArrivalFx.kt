@@ -47,13 +47,21 @@ private fun ease(x: Float) = FastOutSlowInEasing.transform(x)
 /** A little overshoot for the "pop". */
 private fun pop(x: Float): Float = if (x <= 0f) 0f else 1f + 0.15f * sin(x * PI).toFloat() * (1f - x) * 2f
 
+/** The packs the phone knows (anything else plays as "default"). */
+val KNOWN_PACKS = setOf("plane", "portal", "comet", "blackhole", "origami", "pixel", "ink", "liquid")
+
+/**
+ * Plays a pack's arrival around [content]. With [reverse] it plays backwards: the file leaves the
+ * way it would have come (phone -> PC sends, when the PC catches it).
+ */
 @Composable
-fun ArrivalArt(fx: String, content: @Composable () -> Unit) {
+fun ArrivalArt(fx: String, reverse: Boolean = false, onFinished: () -> Unit = {}, content: @Composable () -> Unit) {
     val reduced = LocalContext.current.animationsOff()
-    val pack = if (reduced) "default" else fx
-    val t = remember(pack) { Animatable(if (pack == "default") 1f else 0f) }
-    LaunchedEffect(pack) {
-        if (pack != "default") t.animateTo(1f, tween(arrivalMillis(pack).toInt(), easing = LinearEasing))
+    val pack = if (reduced || fx !in KNOWN_PACKS) "default" else fx
+    val t = remember(pack, reverse) { Animatable(if (pack == "default" || reverse) 1f else 0f) }
+    LaunchedEffect(pack, reverse) {
+        if (pack != "default") t.animateTo(if (reverse) 0f else 1f, tween(arrivalMillis(pack).toInt(), easing = LinearEasing))
+        onFinished()
     }
     val v = t.value
     Box(Modifier.size(width = 220.dp, height = 140.dp), contentAlignment = Alignment.Center) {
@@ -152,7 +160,144 @@ fun ArrivalArt(fx: String, content: @Composable () -> Unit) {
                 val r = seg(v, 0.45f, 0.7f)
                 Box(Modifier.graphicsLayer { alpha = r; val s = pop(r) * r.coerceAtLeast(0.01f).let { 0.3f + 0.7f * it }; scaleX = s; scaleY = s }) { content() }
             }
+            "blackhole" -> BlackHoleArrival(v, content)
+            "origami" -> OrigamiArrival(v, content)
+            "pixel" -> PixelArrival(v, content)
+            "ink" -> InkArrival(v, content)
+            "liquid" -> LiquidArrival(v, content)
             else -> content()
+        }
+    }
+}
+
+/** A white hole: a dark core flashes into a bright ring and the file spins out of it. */
+@Composable
+private fun BlackHoleArrival(v: Float, content: @Composable () -> Unit) {
+    Canvas(Modifier.fillMaxSize()) {
+        val a = seg(v, 0f, 0.35f)
+        val b = seg(v, 0.35f, 0.9f)
+        if (a > 0f && b < 1f) {
+            val r = size.height * 0.35f * ease(a)
+            drawCircle(Color.Black.copy(alpha = 1f - b), radius = r * (1f - b * 0.6f) + 0.5f, center = center)
+            rotate(v * 540f, pivot = center) {
+                drawCircle(
+                    Brush.sweepGradient(listOf(Color(0xFFF97316), Color(0xFFA855F7), Color(0xFFFACC15), Color(0xFFF97316)), center = center),
+                    radius = r * (1f + b) + 0.5f, center = center, style = Stroke(6.dp.toPx() * (1f - b) + 0.5f),
+                )
+            }
+            val glow = r * 2f + 1f
+            drawCircle(
+                Brush.radialGradient(listOf(Color.White.copy(alpha = (b * (1f - b) * 3f).coerceIn(0f, 1f)), Color.Transparent), center = center, radius = glow),
+                radius = glow, center = center,
+            )
+        }
+    }
+    val r = seg(v, 0.4f, 0.8f)
+    Box(Modifier.graphicsLayer { alpha = r; val s = pop(r) * (0.2f + 0.8f * r); scaleX = s; scaleY = s; rotationZ = 300f * (1f - ease(r)) }) { content() }
+}
+
+/** A paper crane flaps in, then unfolds into the file. */
+@Composable
+private fun OrigamiArrival(v: Float, content: @Composable () -> Unit) {
+    Canvas(Modifier.fillMaxSize()) {
+        val p = ease(seg(v, 0f, 0.6f))
+        val fade = 1f - seg(v, 0.6f, 0.72f)
+        if (fade > 0f) {
+            val c = center + Offset(-size.width * 0.5f * (1f - p), -size.height * 0.6f * (1f - p) - sin(p * PI).toFloat() * size.height * 0.15f)
+            val s = 26.dp.toPx()
+            val flap = sin(v * 40f)
+            val body = Path().apply { moveTo(c.x - s, c.y + s * 0.1f); lineTo(c.x + s, c.y + s * 0.1f); lineTo(c.x, c.y + s * 0.45f); close() }
+            val left = Path().apply { moveTo(c.x, c.y); lineTo(c.x - s * 0.6f, c.y - s * flap); lineTo(c.x - s * 0.1f, c.y + s * 0.1f); close() }
+            val right = Path().apply { moveTo(c.x, c.y); lineTo(c.x + s * 0.7f, c.y - s * 0.9f * flap); lineTo(c.x + s * 0.15f, c.y + s * 0.1f); close() }
+            val ink = Color(0xFFE11D48).copy(alpha = fade)
+            val line = Stroke(1.5.dp.toPx(), join = StrokeJoin.Round)
+            drawPath(left, Color(0xFFFDA4AF).copy(alpha = fade)); drawPath(left, ink, style = line)
+            drawPath(right, Color(0xFFFB7185).copy(alpha = fade)); drawPath(right, ink, style = line)
+            drawPath(body, Color(0xFFFFE4E6).copy(alpha = fade)); drawPath(body, ink, style = line)
+        }
+    }
+    val r = seg(v, 0.6f, 0.9f)
+    // Unfolds: grows from a thin fold to full width.
+    Box(Modifier.graphicsLayer { alpha = r; scaleX = (0.05f + 0.95f * ease(r)) * pop(r); scaleY = 0.7f + 0.3f * r }) { content() }
+}
+
+/** Pixels rain down and rebuild the file. */
+@Composable
+private fun PixelArrival(v: Float, content: @Composable () -> Unit) {
+    val colors = listOf(Color(0xFF0A84FF), Color(0xFF5E5CE6), Color.White, Color(0xFF64D2FF), Color(0xFFBF5AF2))
+    Canvas(Modifier.fillMaxSize()) {
+        val cols = 10
+        val rows = 7
+        val cell = 9.dp.toPx()
+        val left = center.x - cols * cell / 2f
+        val top = center.y - rows * cell / 2f
+        val fade = 1f - seg(v, 0.72f, 0.9f)
+        if (fade > 0f) {
+            for (i in 0 until cols * rows) {
+                val col = i % cols
+                val row = i / cols
+                val start = ((i * 37) % 23) / 23f * 0.35f
+                val p = ease(seg(v, start, start + 0.35f))
+                val y = top + row * cell - (1f - p) * (size.height * 0.9f + row * cell)
+                drawRect(
+                    colors[(i * 7) % colors.size].copy(alpha = fade * (0.4f + 0.6f * p)),
+                    topLeft = Offset(left + col * cell, y),
+                    size = androidx.compose.ui.geometry.Size(cell - 1.5f, cell - 1.5f),
+                )
+            }
+        }
+    }
+    val r = seg(v, 0.68f, 0.92f)
+    Box(Modifier.graphicsLayer { alpha = r; val s = 0.92f + 0.08f * pop(r); scaleX = s; scaleY = s }) { content() }
+}
+
+/** An ink drop falls in, ink blooms outward, and the file appears from the middle. */
+@Composable
+private fun InkArrival(v: Float, content: @Composable () -> Unit) {
+    Canvas(Modifier.fillMaxSize()) {
+        val d = seg(v, 0f, 0.3f)
+        if (d < 1f) {
+            val y = -size.height * 0.6f * (1f - ease(d))
+            drawCircle(Color(0xFF1E3A8A), radius = 10.dp.toPx(), center = center + Offset(0f, y))
+        }
+        val b = seg(v, 0.28f, 0.95f)
+        if (b > 0f && b < 1f) {
+            for (i in 0 until 5) {
+                val o = Offset(((i - 2) * 14).dp.toPx() * ease(b), (((i * 3) % 5) - 2) * 6.dp.toPx() * ease(b))
+                val rad = (28 + i * 10).dp.toPx() * ease(b) + 1f
+                val col = if (i % 2 == 0) Color(0xFF3B82F6) else Color(0xFF1E3A8A)
+                drawCircle(
+                    Brush.radialGradient(listOf(col.copy(alpha = 0.55f * (1f - b)), Color.Transparent), center = center + o, radius = rad),
+                    radius = rad, center = center + o,
+                )
+            }
+        }
+    }
+    val r = seg(v, 0.4f, 0.75f)
+    Box(Modifier.graphicsLayer { alpha = r; val s = 0.5f + 0.5f * pop(r); scaleX = s; scaleY = s }) { content() }
+}
+
+/** Liquid fills up, then drains away, leaving the file. */
+@Composable
+private fun LiquidArrival(v: Float, content: @Composable () -> Unit) {
+    val r = seg(v, 0.5f, 0.8f)
+    Box(Modifier.graphicsLayer { alpha = r; val s = 0.85f + 0.15f * pop(r); scaleX = s; scaleY = s }) { content() }
+    Canvas(Modifier.fillMaxSize()) {
+        val fill = ease(seg(v, 0f, 0.45f)) * (1f - ease(seg(v, 0.55f, 0.95f)))
+        if (fill > 0f) {
+            val level = size.height * (1f - fill)
+            val wave = Path().apply {
+                moveTo(0f, size.height)
+                lineTo(0f, level)
+                val steps = 24
+                for (k in 0..steps) {
+                    val x = size.width * k / steps
+                    lineTo(x, level + sin(k / steps.toFloat() * 4f * PI.toFloat() + v * 14f) * 6.dp.toPx())
+                }
+                lineTo(size.width, size.height)
+                close()
+            }
+            drawPath(wave, Brush.verticalGradient(listOf(Color(0xCC22D3EE), Color(0xEE0A84FF)), startY = level, endY = size.height))
         }
     }
 }
