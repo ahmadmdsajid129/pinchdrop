@@ -172,9 +172,10 @@ export const api = {
   peerPairAnswer: (ok: boolean) => (inTauri ? invoke<void>('peer_pair_answer', { ok }) : Promise.resolve()),
 
   // v2 · Calls, unread badge, find my phone.
-  phoneLive: (): Promise<PhoneLive> => (inTauri ? invoke('phone_live') : Promise.resolve(DEMO_LIVE)),
-  clearMissed: () => (inTauri ? invoke<void>('clear_missed') : Promise.resolve()),
-  callAction: (action: 'answer' | 'reject' | 'silence') => (inTauri ? invoke<void>('call_action', { action }) : Promise.resolve()),
+  phoneLive: (): Promise<PhoneLive[]> => (inTauri ? invoke('phone_live') : Promise.resolve([])),
+  clearMissed: (deviceId?: string | null) => (inTauri ? invoke<void>('clear_missed', { deviceId: deviceId ?? null }) : Promise.resolve()),
+  callAction: (action: 'answer' | 'reject' | 'silence', deviceId?: string | null) =>
+    inTauri ? invoke<void>('call_action', { action, deviceId: deviceId ?? null }) : Promise.resolve(),
   findPhone: (stop = false) => (inTauri ? invoke<void>('find_phone', { stop }) : Promise.resolve()),
 
   // v2 · Lift (phone → PC).
@@ -271,20 +272,18 @@ export function useDevices() {
   return devices;
 }
 
-const DEMO_LIVE: PhoneLive = { unread: 0, call: 'idle', callerName: null, callerNumber: null, missed: null };
-
-/** v2 · Unread texts and calls, live (for the pill). */
+/** v2 · Unread texts and calls of every connected phone, live (for the pill). */
 export function usePhoneLive() {
-  const [live, setLive] = useState<PhoneLive>(DEMO_LIVE);
+  const [live, setLive] = useState<PhoneLive[]>([]);
   useEffect(() => {
     api.phoneLive().then(setLive);
   }, []);
-  useAsyncSubscription(() => onEvent<PhoneLive>('phone-live', setLive), []);
+  useAsyncSubscription(() => onEvent<PhoneLive[]>('phone-live', setLive), []);
   useEffect(() => {
     if (inTauri) return;
     const on = (e: Event) => {
-      const d = (e as CustomEvent).detail as { type: string; live?: PhoneLive };
-      if (d.type === 'live' && d.live) setLive(d.live);
+      const d = (e as CustomEvent).detail as { type: string; live?: PhoneLive | PhoneLive[] };
+      if (d.type === 'live' && d.live) setLive(Array.isArray(d.live) ? d.live : [d.live]);
     };
     window.addEventListener('pd-demo', on);
     return () => window.removeEventListener('pd-demo', on);
