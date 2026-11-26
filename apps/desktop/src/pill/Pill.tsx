@@ -9,6 +9,7 @@ import { NotifIsland } from './NotifIsland';
 import { CallIsland } from './CallIsland';
 import { InfoIsland, type Info } from './InfoIsland';
 import { NowPlaying, PlayingBars } from './NowPlaying';
+import { PhotoStrip } from './PhotoStrip';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
 import { sound, playAlert, startRing, stopRing, DEFAULT_PHONE_SOUNDS } from '../shared/sound';
@@ -578,7 +579,12 @@ export function Pill() {
                 <SendingIsland t={liveTransfer} width={ISLAND_W} reduced={reduced} />
               ) : (
                 <Island
-                  nowPlaying={live.media ? <NowPlaying media={live.media} deviceId={live.deviceId} /> : null}
+                  nowPlaying={
+                    <>
+                      {live.media ? <NowPlaying media={live.media} deviceId={live.deviceId} /> : null}
+                      {phone?.state === 'connected' && live.deviceId ? <PhotoStrip deviceId={live.deviceId} /> : null}
+                    </>
+                  }
                   settings={settings}
                   phone={phone}
                   update={update}
