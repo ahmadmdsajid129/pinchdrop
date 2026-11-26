@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Upload } from 'lucide-react';
-import { inTauri, useReducedMotion, useTheme } from '../shared/api';
+import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
 import { useApp } from './context';
 import { Sidebar } from './Sidebar';
 import { Onboarding } from './screens/Onboarding';
@@ -20,6 +20,8 @@ import { PhoneFiles } from './screens/PhoneFiles';
 
 export function App() {
   const { route, go, settings, addPaths } = useApp();
+  const routeRef = useRef(route);
+  routeRef.current = route;
   useTheme(settings.theme);
   const reduced = useReducedMotion(settings.motion);
   const [dragOver, setDragOver] = useState(false);
@@ -29,13 +31,35 @@ export function App() {
     if (!inTauri) return;
     let off: (() => void) | undefined;
     void import('@tauri-apps/api/webview').then(async ({ getCurrentWebview }) => {
+      // v2: on the Phone files page, files dragged in from Explorer go straight into the folder
+      // a phone pane is showing (the pane under the pointer lights up).
+      const paneAt = (pos: { x: number; y: number } | undefined) => {
+        if (!pos) return null;
+        const k = window.devicePixelRatio || 1;
+        const el = document.elementFromPoint(pos.x / k, pos.y / k)?.closest('[data-drop-device]') as HTMLElement | null;
+        return el ? { id: el.dataset.dropDevice!, name: el.dataset.dropName ?? 'phone', path: el.dataset.dropPath ?? '' } : null;
+      };
       off = await getCurrentWebview().onDragDropEvent((e) => {
-        const p = e.payload;
-        if (p.type === 'enter' || p.type === 'over') setDragOver(true);
-        else if (p.type === 'leave') setDragOver(false);
-        else if (p.type === 'drop') {
+        const p = e.payload as { type: string; paths?: string[]; position?: { x: number; y: number } };
+        const onFiles = routeRef.current === 'files';
+        if (p.type === 'enter' || p.type === 'over') {
+          if (onFiles) window.dispatchEvent(new CustomEvent('pd-os-drag', { detail: paneAt(p.position)?.id ?? null }));
+          else setDragOver(true);
+        } else if (p.type === 'leave') {
           setDragOver(false);
-          void addPaths(p.paths).then(() => go('send'));
+          window.dispatchEvent(new CustomEvent('pd-os-drag', { detail: null }));
+        } else if (p.type === 'drop') {
+          setDragOver(false);
+          window.dispatchEvent(new CustomEvent('pd-os-drag', { detail: null }));
+          const pane = onFiles ? paneAt(p.position) : null;
+          if (pane && p.paths?.length) {
+            window.dispatchEvent(new CustomEvent('pd-os-drop', { detail: { ...pane, count: p.paths.length } }));
+            void api.sendItems(p.paths, [], `folder:${pane.path}`, pane.id).catch((err) =>
+              window.dispatchEvent(new CustomEvent('pd-os-drop', { detail: { ...pane, error: String(err instanceof Error ? err.message : err) } })),
+            );
+          } else if (!onFiles) {
+            void addPaths(p.paths ?? []).then(() => go('send'));
+          }
         }
       });
     });
