@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { useId } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 export function Card({ children, className = '', as: Tag = 'section', ...rest }: { children: ReactNode; className?: string; as?: 'section' | 'div' } & Record<string, unknown>) {
   return (
@@ -66,6 +66,10 @@ export function Toggle({
   );
 }
 
+/**
+ * A designed dropdown (replaces the plain Windows one): rounded button, a soft popover list
+ * with a check on the chosen item; keyboard: ↑ ↓ Enter Esc.
+ */
 export function Select<T extends string | number>({
   value,
   options,
@@ -79,23 +83,103 @@ export function Select<T extends string | number>({
   label: string;
   disabled?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const box = useRef<HTMLDivElement | null>(null);
+  const current = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    setActive(Math.max(0, options.findIndex((o) => o.value === value)));
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', away);
+    return () => window.removeEventListener('mousedown', away);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = (i: number) => {
+    const o = options[i];
+    if (o) onChange(o.value);
+    setOpen(false);
+  };
+
   return (
-    <select
-      aria-label={label}
-      value={String(value)}
-      disabled={disabled}
-      onChange={(e) => {
-        const found = options.find((o) => String(o.value) === e.target.value);
-        if (found) onChange(found.value);
-      }}
-      className="h-9 px-3 rounded-xl bg-bg2 border border-line text-text text-[13px] disabled:opacity-50"
+    <div ref={box} className="relative inline-block">
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!open) return setOpen(true);
+            setActive((i) => (i + (e.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length);
+          } else if (e.key === 'Enter' && open) {
+            e.preventDefault();
+            pick(active);
+          } else if (e.key === 'Escape') setOpen(false);
+        }}
+        className={`h-9 pl-3.5 pr-2.5 rounded-full bg-bg2 hover:bg-surface2 text-text text-[13px] font-medium inline-flex items-center gap-1.5 transition disabled:opacity-50 ${
+          open ? 'ring-2 ring-primary/40' : ''
+        }`}
+      >
+        <span className="truncate max-w-[160px]">{current?.label ?? '—'}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className={`text-muted transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label={label}
+          className="absolute z-50 right-0 mt-1.5 min-w-[170px] max-h-[280px] overflow-auto p-1.5 rounded-[16px] bg-surface border border-line/70 shadow-[0_18px_50px_rgba(0,0,0,0.18)] origin-top-right animate-[pd-pop_140ms_ease-out]"
+        >
+          {options.map((o, i) => {
+            const chosen = o.value === value;
+            return (
+              <li
+                key={String(o.value)}
+                role="option"
+                aria-selected={chosen}
+                onMouseEnter={() => setActive(i)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pick(i);
+                }}
+                className={`flex items-center gap-2 h-9 px-3 rounded-[10px] text-[13px] cursor-default select-none ${
+                  i === active ? 'bg-bg2' : ''
+                } ${chosen ? 'font-semibold text-text' : 'text-soft'}`}
+              >
+                <span className="flex-1 truncate">{o.label}</span>
+                {chosen && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" className="text-primary" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** A small styled label that appears beside an element on hover (wrap the element; needs a relative parent). */
+export function HoverTip({ text, side = 'right' }: { text: string; side?: 'right' | 'bottom' }) {
+  return (
+    <span
+      role="tooltip"
+      className={`pointer-events-none absolute z-50 whitespace-nowrap px-2.5 py-1 rounded-full bg-[#1D1D1F] text-white text-[12px] font-medium shadow-[0_8px_24px_rgba(0,0,0,0.22)] opacity-0 scale-95 transition duration-150 group-hover:opacity-100 group-hover:scale-100 group-focus-visible:opacity-100 ${
+        side === 'right' ? 'left-full top-1/2 -translate-y-1/2 ml-2.5 origin-left' : 'top-full left-1/2 -translate-x-1/2 mt-2 origin-top'
+      }`}
     >
-      {options.map((o) => (
-        <option key={String(o.value)} value={String(o.value)}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+      {text}
+    </span>
   );
 }
 
