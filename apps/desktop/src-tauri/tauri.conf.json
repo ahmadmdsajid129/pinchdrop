@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding",
         "url": "index.html",
         "title": "PinchDrop",
         "width": 1200,
@@ -25,6 +26,7 @@
       },
       {
         "label": "pill",
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding",
         "url": "pill.html",
         "title": "PinchDrop pill",
         "width": 220,
@@ -42,6 +44,7 @@
       },
       {
         "label": "overlay",
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding",
         "url": "overlay.html",
         "title": "PinchDrop hand tracking",
         "width": 800,
