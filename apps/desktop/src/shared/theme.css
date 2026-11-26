@@ -150,3 +150,6 @@ html {
 @keyframes pd-bar { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
 .pd-bar { transform-origin: bottom; animation: pd-bar 0.9s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .pd-bar { animation: none; transform: scaleY(0.7); } }
+
+/* v2: popovers */
+@keyframes pd-pop { from { opacity: 0; transform: scale(0.96) translateY(-4px); } to { opacity: 1; transform: none; } }
