@@ -202,6 +202,26 @@ export interface Contact {
   numbers: { number: string; label: string }[];
 }
 
+/** v2 · A phone's last known place (map). */
+export interface PlaceView {
+  deviceId: string;
+  deviceName: string;
+  lat: number;
+  lon: number;
+  accuracy: number;
+  time: number;
+  connected: boolean;
+}
+
+/** v2 · A recent photo on the phone (Island strip). */
+export interface PhonePhoto {
+  id: number;
+  name: string;
+  date: number;
+  size: number;
+  thumb: string;
+}
+
 /** v2 · Another PinchDrop PC on the Wi-Fi (laptop ↔ laptop). */
 export interface FoundPc {
   pcId: string;
