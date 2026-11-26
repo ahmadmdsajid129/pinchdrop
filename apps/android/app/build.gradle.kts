@@ -4,6 +4,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// The built APK is named PinchDrop-<build type>.apk.
+base.archivesName.set("PinchDrop")
+
 android {
     namespace = "com.pinchdrop.companion"
     compileSdk = 36
@@ -12,8 +15,8 @@ android {
         applicationId = "com.pinchdrop.companion"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "2.0.0"
     }
 
     buildTypes {
