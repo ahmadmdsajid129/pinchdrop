@@ -129,7 +129,11 @@ fn patch_settings(app: &AppHandle, patch: Value) -> Result<Settings, String> {
     let current = app.state::<AppState>().snapshot();
     let next = settings::apply_patch(&current, &patch)?;
     let clip_changed = next.phone.clipboard_sync != current.phone.clipboard_sync;
+    let phone_changed = next.phone.selected != current.phone.selected;
     let out = commit_settings(app, next);
+    if phone_changed {
+        emit_phone_status(app);
+    }
     if clip_changed {
         if let Some(l) = link_of(app) {
             l.clip_config_all();
@@ -539,14 +543,16 @@ async fn notif_dismiss(app: AppHandle, key: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn notif_reply(app: AppHandle, key: String, text: String) -> Result<(), String> {
-    link_or_err(&app)?
-        .phone_request(
-            "notif.reply",
-            serde_json::json!({ "key": key, "text": text }),
-            "notification access",
-        )
-        .await
-        .map(|_| ())
+    let link = link_or_err(&app)?;
+    let device = link.notif_device(&key);
+    link.phone_request_to(
+        device.as_deref(),
+        "notif.reply",
+        serde_json::json!({ "key": key, "text": text }),
+        "notification access",
+    )
+    .await
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -605,20 +611,24 @@ async fn phone_dial(app: AppHandle, number: String) -> Result<serde_json::Value,
 }
 
 #[tauri::command]
-fn phone_live() -> link::phone_live::PhoneLive {
-    link::phone_live::live()
+fn phone_live() -> Vec<link::phone_live::PhoneLive> {
+    link::phone_live::all()
 }
 
 #[tauri::command]
-fn clear_missed(app: AppHandle) {
+fn clear_missed(app: AppHandle, device_id: Option<String>) {
     if let Some(l) = link_of(&app) {
-        l.clear_missed();
+        l.clear_missed(device_id.as_deref());
     }
 }
 
 /// Answer / reject / silence the ringing phone (palm, swipe, fist, or a click).
 #[tauri::command]
-async fn call_action(app: AppHandle, action: String) -> Result<(), String> {
+async fn call_action(
+    app: AppHandle,
+    action: String,
+    device_id: Option<String>,
+) -> Result<(), String> {
     let kind = match action.as_str() {
         "answer" => "call.answer",
         "reject" => "call.reject",
@@ -626,7 +636,14 @@ async fn call_action(app: AppHandle, action: String) -> Result<(), String> {
         _ => return Err("Unknown call action".into()),
     };
     link_or_err(&app)?
-        .phone_request(kind, serde_json::json!({}), "calls")
+        .phone_request_to(
+            device_id
+                .or_else(link::phone_live::ringing_device)
+                .as_deref(),
+            kind,
+            serde_json::json!({}),
+            "calls",
+        )
         .await
         .map(|_| ())
 }
