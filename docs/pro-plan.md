@@ -116,7 +116,7 @@ Once a certificate or Trusted Signing account exists, the build signs automatica
 
 ## 9. "PinchDrop Huddle": the hackathon idea (no gestures, just drag and drop)
 
-**Built (2026-11-26), inside PinchDrop:** see [huddle.md](huddle.md). Not yet: hotspot fallback, reconnect, file drops on the pill's faces.
+**Built (2026-11-26), inside PinchDrop:** see [huddle.md](huddle.md). Hotspot fallback and reconnect built too. Not yet: file drops on the pill's faces, host hand-over.
 
 **One line:** your teammates appear as faces on the edge of your screen; drag anything onto a face and it lands in the right place on their laptop. No internet, no accounts, no WhatsApp.
 

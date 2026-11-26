@@ -8,7 +8,13 @@ The laptops at one table, connected in one click. Teammates appear as faces (on 
 1. **Start:** sidebar → Huddle → *Start a huddle*. It's announced on the Wi-Fi as mDNS `_pdhuddle._tcp` (TXT: `hid`, `name`, `host`, `n`).
 2. **Join:** teammates see it under *Huddles on this Wi-Fi* and click *Join*. The host's PinchDrop window opens with "<name> wants to join" and a 4-digit code; the teammate's screen shows the same code. The host clicks *Allow*.
 3. **Mesh:** the host's `welcome` carries the huddle key and the member list. The newcomer connects to every member directly and proves membership. The host tells existing members with `joined`.
-4. **Leave / end:** *Leave* (or *End huddle* for the host) sends `bye`, closes everything and wipes the shelf and inbox. A closed connection counts as having left; teammates rejoin to come back.
+4. **Leave / end:** *Leave* (or *End huddle* for the host) sends `bye`, closes everything and wipes the shelf and inbox.
+5. **Reconnect:** a connection that drops without `bye` keeps the teammate (greyed out, "Reconnecting…"). The laptop that opened that connection redials every 2–15 s with a fresh key exchange and a `member` proof. After 2 minutes without them they're removed.
+
+## Join codes and the hotspot fallback
+- Every huddle has an 8-character join code (`KX7Q-49MZ`; no 0/O/1/I/L), shown on the Huddle page and in its announcement (TXT `code`). The server prefers port **47700**.
+- **Join with a code:** first looks for that code on the current Wi-Fi. If it isn't visible (Wi-Fi that keeps laptops apart), it connects to the host's hotspot `PinchDrop-<first 4>` (password `pinchdrop-<code>`): it adds a Wi-Fi profile, connects, then finds the huddle there (discovery, or the hotspot's fixed address `192.168.137.1:47700`). Leaving deletes the profile and reconnects to the Wi-Fi it was on.
+- **Host: "Team can't see it? Share a hotspot":** turns on Windows' Mobile Hotspot with that name and password (the laptop must be online). The previous hotspot name and password are put back when it's turned off or the huddle ends.
 
 Free huddles hold up to 4 laptops (`FREE_MAX_LAPTOPS`); more need PinchDrop Pro on the host.
 
@@ -45,7 +51,6 @@ Free huddles hold up to 4 laptops (`FREE_MAX_LAPTOPS`); more need PinchDrop Pro 
 - **Shelf:** text that looks like a key or password is blurred until clicked.
 
 ## Not yet
-- automatic hotspot fallback, when venue Wi-Fi isolates laptops from each other
 - dropping files onto the faces on the pill (clicking a face sends your clipboard)
-- reconnecting after a drop-out
 - moving the host role when the host leaves
+- following a teammate whose address changed while they were away (they rejoin)
