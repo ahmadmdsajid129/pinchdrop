@@ -170,10 +170,14 @@ private fun DoneBody(a: Receiver.Arrived, onClose: () -> Unit) {
     val context = LocalContext.current
     val tick = remember(a) { Animatable(0f) }
     LaunchedEffect(a) {
+        // With an animation pack, the tick pops once the arrival has played.
+        val wait = arrivalMillis(a.fx)
+        if (wait > 0) kotlinx.coroutines.delay(wait - 150)
         tick.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow))
     }
     val thumb = rememberThumbnail(a.uri?.takeIf { a.kind == ItemKind.PHOTO }, 480)
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        ArrivalArt(a.fx) {
         Box(contentAlignment = Alignment.Center) {
             if (thumb != null) {
                 Image(
@@ -191,6 +195,7 @@ private fun DoneBody(a: Receiver.Arrived, onClose: () -> Unit) {
                     .size(38.dp).shadow(8.dp, CircleShape).clip(CircleShape).background(Color(0xFF34C759)),
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Filled.Check, contentDescription = "Received", tint = Color.White, modifier = Modifier.size(24.dp)) }
+        }
         }
         Spacer(Modifier.height(14.dp))
         Text(

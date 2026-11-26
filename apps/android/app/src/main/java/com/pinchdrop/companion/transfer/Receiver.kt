@@ -44,6 +44,9 @@ object Receiver {
     private val WINDOW get() = if (fast) 6 else 4
     private const val CHUNK_TIMEOUT_MS = 30_000L
 
+    /** The arrival animation the PC asked for (only known packs). */
+    private fun fxOf(o: Offer): String = o.raw.optString("fx").takeIf { it in setOf("plane", "portal", "comet") } ?: "default"
+
     data class OfferFile(val index: Int, val segments: List<String>, val size: Long)
 
     data class Offer(
@@ -81,6 +84,8 @@ object Receiver {
         val uri: String?,
         val text: String?,
         val openFirst: Boolean,
+        /** v2 · The PC's animation pack ("default" | "plane" | "portal" | "comet"): the arrival matches it. */
+        val fx: String = "default",
     )
 
     /**
@@ -331,7 +336,7 @@ object Receiver {
         if (o.files.isEmpty()) {
             val t = o.texts.last()
             val link = o.texts.size == 1 && Regex("^https?://\\S+$", RegexOption.IGNORE_CASE).matches(t.trim())
-            _arrivals.tryEmit(Arrived(if (link) "Link" else if (o.texts.size == 1) "Note" else "${o.texts.size} notes", ItemKind.TEXT, t.length.toLong(), o.texts.size, o.pcName, "Copied to clipboard", null, t, false))
+            _arrivals.tryEmit(Arrived(if (link) "Link" else if (o.texts.size == 1) "Note" else "${o.texts.size} notes", ItemKind.TEXT, t.length.toLong(), o.texts.size, o.pcName, "Copied to clipboard", null, t, false, fxOf(o)))
             if (link) {
                 // Open it now if PinchDrop is on screen (Android blocks this from the background);
                 // otherwise one tap on the notification opens it.
@@ -481,10 +486,10 @@ object Receiver {
         }
         val single = rows.singleOrNull()
         val arrived = if (single != null) {
-            Arrived(single.name, single.kind, single.size, single.fileCount, o.pcName, single.location, single.uri, null, o.openFirst)
+            Arrived(single.name, single.kind, single.size, single.fileCount, o.pcName, single.location, single.uri, null, o.openFirst, fxOf(o))
         } else {
             val first = rows.firstOrNull { it.uri != null }
-            Arrived(o.label, ItemKind.FOLDER, rows.sumOf { it.size }, rows.sumOf { it.fileCount }, o.pcName, "Downloads/PinchDrop", first?.uri, null, o.openFirst)
+            Arrived(o.label, ItemKind.FOLDER, rows.sumOf { it.size }, rows.sumOf { it.fileCount }, o.pcName, "Downloads/PinchDrop", first?.uri, null, o.openFirst, fxOf(o))
         }
         _arrivals.tryEmit(arrived)
         if (!foreground) Notifications.postArrived(app, "“${arrived.name}” arrived", "From ${o.pcName} · ${arrived.location}")
