@@ -98,7 +98,7 @@ export function Home() {
 
           {connected ? (
             <>
-              <PhoneChips value={shownId ?? phone.deviceId ?? null} onChange={setShownId} layoutId="home-phone" />
+              <PhoneChips value={shownId ?? phone.deviceId ?? null} onChange={setShownId} />
               <div className="flex items-center gap-3.5">
                 <div className="w-[52px] h-[52px] rounded-2xl bg-surface2 text-accent flex items-center justify-center">
                   <Smartphone size={26} aria-hidden="true" />
