@@ -135,6 +135,7 @@ export interface DeviceView {
 /** One send, as the Transfers screen shows it. Mirrors link::transfer::TransferView. */
 export interface TransferView {
   id: string;
+  deviceId?: string;
   deviceName: string;
   label: string;
   createdAt: number;
