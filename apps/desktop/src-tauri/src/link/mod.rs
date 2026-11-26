@@ -5,6 +5,7 @@
 //! pill can show its real name and battery.
 
 pub mod lift;
+pub mod peer;
 pub mod phone_data;
 pub mod phone_live;
 pub mod proto;
@@ -240,6 +241,8 @@ impl Link {
 
     /// Binds the listener (default port, else any free one), advertises over mDNS and accepts phones.
     pub fn start(self: &Arc<Self>) {
+        // v2: keep paired PCs (laptop ↔ laptop) connected.
+        self.peers_start();
         let link = self.clone();
         tauri::async_runtime::spawn(async move {
             let acceptor = match tls_acceptor(&link.identity) {
@@ -957,12 +960,36 @@ impl Link {
                 }
             })
             .collect();
+        // v2: PCs this PC paired with as a client (laptop ↔ laptop).
+        out.extend(self.peer_device_views());
         out.sort_by(|a, b| {
             b.connected
                 .cmp(&a.connected)
                 .then(b.last_seen.cmp(&a.last_seen))
         });
         out
+    }
+
+    /// The phone for phone-only requests (texts, contacts, calls): never a paired PC.
+    pub(super) fn target_phone(&self) -> Option<(String, String)> {
+        let sessions = self.sessions.lock().ok()?;
+        let devices = self.devices.lock().ok()?;
+        let mut list: Vec<(&String, &Session)> = sessions
+            .iter()
+            .filter(|(id, _)| {
+                devices
+                    .get(id)
+                    .map(|d| d.model != "Windows PC")
+                    .unwrap_or(true)
+            })
+            .collect();
+        list.sort_by_key(|(_, s)| std::cmp::Reverse(s.since));
+        let (id, _) = list.first()?;
+        let name = devices
+            .get(id)
+            .map(|d| d.name.clone())
+            .unwrap_or_else(|| "phone".into());
+        Some(((*id).clone(), name))
     }
 
     /// The phone the pill shows: the most recently connected one, else the most recently seen.
@@ -1151,6 +1178,7 @@ impl Link {
 
     /// Tells every other device that a hold was caught elsewhere.
     pub fn hold_cancel_except(&self, hold_id: &str, except: &str, reason: &str) {
+        self.peers_cancel_lift(hold_id, reason);
         if let Ok(s) = self.sessions.lock() {
             for (id, sess) in s.iter() {
                 if id != except {
@@ -1165,6 +1193,13 @@ impl Link {
 
     /// Tells connected phones a hold ended without being caught.
     pub fn hold_cancel(&self, hold_id: &str, reason: &str) {
+        self.hold_cancel_phones(hold_id, reason);
+        // v2: a paired PC that was offered it as a lift stops waiting too.
+        self.peers_cancel_lift(hold_id, reason);
+    }
+
+    /// Only the devices connected to this PC (not paired PCs this PC is a client of).
+    pub fn hold_cancel_phones(&self, hold_id: &str, reason: &str) {
         if let Ok(s) = self.sessions.lock() {
             for sess in s.values() {
                 let _ = sess.tx.send(Out::Text(message(
