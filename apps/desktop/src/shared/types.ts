@@ -54,15 +54,22 @@ export interface Settings {
 export interface PhoneSettings {
   clipboardSync: boolean;
   callGestures: boolean;
+  /** The phone the pill shows when several are connected. */
+  selected?: string | null;
 }
 
 /** v2 · Live phone status for the pill (mirrors link::phone_live::PhoneLive). */
 export interface PhoneLive {
+  deviceId: string;
+  deviceName: string;
   unread: number;
   call: 'ringing' | 'active' | 'idle';
   callerName: string | null;
   callerNumber: string | null;
+  /** "WhatsApp", "Instagram"…; null = a SIM call. */
+  callApp: string | null;
   missed: string | null;
+  missedApp: string | null;
 }
 
 export interface PhoneStatus {
@@ -74,6 +81,9 @@ export interface PhoneStatus {
   network: string | null;
   freeSpaceGb: number | null;
   isDemo: boolean;
+  /** v2: which phone this is, and the other connected ones (pill "+1"). */
+  deviceId?: string | null;
+  others?: { id: string; name: string }[];
 }
 
 /** Phase 3 pairing: what the Pair screen shows. Mirrors link::PairInfo. */
@@ -148,6 +158,9 @@ export interface NotifView {
   time: number;
   canReply: boolean;
   icon: string | null;
+  kind?: 'sms' | 'message' | 'other';
+  deviceId?: string;
+  deviceName?: string;
 }
 
 /** v2 · A text-message conversation on the phone (LINK-v1 §6.6). */
