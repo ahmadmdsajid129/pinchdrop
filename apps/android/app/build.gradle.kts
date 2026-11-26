@@ -58,6 +58,8 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     // Phase 6: open-hand catch with the front camera. Same hand model as the PC, bundled in assets.
     implementation("com.google.mediapipe:tasks-vision:0.10.21")
+    // v2: scan a document on the phone (Google's on-device scanner); the PDF opens on the PC.
+    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1")
 
     implementation(platform("androidx.compose:compose-bom:2025.09.00"))
     implementation("androidx.compose.ui:ui")
