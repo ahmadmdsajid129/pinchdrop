@@ -17,8 +17,8 @@ export function SendingIsland({ t, width, reduced }: { t: TransferView; width: n
   const incoming = t.direction === 'in';
 
   let line: string;
-  if (done && incoming) line = `Saved in Downloads\\PinchDrop · opened`;
-  else if (done) line = `Delivered to ${t.deviceName}${t.moved ? ' · PC copy in the Recycle Bin' : ''}`;
+  if (done && incoming) line = `“${t.label}” · saved in Downloads\\PinchDrop and opened`;
+  else if (done) line = `“${t.label}” arrived on ${t.deviceName}${t.moved ? ' · PC copy in the Recycle Bin' : ''}`;
   else if (failed) line = t.error ?? (t.state === 'declined' ? `${t.deviceName} declined` : 'Stopped');
   else if (paused) line = `Paused at ${pct}% — resumes when ${t.deviceName} is back`;
   else if (waiting) line = `Waiting for ${t.deviceName} to accept…`;
@@ -50,7 +50,11 @@ export function SendingIsland({ t, width, reduced }: { t: TransferView; width: n
         </motion.div>
         <div className="flex-1 min-w-0">
           <div className="font-display font-semibold text-[16px] truncate">
-            {done ? `“${t.label}” arrived` : `${incoming ? 'Receiving' : 'Sending'} “${t.label}”`}
+            {done
+              ? incoming
+                ? `Received from ${t.deviceName}`
+                : `Sent to ${t.deviceName}`
+              : `${incoming ? 'Receiving' : 'Sending'} “${t.label}”`}
           </div>
           <div className={`text-[12px] truncate ${failed ? 'text-danger' : 'text-muted'}`} aria-live="polite">
             {line}
