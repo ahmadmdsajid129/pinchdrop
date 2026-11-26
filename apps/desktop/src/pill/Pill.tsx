@@ -9,7 +9,7 @@ import { NotifIsland } from './NotifIsland';
 import { CallIsland } from './CallIsland';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
-import { sound } from '../shared/sound';
+import { sound, playAlert, startRing, stopRing, DEFAULT_PHONE_SOUNDS } from '../shared/sound';
 import type { HoldView, LiftView, NotifView, PhoneLive, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
 
 /** Transparent margin around the pill so its shadow isn't clipped. */
@@ -68,6 +68,19 @@ export function Pill() {
   const missedLive = lives.find((l) => l.missed) ?? null;
   const manyPhones = (phone?.others?.length ?? 0) > 0 || lives.length > 1;
   const ringing = !!ringingLive;
+  // v2: sounds per phone (Settings → Your phone → Sounds).
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const soundsFor = (deviceId: string | undefined) => {
+    const ph = settingsRef.current?.phone;
+    return { ...DEFAULT_PHONE_SOUNDS, ...(ph?.sounds?.default ?? {}), ...((deviceId && ph?.sounds?.[deviceId]) || {}) };
+  };
+  const ringingDevice = ringingLive?.deviceId ?? null;
+  useEffect(() => {
+    if (!ringingDevice || settingsRef.current?.phone?.soundsOn === false) return;
+    startRing(soundsFor(ringingDevice).call);
+    return () => stopRing();
+  }, [ringingDevice]); // eslint-disable-line react-hooks/exhaustive-deps
   const ringingRef = useRef(false);
   const wasRinging = useRef(false);
 
@@ -295,6 +308,10 @@ export function Pill() {
         // hand around, curling the fingers) must never close the Island or switch the camera off.
       }),
       onEvent<NotifView>('phone-notif', (n) => {
+        if (settingsRef.current?.phone?.soundsOn !== false) {
+          const s = soundsFor(n.deviceId);
+          playAlert(n.kind === 'sms' ? s.sms : s.message);
+        }
         // Something more important is on the Island: the notification waits in the app's list.
         if (holdRef.current || liftRef.current) return;
         setBanner((cur) => {
