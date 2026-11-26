@@ -153,9 +153,12 @@ object Calls {
             (titles.any { ANSWER.containsMatchIn(it) } && titles.any { DECLINE.containsMatchIn(it) })
         if (!looksLikeCall) return
         val type = n.extras.getInt("android.callType", 0) // Notification.CallStyle: 1 = incoming, 2 = ongoing
-        val incoming = type == 1 || (type == 0 && (n.fullScreenIntent != null || titles.any { ANSWER.containsMatchIn(it) }))
-        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()
         val fromApp = !isDialer(context, sbn.packageName)
+        val canAnswer = titles.any { ANSWER.containsMatchIn(it) }
+        // An app's *outgoing* call ("Calling…" on the phone that rings someone) has no Answer
+        // button: only the phone being called gets one. SIM calls keep the system's call type.
+        val incoming = if (fromApp) canAnswer && type != 2 else type == 1 || (type == 0 && (n.fullScreenIntent != null || canAnswer))
+        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()
         if (incoming) {
             notifKey = sbn.key
             if (fromApp) {
@@ -165,7 +168,12 @@ object Calls {
                     pm.getApplicationLabel(pm.getApplicationInfo(sbn.packageName, 0)).toString()
                 }.getOrDefault("App")
             }
-            set(context, "ringing", name = title)
+            // Some apps title it with their own name ("Instagram") and put the caller in the text.
+            val text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim()
+            val who = if (fromApp && (title.isNullOrBlank() || title.equals(appName, ignoreCase = true))) {
+                text?.replace(Regex("(?i)\\s*(is calling.*|incoming (video |audio |voice )?call.*|calling.*)$"), "")?.trim()?.ifBlank { null } ?: title
+            } else title
+            set(context, "ringing", name = who)
         } else if (state == "ringing" && sbn.key == notifKey) {
             // The same notification turned into an ongoing call: answered.
             set(context, "active")
