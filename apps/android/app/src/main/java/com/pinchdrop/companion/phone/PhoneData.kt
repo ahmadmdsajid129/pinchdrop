@@ -34,7 +34,7 @@ object PhoneData {
     val requestTypes = setOf(
         "sms.threads", "sms.thread", "sms.send", "contacts.list", "call.dial", "notif.dismiss", "notif.reply",
         "call.answer", "call.reject", "call.silence", "phone.ring", "phone.ring.stop",
-        "media.cmd", "photos.recent", "photos.send",
+        "media.cmd", "photos.recent", "photos.send", "files.list", "files.thumb", "files.send",
     )
 
     fun isConnected() = connected
@@ -111,6 +111,9 @@ object PhoneData {
                     "media.cmd" -> { MediaWatcher.command(p.optString("action")); JSONObject() }
                     "photos.recent" -> JSONObject().put("photos", Photos.recent(app, p.optInt("limit", 12).coerceIn(1, 24)))
                     "photos.send" -> { Photos.send(app, p.optLong("id")); JSONObject() }
+                    "files.list" -> PhoneFiles.list(p.optString("path"))
+                    "files.thumb" -> PhoneFiles.thumb(p.optString("path"))
+                    "files.send" -> { PhoneFiles.send(app, p.optString("path"), p.optString("relay").ifBlank { null }); JSONObject() }
                     "phone.ring.stop" -> { FindPhone.stop(app); JSONObject() }
                     "notif.dismiss" -> { if (!NotifyListener.dismiss(p.optString("key"))) throw NoPermission(); JSONObject() }
                     "notif.reply" -> {
