@@ -89,7 +89,7 @@ export interface PhoneStatus {
   isDemo: boolean;
   /** v2: which phone this is, and the other connected ones (pill "+1"). */
   deviceId?: string | null;
-  others?: { id: string; name: string }[];
+  others?: { id: string; name: string; battery: number | null; charging: boolean }[];
 }
 
 /** Phase 3 pairing: what the Pair screen shows. Mirrors link::PairInfo. */
