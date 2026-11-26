@@ -183,6 +183,24 @@ export interface Contact {
   numbers: { number: string; label: string }[];
 }
 
+/** v2 · Another PinchDrop PC on the Wi-Fi (laptop ↔ laptop). */
+export interface FoundPc {
+  pcId: string;
+  name: string;
+  hosts: string[];
+  port: number;
+  fingerprint: string;
+  paired: boolean;
+}
+
+/** v2 · Pairing with another PC, step by step. */
+export interface PeerPairView {
+  stage: 'connecting' | 'code' | 'waiting' | 'done' | 'failed';
+  pcName: string;
+  code: string | null;
+  message: string | null;
+}
+
 /** v2 · Something the phone lifted and is holding in the air. Mirrors link::lift::LiftView. */
 export interface LiftView {
   id: string;
