@@ -93,6 +93,16 @@ export interface PoseConfig {
   waveMs: number;
   /** After any event, ignore everything for this long. */
   cooldownMs: number;
+  /** Calls: an open hand counts without the thumb (it often hides behind the palm). */
+  lenientOpen?: boolean;
+  /** Calls: no wave (a palm moving into place must not count as anything). */
+  noWave?: boolean;
+  /** A held pose survives this long of unreadable frames (tracking flicker). */
+  graceMs?: number;
+  /** Judge "still" on a smoothed speed, so a slightly shaky hand still counts. */
+  smoothSpeed?: boolean;
+  /** No swipes until the hand has been in view this long (raising a hand into view isn't a swipe). */
+  settleMs?: number;
 }
 
 /** Sensitivity 0–100 → thresholds (more sensitive = shorter holds, closer hands not needed). */
@@ -113,6 +123,28 @@ export function poseConfigFor(sensitivity: number): PoseConfig {
   };
 }
 
+/**
+ * While the phone rings: easier to hit. Palm needn't show the thumb, shorter holds, a shaky hand
+ * still counts, brief tracking loss doesn't restart the hold, and a slower, shorter swipe works.
+ */
+export function callPoseConfigFor(sensitivity: number): PoseConfig {
+  const base = poseConfigFor(sensitivity);
+  return {
+    ...base,
+    minScale: base.minScale * 0.7,
+    minScore: Math.min(base.minScore, 0.55),
+    holdMs: { ...base.holdMs, open: Math.round(base.holdMs.open * 0.7), fist: Math.round(base.holdMs.fist * 0.8) },
+    stillSpeed: 1.1,
+    swipeMs: 550,
+    settleMs: 450,
+    cooldownMs: 1500,
+    lenientOpen: true,
+    noWave: true,
+    graceMs: 350,
+    smoothSpeed: true,
+  };
+}
+
 const HOLD_EVENT: Record<'open' | 'peace' | 'thumbs_up' | 'fist', PoseEvent> = {
   open: 'palm_hold',
   peace: 'peace_hold',
@@ -129,6 +161,10 @@ export class PoseMachine {
   private fired = false;
   private coolUntil = -Infinity;
   private last: { t: number; x: number; y: number } | null = null;
+  private speedEma = 0;
+  private firstSeen = 0;
+  /** Last time the held pose was actually seen (for graceMs). */
+  private seenAt = 0;
   /** The pose being held and how far along it is (0..1), for a progress ring. */
   holding: { pose: Pose; progress: number } | null = null;
 
@@ -136,6 +172,7 @@ export class PoseMachine {
 
   reset() {
     this.trail = [];
+    this.speedEma = 0;
     this.pose = 'other';
     this.fired = false;
     this.last = null;
@@ -145,17 +182,33 @@ export class PoseMachine {
   step(t: number, h: HandShape | null): PoseEvent | null {
     const c = this.config;
     this.holding = null;
+    const grace = c.graceMs ?? 0;
     if (!h || h.score < c.minScore || h.scale < c.minScale) {
+      // Lost the hand for a moment while holding: keep the hold (progress paused).
+      if (grace > 0 && this.pose in HOLD_EVENT && !this.fired && t - this.seenAt <= grace) return null;
       this.reset();
       return null;
     }
     const prev = this.last;
-    const speed = prev && t > prev.t ? (Math.hypot(h.x - prev.x, h.y - prev.y) * 1000) / (t - prev.t) : 0;
+    const raw = prev && t > prev.t ? (Math.hypot(h.x - prev.x, h.y - prev.y) * 1000) / (t - prev.t) : 0;
+    this.speedEma = prev ? this.speedEma * 0.6 + raw * 0.4 : 0;
+    const speed = c.smoothSpeed ? this.speedEma : raw;
+    if (!prev) this.firstSeen = t;
     this.last = { t, x: h.x, y: h.y };
-    const pose = classifyPose(h);
+    let pose = classifyPose(h);
+    if (c.lenientOpen && pose === 'other') {
+      const f = h.fingers;
+      if (f.index && f.middle && f.ring && f.pinky && h.pinchRatio >= 0.35) pose = 'open';
+    }
+    // A frame or two misread in the middle of a hold doesn't restart it.
+    if (grace > 0 && pose !== this.pose && this.pose in HOLD_EVENT && (pose === 'other' || pose === 'point' || pose === 'pinch') && t - this.seenAt <= grace) {
+      pose = this.pose;
+    }
+    if (pose === this.pose) this.seenAt = t;
     if (pose !== this.pose) {
       this.pose = pose;
       this.poseSince = t;
+      this.seenAt = t;
       this.fired = false;
     }
     if (t < this.coolUntil) return null;
@@ -164,7 +217,7 @@ export class PoseMachine {
     const flat = pose === 'open' || (h.fingers.index && h.fingers.middle && h.fingers.ring);
     this.trail.push({ t, x: h.x, open: flat });
     this.trail = this.trail.filter((p) => t - p.t <= Math.max(c.waveMs, c.swipeMs));
-    const motion = this.motion(t);
+    const motion = t - this.firstSeen >= (c.settleMs ?? 0) ? this.motion(t) : null;
     if (motion) {
       this.fire(t);
       return motion;
@@ -221,7 +274,7 @@ export class PoseMachine {
         ext = p.x;
       }
     }
-    if (turns >= c.waveTurns - 1) return 'wave';
+    if (!c.noWave && turns >= c.waveTurns - 1) return 'wave';
     // Swipe: one fast sweep in one direction.
     const recent = pts.filter((p) => t - p.t <= c.swipeMs);
     if (recent.length >= 3) {
