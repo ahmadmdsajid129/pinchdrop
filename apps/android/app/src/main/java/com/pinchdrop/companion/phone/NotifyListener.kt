@@ -32,11 +32,14 @@ class NotifyListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        // v2: the dialer's incoming-call notification tells us who's ringing (works on every phone).
+        Calls.onCallNotification(applicationContext, sbn)
         if (!shouldMirror(sbn)) return
         payloadOf(this, sbn)?.let { PhoneData.push("notif.posted", it) }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        Calls.onCallNotificationRemoved(applicationContext, sbn)
         PhoneData.push("notif.removed", JSONObject().put("key", sbn.key))
     }
 
