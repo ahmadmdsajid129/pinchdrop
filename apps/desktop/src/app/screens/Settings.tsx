@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { api, useDevices } from '../../shared/api';
 import { ALERTS, DEFAULT_PHONE_SOUNDS, RINGS, playAlert } from '../../shared/sound';
 import { useApp } from '../context';
-import { Button, Card, PageTitle, PhaseBadge, Radio, Row, Segmented, Select, Toggle } from '../ui';
+import { Button, Card, PageTitle, Radio, Row, Segmented, Select, Toggle } from '../ui';
 import { CameraPreview, listCameras, requestCameraAccess } from '../CameraPreview';
 import type { Camera } from '../CameraPreview';
 
@@ -181,8 +181,8 @@ export function SettingsScreen() {
         </Row>
       </Section>
 
-      <Section id="notify" title="Notifications" badge={<PhaseBadge phase={7} />}>
-        <Row title="Windows notification when a send finishes or fails">
+      <Section id="notify" title="Notifications">
+        <Row title="Windows notification when a send finishes or fails" description="Only while the PinchDrop window isn't in front">
           <Toggle label="Finish notifications" checked={settings.notifications.onFinish} onChange={(v) => void update({ notifications: { onFinish: v } })} />
         </Row>
         <Row title="Tell me when my phone disconnects" last>
@@ -203,9 +203,7 @@ export function SettingsScreen() {
       </Section>
 
       <Section id="about" title="About & updates">
-        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Phase 5 build — grab with a pinch">
-          <Button size="sm" disabled>Check for updates</Button>
-        </Row>
+        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Pinch it on your PC, drop it on your phone" />
         <Row title="Preview with a demo phone" description="Shows a pretend phone (marked DEMO) when no real phone is paired">
           <Toggle label="Demo phone" checked={settings.demoPhone} onChange={(v) => void update({ demoPhone: v })} />
         </Row>

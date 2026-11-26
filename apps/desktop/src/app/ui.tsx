@@ -244,14 +244,6 @@ export function PageTitle({ children, actions }: { children: ReactNode; actions?
   );
 }
 
-/** Marks something that's designed but only becomes real in a later build phase. */
-export function PhaseBadge({ phase }: { phase: number }) {
-  return (
-    <span className="inline-flex items-center h-5 px-2 rounded-md bg-warn/15 text-warn text-[11px] font-bold whitespace-nowrap">
-      Coming in Phase {phase}
-    </span>
-  );
-}
 
 export function EmptyState({ icon, title, children, action }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
