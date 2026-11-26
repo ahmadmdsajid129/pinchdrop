@@ -1,4 +1,6 @@
-import { Smartphone } from 'lucide-react';
+import { useState } from 'react';
+import { Laptop, Smartphone } from 'lucide-react';
+import { PeerPair } from '../PeerPair';
 import { api, useDevices } from '../../shared/api';
 import type { DeviceView } from '../../shared/types';
 import { useApp } from '../context';
@@ -36,7 +38,7 @@ function DeviceCard({ d }: { d: DeviceView }) {
     <Card className={`p-[22px] flex flex-col gap-[18px] ${d.connected ? 'border-success/60' : ''}`}>
       <div className="flex items-center gap-3.5 flex-wrap">
         <div className="w-[52px] h-[52px] rounded-2xl bg-surface2 text-accent flex items-center justify-center">
-          <Smartphone size={26} aria-hidden="true" />
+          {d.model === 'Windows PC' ? <Laptop size={26} aria-hidden="true" /> : <Smartphone size={26} aria-hidden="true" />}
         </div>
         <div className="flex-1 min-w-[200px]">
           <div className="flex items-center gap-2.5">
@@ -67,10 +69,24 @@ function DeviceCard({ d }: { d: DeviceView }) {
 export function Devices() {
   const { phone, go, update } = useApp();
   const devices = useDevices();
+  const [pairPc, setPairPc] = useState(false);
 
   return (
     <>
-      <PageTitle actions={<Button variant="primary" onClick={() => go('pair')}>+ Pair a new phone</Button>}>Devices</PageTitle>
+      <PageTitle
+        actions={
+          <>
+            <Button onClick={() => setPairPc(true)}>
+              <Laptop size={15} /> Pair with another PC
+            </Button>
+            <Button variant="primary" onClick={() => go('pair')}>+ Pair a new phone</Button>
+          </>
+        }
+      >
+        Devices
+      </PageTitle>
+
+      {pairPc && <PeerPair onClose={() => setPairPc(false)} />}
 
       {devices.map((d) => <DeviceCard key={d.id} d={d} />)}
 
