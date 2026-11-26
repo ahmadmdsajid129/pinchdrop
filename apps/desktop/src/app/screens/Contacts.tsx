@@ -85,7 +85,7 @@ export function Contacts() {
       <PageTitle
         actions={
           <>
-          <PhoneChips value={deviceId} onChange={(id) => { setDeviceId(id); setList(null); }} layoutId="contacts-phone" />
+          <PhoneChips value={deviceId} onChange={(id) => { setDeviceId(id); setList(null); }} />
           <Button size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
           </Button>
