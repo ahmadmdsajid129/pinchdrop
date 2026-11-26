@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { Check, Crown, MessageSquare, Music2, Phone, PhoneOff, Play, Plane, Smartphone, Sparkles, Upload } from 'lucide-react';
+import { Bird, Check, Crown, Droplet, MessageSquare, Music2, Phone, PhoneOff, Play, Plane, Smartphone, Sparkles, Upload } from 'lucide-react';
 import { api } from '../shared/api';
 import {
   DEFAULT_PILL_STYLE,
@@ -322,27 +322,38 @@ export function StudioPage() {
                 </div>
                 <div className="text-[12.5px] text-muted leading-snug min-h-[34px]">{f.tagline}</div>
               </button>
-              <Button
-                size="sm"
-                onClick={() =>
-                  void api.playSendFx({
-                    kind: 'launch',
-                    label: 'Holiday photos',
-                    fileCount: 12,
-                    totalBytes: 48 * 1024 * 1024,
-                    isFolder: true,
-                    target: { x: window.screen.width / 2, y: 30 },
-                    pack: f.id,
-                  })
-                }
-              >
-                <Play size={14} aria-hidden="true" /> Play on my screen
-              </Button>
+              <div className="flex gap-2">
+                {(['launch', 'arrive'] as const).map((kind) => (
+                  <Button
+                    key={kind}
+                    size="sm"
+                    className="flex-1"
+                    disabled={kind === 'arrive' && f.id === 'default'}
+                    onClick={() =>
+                      void api.playSendFx({
+                        kind,
+                        label: 'Holiday photos',
+                        fileCount: 12,
+                        totalBytes: 48 * 1024 * 1024,
+                        isFolder: true,
+                        target: { x: window.screen.width / 2, y: 30 },
+                        pack: f.id,
+                        sounds: settings.gestures.sounds !== false,
+                      })
+                    }
+                  >
+                    <Play size={14} aria-hidden="true" /> {kind === 'launch' ? 'Send' : 'Arrive'}
+                  </Button>
+                ))}
+              </div>
             </li>
           );
         })}
       </ul>
-      <p className="m-0 -mt-2 text-[13px] text-muted">Your phone plays the matching arrival when a send lands.</p>
+      <p className="m-0 -mt-2 text-[13px] text-muted">
+        <b className="text-soft">Send</b> plays on your screen as it leaves for the phone; your phone plays the matching arrival, with its own sound and vibration.{' '}
+        <b className="text-soft">Arrive</b> is what you see when you catch something from your phone. Sounds follow Settings → Gestures → Sounds.
+      </p>
 
       {/* Shape and clock */}
       <Card className="p-5 flex flex-col gap-4">
@@ -405,6 +416,47 @@ function FxThumb({ pack }: { pack: FxPack }) {
       <span className="pd-fx-comet absolute left-0 top-1/2 flex items-center">
         <span className="w-16 h-[5px] rounded-full bg-[linear-gradient(90deg,transparent,rgba(255,170,60,0.7),#fff)] blur-[1px]" />
         <span className="w-3.5 h-3.5 -ml-1 rounded-full bg-white shadow-[0_0_14px_5px_rgba(255,190,80,0.85)]" />
+      </span>
+    );
+  if (pack === 'blackhole')
+    return (
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span
+          className="pd-fx-portal w-[60px] h-[60px] rounded-full"
+          style={{
+            background: 'conic-gradient(#F97316, #A855F7, #FACC15, #F97316)',
+            WebkitMask: 'radial-gradient(circle, transparent 44%, #000 50%, transparent 70%)',
+            mask: 'radial-gradient(circle, transparent 44%, #000 50%, transparent 70%)',
+          }}
+        />
+        <span className="absolute w-7 h-7 rounded-full bg-black shadow-[0_0_10px_rgba(249,115,22,0.6)]" />
+      </span>
+    );
+  if (pack === 'origami')
+    return (
+      <span className="pd-fx-plane absolute left-3 top-1/2 text-[#FB7185]">
+        <Bird size={28} aria-hidden="true" />
+      </span>
+    );
+  if (pack === 'pixel')
+    return (
+      <span className="absolute inset-0 flex items-center justify-center gap-1">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <span key={i} className="pd-fx-pixel w-2.5 h-2.5 rounded-[2px]" style={{ background: ['#0A84FF', '#5E5CE6', '#fff', '#64D2FF', '#BF5AF2', '#0A84FF'][i], animationDelay: `${i * 0.08}s` }} />
+        ))}
+      </span>
+    );
+  if (pack === 'ink')
+    return (
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="pd-fx-ink w-12 h-12 rounded-full bg-[radial-gradient(circle,#3B82F6,#1E3A8A_60%,transparent_72%)] blur-[2px]" />
+        <Droplet size={22} className="absolute text-[#93C5FD]" fill="#1E3A8A" aria-hidden="true" />
+      </span>
+    );
+  if (pack === 'liquid')
+    return (
+      <span className="absolute inset-x-0 bottom-0 h-full overflow-hidden">
+        <span className="pd-fx-liquid absolute inset-x-[-20%] bottom-0 h-1/2 bg-[linear-gradient(180deg,#22D3EE,#0A84FF)] rounded-t-[40%]" />
       </span>
     );
   return (

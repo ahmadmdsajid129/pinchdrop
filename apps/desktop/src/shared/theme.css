@@ -279,3 +279,10 @@ html {
 @keyframes pd-fx-lift { 0% { transform: translate(-50%, 0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-50%, -52px); opacity: 0; } }
 .pd-fx-lift { animation: pd-fx-lift 2s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .pd-fx-plane, .pd-fx-portal, .pd-fx-portal-card, .pd-fx-comet, .pd-fx-lift { animation: none; } }
+@keyframes pd-fx-pixel { 0%, 100% { transform: translateY(14px); opacity: 0; } 30%, 60% { transform: translateY(0); opacity: 1; } 90% { transform: translateY(-28px); opacity: 0; } }
+.pd-fx-pixel { animation: pd-fx-pixel 1.8s ease-in-out infinite; }
+@keyframes pd-fx-ink { 0% { transform: scale(0.3); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
+.pd-fx-ink { animation: pd-fx-ink 1.6s ease-out infinite; }
+@keyframes pd-fx-liquid { 0%, 100% { transform: translateY(70%) rotate(0deg); } 50% { transform: translateY(10%) rotate(3deg); } }
+.pd-fx-liquid { animation: pd-fx-liquid 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pd-fx-pixel, .pd-fx-ink, .pd-fx-liquid { animation: none; } }
