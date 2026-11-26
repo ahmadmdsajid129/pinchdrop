@@ -13,6 +13,7 @@ mod link;
 mod phone;
 mod pill;
 mod preview;
+mod sendto;
 mod settings;
 mod shot;
 
@@ -690,6 +691,72 @@ async fn find_phone(app: AppHandle, stop: bool) -> Result<(), String> {
         .map(|_| ())
 }
 
+/// v2 · Explorer → Send to: send these files to that phone (the Island shows the progress).
+fn send_from_shell(app: AppHandle, device: String, files: Vec<String>) {
+    tauri::async_runtime::spawn(async move {
+        // Just started by the shortcut: give the phone a moment to connect.
+        for _ in 0..20 {
+            if link_of(&app)
+                .is_some_and(|l| l.devices().iter().any(|d| d.id == device && d.connected))
+            {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+        if let Some(l) = link_of(&app) {
+            let r = if link::peer::is_peer_device_id(&device) {
+                l.peer_send_now(&device, files, Vec::new(), None).await
+            } else {
+                l.send_items(files, Vec::new(), "auto".into(), Some(device))
+                    .await
+            };
+            if let Err(e) = r {
+                let _ = app.emit("gesture-error", e);
+            }
+        }
+    });
+}
+
+/// v2 · Every phone's last known place, for the map.
+#[tauri::command]
+fn phone_places(app: AppHandle) -> Vec<link::places::PlaceView> {
+    link_of(&app).map(|l| l.places()).unwrap_or_default()
+}
+
+/// v2 · The latest photos on a phone (small previews).
+#[tauri::command]
+async fn phone_photos(
+    app: AppHandle,
+    device_id: Option<String>,
+) -> Result<serde_json::Value, String> {
+    link_or_err(&app)?
+        .phone_request_to(
+            device_id.as_deref(),
+            "photos.recent",
+            serde_json::json!({ "limit": 12 }),
+            "photos",
+        )
+        .await
+}
+
+/// v2 · Bring one of those photos to the PC (it lands and opens here).
+#[tauri::command]
+async fn phone_photo_send(
+    app: AppHandle,
+    id: i64,
+    device_id: Option<String>,
+) -> Result<(), String> {
+    link_or_err(&app)?
+        .phone_request_to(
+            device_id.as_deref(),
+            "photos.send",
+            serde_json::json!({ "id": id }),
+            "photos",
+        )
+        .await
+        .map(|_| ())
+}
+
 /// v2 · Lift: what the phone has in the air, if anything.
 #[tauri::command]
 fn lift_state(app: AppHandle) -> Option<link::lift::LiftView> {
@@ -1004,7 +1071,12 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // v2: Explorer → Send to → PinchDrop · <phone> starts a second copy with the files.
+            if let Some((device, files)) = sendto::parse_args(&args) {
+                send_from_shell(app.clone(), device, files);
+                return;
+            }
             open_main_at(app, "home");
         }))
         .plugin(tauri_plugin_autostart::init(
@@ -1035,7 +1107,8 @@ pub fn run() {
             match link::Link::new(handle.clone(), &link_dir) {
                 Ok(l) => {
                     l.start();
-                    app.manage(l);
+                    app.manage(l.clone());
+                    l.refresh_sendto();
                 }
                 // Not fatal: the app still runs; the Pair screen shows the error.
                 Err(e) => eprintln!("PinchDrop link failed to start: {e}"),
@@ -1043,6 +1116,10 @@ pub fn run() {
             app.manage(grab::Grab::default());
             clip::tidy_outbox(&outbox_dir(&handle));
             grab::spawn_hotkey_thread(handle.clone());
+            let argv: Vec<String> = std::env::args().collect();
+            if let Some((device, files)) = sendto::parse_args(&argv) {
+                send_from_shell(handle.clone(), device, files);
+            }
             link::phone_live::spawn_clipboard_watch(handle.clone());
             allow_camera_in_webviews(&handle);
             build_tray(&handle)?;
@@ -1138,6 +1215,9 @@ pub fn run() {
             call_action,
             find_phone,
             media_cmd,
+            phone_places,
+            phone_photos,
+            phone_photo_send,
             hold_send_now,
             gesture_session_start,
             gesture_session_stop,
