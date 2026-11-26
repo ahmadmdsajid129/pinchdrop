@@ -241,6 +241,10 @@ Events from the PC (no reply):
 | `photos.send` | PC → phone, request | `{ reqId, id }` | The phone sends that photo as a lift with `sendNow: true` (§6.5). |
 | `clip.set` | phone → PC | adds `explicit` | `true` when the user tapped the phone's "Copy to PC" tile. The PC takes it even with clipboard sharing switched off. |
 
+| `files.list` | PC → phone, request | `{ reqId, path }` | One folder of the phone's shared storage (`""` = top). Returns `{ path, entries: [ { name, dir, size, modified, mime, count } ] }`. Needs All files access. Paths can't leave shared storage. |
+| `files.thumb` | PC → phone, request | `{ reqId, path }` | Returns `{ thumb? }`: a small JPEG of a picture or video. |
+| `files.send` | PC → phone, request | `{ reqId, path, relay? }` | The phone lifts that file with `sendNow`. With `relay` (a device id), its `lift.offer` carries `relay` and the PC passes it straight on to that device. The PC copy sits in a temporary folder and is deleted when that send ends. |
+
 The PC also emits a battery alert when a phone's `status` crosses 15 % or 5 % unplugged, or reaches 100 % while charging.
 
 ## 6.7 Fast mode (v2)
