@@ -4,6 +4,7 @@
 //! persistent settings tie them together. Phase 3 adds the encrypted link
 //! to paired phones (`link`).
 
+mod browser;
 mod clip;
 mod explorer;
 mod fs_info;
