@@ -64,6 +64,10 @@ windows = { version = "0.62", features = [
     "Win32_UI_Shell_Common",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Input_KeyboardAndMouse",
+    # Huddle: share a Mobile Hotspot when the Wi-Fi keeps laptops apart.
+    "Foundation",
+    "Networking_Connectivity",
+    "Networking_NetworkOperators",
     # Settings → Notifications: Windows toasts.
     "Data_Xml_Dom",
     "UI_Notifications",
