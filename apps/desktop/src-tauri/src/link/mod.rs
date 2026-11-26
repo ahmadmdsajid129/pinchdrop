@@ -901,6 +901,8 @@ impl Link {
 
     /// Deletes a pairing. `notify_phone` sends `unpair` first so the phone forgets this PC too.
     pub fn forget(&self, device_id: &str, notify_phone: bool) {
+        // Unpaired: its notifications don't wait any more.
+        self.notifications_forget_device(device_id);
         let removed = self
             .devices
             .lock()
