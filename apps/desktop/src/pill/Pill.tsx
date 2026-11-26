@@ -283,10 +283,9 @@ export function Pill() {
         }
         if (liftRef.current && g === 'thumbs_up') {
           void api.liftCatch(liftRef.current.id).catch(() => undefined);
-          return;
         }
-        if (g === 'wave') collapseRef.current();
-        else if (g === 'fist_hold' && sessionRef.current) void api.gestureSessionStop();
+        // Nothing else: while the camera is on for grabbing, getting ready to pinch (moving the
+        // hand around, curling the fingers) must never close the Island or switch the camera off.
       }),
       onEvent<NotifView>('phone-notif', (n) => {
         // Something more important is on the Island: the notification waits in the app's list.
