@@ -27,6 +27,8 @@ pub struct PhoneStatus {
 pub struct OtherPhone {
     pub id: String,
     pub name: String,
+    pub battery: Option<u8>,
+    pub charging: bool,
 }
 
 impl PhoneStatus {
