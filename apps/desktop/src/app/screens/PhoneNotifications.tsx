@@ -5,6 +5,7 @@ import type { NotifView } from '../../shared/types';
 import { useApp } from '../context';
 import { Button, Card, EmptyState, PageTitle } from '../ui';
 import { shortAgo } from '../../pill/NotifIsland';
+import { useConnectedPhones } from '../PhoneChips';
 
 function Icon({ n }: { n: NotifView }) {
   return n.icon ? (
@@ -89,7 +90,8 @@ function Item({ n, showDevice }: { n: NotifView; showDevice: boolean }) {
 export function PhoneNotifications() {
   const { phone, go } = useApp();
   const items = useNotifications();
-  const showDevice = new Set(items.map((i) => i.deviceId)).size > 1;
+  const connected = useConnectedPhones();
+  const showDevice = connected.length > 1 || new Set(items.map((i) => i.deviceId)).size > 1;
   return (
     <>
       <PageTitle>Notifications</PageTitle>
