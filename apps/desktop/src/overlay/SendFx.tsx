@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, File, Folder, Link2 } from 'lucide-react';
 import { formatBytes } from '../shared/api';
@@ -6,10 +6,13 @@ import { ItemPreview } from '../shared/ItemPreview';
 import type { ItemPreviewData } from '../shared/types';
 import type { FxPack } from '../shared/pillThemes';
 import { LandedPack, LaunchPack } from './PackFx';
+import { ArrivePack, LandedPack2, LaunchPack2, isNewPack } from './PackFx2';
+import { playPackSound } from '../shared/packSounds';
 
 /** A send that just started (or a big one that just landed), shown full screen. Mirrors the pill's payload. */
 export interface SendFxEvent {
-  kind: 'launch' | 'landed';
+  /** launch: leaving for the phone · landed: a big send finished · arrive (v2): caught from the phone. */
+  kind: 'launch' | 'landed' | 'arrive';
   label: string;
   fileCount: number;
   totalBytes: number;
@@ -21,6 +24,8 @@ export interface SendFxEvent {
   preview?: ItemPreviewData | null;
   /** v2 Pro: the animation pack. */
   pack?: FxPack;
+  /** v2: play the pack's sound too. */
+  sounds?: boolean;
 }
 
 const PARTICLES = 14;
@@ -34,12 +39,23 @@ export function SendFx({ ev, onDone }: { ev: SendFxEvent | null; onDone: () => v
   const [phase, setPhase] = useState<'rise' | 'fly' | 'gone'>('rise');
 
   const pack = ev && !ev.reduced && ev.pack && ev.pack !== 'default' ? ev.pack : null;
+  // The parent passes a new onDone on every render; the timers below must not restart because of it.
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  /** Each event gets a fresh animation (no state carried over from the previous one). */
+  const evId = useMemo(() => Math.random().toString(36).slice(2), [ev]);
   useEffect(() => {
+    const onDone = () => doneRef.current();
     if (!ev) return;
     if (pack) {
-      // Packs run on their own clock (≈1.6 s).
-      const t = window.setTimeout(onDone, ev.kind === 'landed' ? 1300 : 1650);
+      if (ev.sounds) playPackSound(pack, ev.kind);
+      // Packs run on their own clock (≈1.6 s; an arrival holds the card a moment longer).
+      const t = window.setTimeout(onDone, ev.kind === 'landed' ? 1300 : ev.kind === 'arrive' ? 1900 : 1650);
       return () => clearTimeout(t);
+    }
+    if (ev.kind === 'arrive') {
+      onDone(); // the default arrival is the pill's own; nothing to draw here
+      return;
     }
     if (ev.kind === 'landed') {
       const t = window.setTimeout(onDone, ev.reduced ? 400 : 1300);
@@ -55,10 +71,15 @@ export function SendFx({ ev, onDone }: { ev: SendFxEvent | null; onDone: () => v
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [ev, onDone, pack]);
+  }, [ev, pack]);
 
   if (!ev) return null;
-  if (pack) return ev.kind === 'landed' ? <LandedPack ev={ev} pack={pack} /> : <LaunchPack ev={ev} pack={pack} />;
+  if (pack) {
+    if (ev.kind === 'arrive') return <ArrivePack key={evId} ev={ev} pack={pack} />;
+    if (ev.kind === 'landed') return isNewPack(pack) ? <LandedPack2 key={evId} ev={ev} pack={pack} /> : <LandedPack key={evId} ev={ev} pack={pack} />;
+    return isNewPack(pack) ? <LaunchPack2 key={evId} ev={ev} pack={pack} /> : <LaunchPack key={evId} ev={ev} pack={pack as 'plane' | 'portal' | 'comet'} />;
+  }
+  if (ev.kind === 'arrive') return null;
   const W = window.innerWidth;
   const H = window.innerHeight;
   // Target relative to this (full-monitor) window.

@@ -152,7 +152,7 @@ export const api = {
   /** Plays a full-screen send animation on the click-through overlay. */
   playSendFx: async (detail: Record<string, unknown>) => {
     if (!inTauri) return;
-    await invoke<void>('overlay_flash', { ms: detail.kind === 'landed' ? 1500 : 1800 });
+    await invoke<void>('overlay_flash', { ms: detail.kind === 'landed' ? 1500 : detail.kind === 'arrive' ? 2100 : 1800 });
     const { emitTo } = await import('@tauri-apps/api/event');
     // Give the just-shown overlay a frame to wake up before it starts animating.
     window.setTimeout(() => void emitTo('overlay', 'send-fx', detail), 140);

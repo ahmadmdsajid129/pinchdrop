@@ -17,7 +17,7 @@ export interface PillStyle {
   fx: FxPack;
 }
 
-export type FxPack = 'default' | 'plane' | 'portal' | 'comet';
+export type FxPack = 'default' | 'plane' | 'portal' | 'comet' | 'blackhole' | 'origami' | 'pixel' | 'ink' | 'liquid';
 
 export const DEFAULT_PILL_STYLE: PillStyle = { theme: 'classic', shape: 'pill', clock: false, fx: 'default' };
 
@@ -26,6 +26,11 @@ export const FX_PACKS: { id: FxPack; name: string; tagline: string; pro: boolean
   { id: 'plane', name: 'Paper Plane', tagline: 'Folds into a paper plane that loops up to the pill; lands and unfolds on the phone.', pro: true },
   { id: 'portal', name: 'Portal', tagline: 'A swirling portal opens at the pill and pulls it in; it drops out of a portal on the phone.', pro: true },
   { id: 'comet', name: 'Comet', tagline: 'Shrinks to a glowing comet and streaks away; bursts into the file on the phone.', pro: true },
+  { id: 'blackhole', name: 'Black Hole', tagline: 'Sucked into a black hole that zips to the pill; a white hole spits it out on the phone.', pro: true },
+  { id: 'origami', name: 'Origami', tagline: 'Folds into a paper crane that flaps away; the crane lands and unfolds on the phone.', pro: true },
+  { id: 'pixel', name: 'Pixel Beam', tagline: 'Breaks into pixels that stream up; they rain down and rebuild it on the phone.', pro: true },
+  { id: 'ink', name: 'Ink Drop', tagline: 'Condenses into an ink drop that blooms at the pill; ink blooms into the file on the phone.', pro: true },
+  { id: 'liquid', name: 'Liquid', tagline: 'Melts and flows up to the pill; fills the phone and settles into the file.', pro: true },
 ];
 
 export interface ThemeMeta {

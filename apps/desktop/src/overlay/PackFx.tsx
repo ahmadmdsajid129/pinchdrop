@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, File, Folder, Link2 } from 'lucide-react';
-import type { FxPack } from '../shared/pillThemes';
 import type { SendFxEvent } from './SendFx';
 
 /*
@@ -12,23 +11,23 @@ import type { SendFxEvent } from './SendFx';
  * Transform / opacity only. Total ≈ 1.6 s (the overlay is shown for 1.8 s).
  */
 
-const RISE_MS = 650;
+export const RISE_MS = 650;
 
-function ItemCard({ ev }: { ev: SendFxEvent }) {
+export function ItemCard({ ev, note = 'sending…' }: { ev: SendFxEvent; note?: string }) {
   const icon = ev.fileCount === 0 ? <Link2 size={26} /> : ev.isFolder || ev.fileCount > 1 ? <Folder size={26} fill="currentColor" /> : <File size={26} />;
   return (
     <div className="flex items-center gap-3.5 pl-3.5 pr-5 py-3.5 w-[300px] rounded-[22px] bg-white/[0.96] text-[#1D1D1F] shadow-[0_30px_80px_rgba(0,0,0,0.28)] ring-1 ring-black/5">
       <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-[#0A84FF] to-[#5E5CE6] text-white flex items-center justify-center shrink-0">{icon}</div>
       <div className="min-w-0">
         <div className="text-[16px] font-semibold truncate">{ev.label}</div>
-        <div className="text-[12.5px] text-[#6E6E73]">sending…</div>
+        <div className="text-[12.5px] text-[#6E6E73]">{note}</div>
       </div>
     </div>
   );
 }
 
 /** A paper plane, drawn (white sheet, blue fold). */
-function Plane({ size = 64 }: { size?: number }) {
+export function Plane({ size = 64 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
       <path d="M4 30 L60 6 L36 58 L28 36 Z" fill="#FFFFFF" stroke="#0A84FF" strokeWidth="2" strokeLinejoin="round" />
@@ -38,7 +37,7 @@ function Plane({ size = 64 }: { size?: number }) {
   );
 }
 
-export function LaunchPack({ ev, pack }: { ev: SendFxEvent; pack: Exclude<FxPack, 'default'> }) {
+export function LaunchPack({ ev, pack }: { ev: SendFxEvent; pack: 'plane' | 'portal' | 'comet' }) {
   const [fly, setFly] = useState(false);
   useEffect(() => {
     const t = window.setTimeout(() => setFly(true), RISE_MS);
@@ -137,7 +136,7 @@ function PlaneFlight({ cx, cy, dx, dy }: { cx: number; cy: number; dx: number; d
 }
 
 /** A swirling ring: opens, spins, closes. */
-function Portal({ x, y, open }: { x: number; y: number; open: boolean }) {
+export function Portal({ x, y, open }: { x: number; y: number; open: boolean }) {
   const size = 150;
   return (
     <motion.div
@@ -228,7 +227,7 @@ function CometFlight({ cx, cy, dx, dy }: { cx: number; cy: number; dx: number; d
 }
 
 /** A big send landed: the pack's own "done" at the pill. */
-export function LandedPack({ ev, pack }: { ev: SendFxEvent; pack: Exclude<FxPack, 'default'> }) {
+export function LandedPack({ ev, pack }: { ev: SendFxEvent; pack: 'plane' | 'portal' | 'comet' }) {
   const tx = ev.target.x - window.screenX;
   const ty = ev.target.y - window.screenY;
   const color = pack === 'plane' ? '#0A84FF' : pack === 'portal' ? '#8B5CF6' : '#FFB020';
