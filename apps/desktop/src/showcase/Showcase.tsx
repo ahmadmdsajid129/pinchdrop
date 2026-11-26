@@ -16,7 +16,7 @@ function send(frame: HTMLIFrameElement | null, detail: Record<string, unknown>) 
 }
 
 const FILES = [
-  { name: 'CPP', kind: 'folder' },
+  { name: 'Holiday photos', kind: 'folder' },
   { name: 'Projects', kind: 'folder' },
   { name: 'Lectures', kind: 'folder' },
   { name: 'trip.jpg', kind: 'image' },
@@ -91,15 +91,15 @@ export function Showcase() {
       await sleep(2600);
       if (cancelled) return;
 
-      // ---- 2. select CPP
+      // ---- 2. select Holiday photos
       const cpp = center();
       setCursor({ x: cpp.x, y: cpp.y, down: false, show: true });
       await sleep(900);
       setCursor((c) => ({ ...c, down: true }));
-      setSelected('CPP');
+      setSelected('Holiday photos');
       await sleep(120);
       setCursor((c) => ({ ...c, down: false }));
-      send(O(), { type: 'arm', arm: { armed: true, label: 'CPP', cameraId: null, sensitivity: 55, showRing: true, sounds: false } });
+      send(O(), { type: 'arm', arm: { armed: true, label: 'Holiday photos', cameraId: null, sensitivity: 55, showRing: true, sounds: false } });
       send(P(), { type: 'session', session: { active: true, endsInMs: 30000, idleSecs: 30, reason: null } });
       say(3, 'Select the folder you want to send.');
       await sleep(1400);
@@ -114,7 +114,7 @@ export function Showcase() {
       await sleep(250);
       send(O(), {
         type: 'card',
-        card: { phase: 'held', items: { paths: [], label: 'CPP', fileCount: 12, totalBytes: 48 * MB, isFolder: true, partial: false } },
+        card: { phase: 'held', items: { paths: [], label: 'Holiday photos', fileCount: 12, totalBytes: 48 * MB, isFolder: true, partial: false } },
       });
       say(5, 'Grabbed. The card follows your hand.');
       await moveHand({ x: cpp.x + 0.02, y: cpp.y + 0.03 }, { x: 0.52, y: 0.24 }, 1600, true);
@@ -125,7 +125,7 @@ export function Showcase() {
       await sleep(180);
       send(O(), {
         type: 'card',
-        card: { phase: 'flying', items: { paths: [], label: 'CPP', fileCount: 12, totalBytes: 48 * MB, isFolder: true, partial: false } },
+        card: { phase: 'flying', items: { paths: [], label: 'Holiday photos', fileCount: 12, totalBytes: 48 * MB, isFolder: true, partial: false } },
       });
       await sleep(250);
       send(O(), { type: 'hand', hand: null });
@@ -133,23 +133,23 @@ export function Showcase() {
       send(P(), { type: 'session', session: { active: false, endsInMs: 0, idleSecs: 30, reason: 'holding' } });
       send(P(), {
         type: 'hold',
-        hold: { id: 'demo', label: 'CPP', fileCount: 12, totalBytes: 48 * MB, isFolder: true, expiresInMs: 30000, totalMs: 30000, phoneName: 'Demo phone' },
+        hold: { id: 'demo', label: 'Holiday photos', fileCount: 12, totalBytes: 48 * MB, isFolder: true, expiresInMs: 30000, totalMs: 30000, phoneName: 'Demo phone' },
       });
       await sleep(500);
       send(O(), { type: 'card', card: null });
-      say(6, 'Open your hand: CPP is “in the air”. The camera turns off and your phone shows its Catch screen.');
+      say(6, 'Open your hand: Holiday photos is “in the air”. The camera turns off and your phone shows its Catch screen.');
       await sleep(4200);
       if (cancelled) return;
 
       // ---- 5. caught on the phone → sending
       send(P(), { type: 'hold', hold: null });
       const base = {
-        id: 't1', deviceName: 'Demo phone', label: 'CPP', createdAt: Date.now() / 1000, finishedAt: null, error: null,
+        id: 't1', deviceName: 'Demo phone', label: 'Holiday photos', createdAt: Date.now() / 1000, finishedAt: null, error: null,
         mode: 'copy' as const, fileCount: 12, textCount: 0, totalBytes: 48 * MB, moved: false, firstName: 'main.cpp',
       };
       say(7, 'Open your hand over the phone — caught! It lifts off into the Island, which shows the send live.');
       const target = { x: window.screenX + innerWidth / 2, y: window.screenY + 30 };
-      send(O(), { type: 'sendfx', fx: { kind: 'launch', label: 'CPP', fileCount: 12, totalBytes: 48 * MB, isFolder: true, target } });
+      send(O(), { type: 'sendfx', fx: { kind: 'launch', label: 'Holiday photos', fileCount: 12, totalBytes: 48 * MB, isFolder: true, target } });
       await sleep(1300);
       const total = 48 * MB;
       for (let i = 0; i <= 40 && !cancelled; i++) {
@@ -161,7 +161,7 @@ export function Showcase() {
         await sleep(110);
       }
       send(P(), { type: 'transfer', transfer: { ...base, state: 'done', bytesDone: total, filesDone: 12, finishedAt: Date.now() / 1000 } });
-      send(O(), { type: 'sendfx', fx: { kind: 'landed', label: 'CPP', fileCount: 12, totalBytes: 48 * MB, isFolder: true, target: { x: window.screenX + innerWidth / 2, y: window.screenY + 30 } } });
+      send(O(), { type: 'sendfx', fx: { kind: 'landed', label: 'Holiday photos', fileCount: 12, totalBytes: 48 * MB, isFolder: true, target: { x: window.screenX + innerWidth / 2, y: window.screenY + 30 } } });
       say(8, 'Delivered. The Island folds back into the pill a moment later.');
       await sleep(3200);
       send(P(), { type: 'transfer', transfer: null });
@@ -186,7 +186,7 @@ export function Showcase() {
           {FILES.map((f) => (
             <button
               key={f.name}
-              ref={f.name === 'CPP' ? cppRef : undefined}
+              ref={f.name === 'Holiday photos' ? cppRef : undefined}
               type="button"
               className={`flex flex-col items-center gap-2 p-2 rounded-lg border transition-colors ${
                 selected === f.name ? 'bg-[#3b5bdb]/35 border-[#5c7cfa]/70' : 'border-transparent'

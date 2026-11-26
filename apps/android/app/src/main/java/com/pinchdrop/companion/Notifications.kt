@@ -77,13 +77,13 @@ object Notifications {
         return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    /** Posts the demo "CPP is in the air" alert. Returns false if notifications are not allowed. */
+    /** Posts the demo "Holiday photos is in the air" alert. Returns false if notifications are not allowed. */
     fun postIncomingDemo(context: Context, pcName: String): Boolean {
         if (!canPost(context)) return false
         ensureChannels(context)
         val n = NotificationCompat.Builder(context, CH_INCOMING)
             .setSmallIcon(R.drawable.ic_stat_pinchdrop)
-            .setContentTitle("“CPP” is in the air (demo)")
+            .setContentTitle("“Holiday photos” is in the air (demo)")
             .setContentText("$pcName is holding a folder · 12 files · 48 MB. Catch it within 30 s.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)

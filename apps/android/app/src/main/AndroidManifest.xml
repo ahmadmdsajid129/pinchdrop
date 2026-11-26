@@ -18,7 +18,7 @@
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="33" />
-    <!-- "CPP is coming" alerts and transfer progress. -->
+    <!-- "Something is coming" alerts and transfer progress. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Catch with an open hand and scan the pairing QR. Frames are never stored. -->
     <uses-permission android:name="android.permission.CAMERA" />

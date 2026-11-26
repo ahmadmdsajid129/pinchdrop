@@ -121,7 +121,7 @@ internal fun chime() {
 
 /** The demo payload used by every preview screen. */
 private object DemoItem {
-    const val FOLDER = "CPP"
+    const val FOLDER = "Holiday photos"
     const val FILES = 12
     const val MB = 48
 }
