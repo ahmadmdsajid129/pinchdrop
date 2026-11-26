@@ -123,7 +123,7 @@ Also built in v2.0: the new gestures (palm hold, swipe, ✌️ reply, 👍 take 
 | 6 | Fast mode for big files — 🟢 **built (v2.0)** | 2 MiB chunks, 6 in flight when both sides support it (LINK-v1 §6.7). Not done: Wi-Fi Direct |
 | 7 | Proximity-sensor catch — 🟢 **built (v2.0)** | Hover a hand over the top of the phone while something is in the air; works with the screen off (phone Settings toggle) |
 | 8 | Several phones / tablets — 🟢 **built (v2.0)** | Holds offered to all; first to catch wins. While carrying, device chips appear: point and hold, drop on, or throw at one. Send screen picks a device |
-| 9 | Laptop ↔ laptop — ⚪ **next** | Needs the PC to act as a receiver for another PC (second connection engine + pairing on both PCs) and a second laptop to test |
+| 9 | Laptop ↔ laptop — 🟢 **built (v2.0), not yet tested with two PCs** | Devices → Pair with another PC (on the other PC: Pair a new phone). One pairing works both ways: pinch on either PC, open your hand at the other one's camera (or drop on its chip). Files land in Downloads\PinchDrop with folders kept. LINK-v1 §6.8 |
 | 10 | Pill: unread-message badge + ringing-call icon — 🟢 **built (v2.0)** | 💬 count beside the battery (click → Messages); 📞 shakes with the caller's name; missed call shows a red icon until clicked |
 
 ## 🗺️ Prototype Roadmap (S0–S13, superseded by P1–P7)
