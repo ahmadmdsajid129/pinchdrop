@@ -432,8 +432,9 @@ export function Overlay() {
           setCard({ ...c, phase: 'flying', to: { x: r.x + 10, y: r.y } });
           if (arm?.sounds) sound.close();
           activity();
-          const ok = await invoke('send_to_device', { items: c.items, deviceId: devs[i].id }).then(() => true, () => false);
-          flash(ok ? `Sending to ${devs[i].name}` : `Couldn’t send to ${devs[i].name}`);
+          // In the air for that device only: its Catch screen opens; open your hand over it.
+          const ok = await invoke('hold_start', { items: c.items, target: devs[i].id }).then((h) => !!h, () => false);
+          flash(ok ? `Catch it on ${devs[i].name}` : `${devs[i].name} isn’t connected`);
           window.setTimeout(() => setCard(null), 700);
           return;
         }
