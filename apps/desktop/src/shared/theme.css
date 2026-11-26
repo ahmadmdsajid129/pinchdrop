@@ -153,3 +153,7 @@ html {
 
 /* v2: popovers */
 @keyframes pd-pop { from { opacity: 0; transform: scale(0.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* v2: page fade-in (CSS only) */
+/* transform only: if WebView2 ever pauses animations, the page is still fully visible */
+@keyframes pd-page { from { transform: translateY(5px); } to { transform: none; } }
