@@ -25,7 +25,7 @@ Status: 🟢 agreed with the founder · 🔵 proposed (needs a yes before we bui
 | 6 | Fast mode for big files (**built in v2.0**) | 🟢 |
 | 7 | Proximity-sensor catch (no camera needed) (**built in v2.0**) | 🟢 |
 | 8 | Several phones and tablets, with a cool way to pick the target (**built in v2.0**) | 🟢 |
-| 9 | Laptop ↔ laptop | 🟢 |
+| 9 | Laptop ↔ laptop (**built in v2.0**) | 🟢 |
 | 10 | New gestures for all of the above (section 2) (**built in v2.0**) | 🟢 |
 | 11 | Clipboard both ways (**built in v2.0**) | 🟢 |
 | 12 | Grab a screenshot with a two-hand frame (**built in v2.0**) | 🟢 |
