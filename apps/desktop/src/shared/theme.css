@@ -157,3 +157,45 @@ html {
 /* v2: page fade-in (CSS only) */
 /* transform only: if WebView2 ever pauses animations, the page is still fully visible */
 @keyframes pd-page { from { transform: translateY(5px); } to { transform: none; } }
+
+/* v2: illustrations (welcome, guide, Home). Every 0% frame is the fully visible resting state,
+   so a paused animation (WebView2 occlusion) still shows a complete picture. */
+@keyframes pd-fly {
+  0%, 12% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  22% { transform: translate(0, -26px) rotate(-6deg) scale(1.04); opacity: 1; }
+  55% { transform: translate(160px, -96px) rotate(8deg) scale(0.9); opacity: 1; }
+  82% { transform: translate(300px, -6px) rotate(2deg) scale(0.62); opacity: 1; }
+  90%, 100% { transform: translate(300px, 6px) scale(0.5); opacity: 0; }
+}
+@keyframes pd-hand {
+  0%, 8% { transform: translate(0, 0) scale(1); }
+  14% { transform: translate(0, 4px) scale(0.86); }
+  22% { transform: translate(0, -22px) scale(0.86); }
+  55% { transform: translate(140px, -70px) scale(0.86); }
+  70% { transform: translate(250px, -40px) scale(1.05); }
+  86% { transform: translate(250px, -40px) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes pd-land {
+  0%, 80% { transform: scale(0.4); opacity: 0; }
+  88% { transform: scale(1.15); opacity: 1; }
+  94%, 98% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@keyframes pd-glow {
+  0%, 78% { box-shadow: 0 0 0 0 rgb(var(--primary) / 0); }
+  88% { box-shadow: 0 0 0 10px rgb(var(--primary) / 0.18); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--primary) / 0); }
+}
+@keyframes pd-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes pd-ripple { 0% { transform: scale(0.8); opacity: 0.55; } 100% { transform: scale(1.8); opacity: 0; } }
+@keyframes pd-slide-in { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+.pd-fly { animation: pd-fly 3.2s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+.pd-hand { animation: pd-hand 3.2s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+.pd-land { animation: pd-land 3.2s ease-out infinite; }
+.pd-glow { animation: pd-glow 3.2s ease-out infinite; }
+.pd-float { animation: pd-float 3.6s ease-in-out infinite; }
+.pd-ripple { animation: pd-ripple 2.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pd-fly, .pd-hand, .pd-land, .pd-glow, .pd-float, .pd-ripple { animation: none; }
+}
