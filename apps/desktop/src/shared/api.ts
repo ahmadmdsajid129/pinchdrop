@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { DEFAULT_SETTINGS } from './types';
-import type { Contact, FoundPc, PhonePhoto, PlaceView, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
+import type { Contact, FoundPc, PhoneFileEntry, PhonePhoto, PlaceView, PhoneLive, DeepPartial, DeviceView, HoldView, ItemPreviewData, LiftView, NotifView, SmsThread, SmsThreadDetail, PairInfo, PairRequest, PathInfo, PhoneStatus, SessionView, Settings, TransferView } from './types';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -167,6 +167,14 @@ export const api = {
     inTauri ? ((await invoke<{ contacts: Contact[] }>('contacts_list', { deviceId: deviceId ?? null })).contacts ?? []) : DEMO_CONTACTS,
   dial: (number: string, deviceId?: string | null): Promise<{ how: string }> =>
     inTauri ? invoke('phone_dial', { number, deviceId: deviceId ?? null }) : Promise.resolve({ how: 'calling' }),
+
+  // v2 · Phone files (browse, preview, bring to PC or pass to another phone).
+  phoneFiles: (deviceId: string, path: string): Promise<{ path: string; entries: PhoneFileEntry[] }> =>
+    inTauri ? invoke('phone_files', { deviceId, path }) : Promise.resolve({ path, entries: [] }),
+  phoneFileThumb: async (deviceId: string, path: string): Promise<string | null> =>
+    inTauri ? ((await invoke<{ thumb?: string }>('phone_file_thumb', { deviceId, path })).thumb ?? null) : null,
+  phoneFileSend: (deviceId: string, path: string, to?: string | null) =>
+    inTauri ? invoke<void>('phone_file_send', { deviceId, path, to: to ?? null }) : Promise.resolve(),
 
   // v2 · Map and photos.
   phonePlaces: (): Promise<PlaceView[]> => (inTauri ? invoke('phone_places') : Promise.resolve([])),
