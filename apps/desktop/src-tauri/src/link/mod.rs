@@ -1197,6 +1197,7 @@ impl Link {
 
     /// Offers a held item to the connected phone so it can show the Catch screen.
     /// Returns the phone's name, or None when no phone is connected.
+    #[allow(clippy::too_many_arguments)]
     pub fn hold_offer(
         &self,
         hold_id: &str,
@@ -1205,9 +1206,18 @@ impl Link {
         total_bytes: u64,
         is_folder: bool,
         secs: u64,
+        only: Option<&str>,
     ) -> Option<String> {
         // v2: every connected phone / tablet gets the offer; whichever catches first gets it.
-        let ids: Vec<String> = self.sessions.lock().ok()?.keys().cloned().collect();
+        // v2: aimed at one device (dropped on its chip) → only that one; else every device.
+        let ids: Vec<String> = self
+            .sessions
+            .lock()
+            .ok()?
+            .keys()
+            .filter(|id| only.map_or(true, |o| o == id.as_str()))
+            .cloned()
+            .collect();
         if ids.is_empty() {
             return None;
         }
