@@ -9,6 +9,7 @@ mod clip;
 mod explorer;
 mod fs_info;
 mod grab;
+mod license;
 mod link;
 mod phone;
 mod pill;
@@ -374,9 +375,17 @@ fn get_phone_status(app: AppHandle) -> PhoneStatus {
 
 #[tauri::command]
 fn pairing_open(app: AppHandle) -> Result<link::PairInfo, String> {
-    Ok(link_of(&app)
-        .ok_or("The connection service didn't start")?
-        .pairing_open())
+    let link = link_of(&app).ok_or("The connection service didn't start")?;
+    // Free: one phone. A second (third…) phone needs Pro. Paired PCs don't count.
+    let phones = link
+        .devices()
+        .iter()
+        .filter(|d| !link::peer::is_peer_device_id(&d.id))
+        .count();
+    if phones >= 1 {
+        license::need("phones")?;
+    }
+    Ok(link.pairing_open())
 }
 
 #[tauri::command]
@@ -644,6 +653,7 @@ async fn notif_dismiss(app: AppHandle, key: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn notif_reply(app: AppHandle, key: String, text: String) -> Result<(), String> {
+    license::need("reply")?;
     let link = link_or_err(&app)?;
     let device = link.notif_device(&key);
     link.phone_request_to(
@@ -696,6 +706,7 @@ async fn sms_send(
     text: String,
     device_id: Option<String>,
 ) -> Result<(), String> {
+    license::need("reply")?;
     if address.trim().is_empty() || text.trim().is_empty() {
         return Err("Type a message first.".into());
     }
@@ -760,6 +771,7 @@ async fn call_action(
     action: String,
     device_id: Option<String>,
 ) -> Result<(), String> {
+    license::need("calls")?;
     let kind = match action.as_str() {
         "answer" => "call.answer",
         "reject" => "call.reject",
@@ -786,6 +798,7 @@ async fn media_cmd(
     action: String,
     device_id: Option<String>,
 ) -> Result<(), String> {
+    license::need("music")?;
     if !matches!(
         action.as_str(),
         "play" | "pause" | "toggle" | "next" | "previous"
@@ -853,6 +866,7 @@ async fn phone_files(
     device_id: String,
     path: String,
 ) -> Result<serde_json::Value, String> {
+    license::need("files")?;
     link_or_err(&app)?
         .phone_request_to(
             Some(&device_id),
@@ -870,6 +884,7 @@ async fn phone_file_thumb(
     device_id: String,
     path: String,
 ) -> Result<serde_json::Value, String> {
+    license::need("files")?;
     link_or_err(&app)?
         .phone_request_to(
             Some(&device_id),
@@ -888,6 +903,7 @@ async fn phone_file_send(
     path: String,
     to: Option<String>,
 ) -> Result<(), String> {
+    license::need("files")?;
     link_or_err(&app)?
         .phone_request_to(
             Some(&device_id),
@@ -902,6 +918,10 @@ async fn phone_file_send(
 /// v2 · Every phone's last known place, for the map.
 #[tauri::command]
 fn phone_places(app: AppHandle) -> Vec<link::places::PlaceView> {
+    // Pro: the map of where the phones are.
+    if !license::is_pro() {
+        return Vec::new();
+    }
     link_of(&app).map(|l| l.places()).unwrap_or_default()
 }
 
@@ -911,6 +931,7 @@ async fn phone_photos(
     app: AppHandle,
     device_id: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    license::need("photos")?;
     link_or_err(&app)?
         .phone_request_to(
             device_id.as_deref(),
@@ -928,6 +949,7 @@ async fn phone_photo_send(
     id: i64,
     device_id: Option<String>,
 ) -> Result<(), String> {
+    license::need("photos")?;
     link_or_err(&app)?
         .phone_request_to(
             device_id.as_deref(),
@@ -1119,6 +1141,27 @@ struct AppInfo {
     fingerprint: Option<String>,
 }
 
+// ---------------------------------------------------------------- Pro (licence, trial)
+
+#[tauri::command]
+fn get_pro() -> license::ProStatus {
+    license::status()
+}
+
+#[tauri::command]
+fn activate_license(app: AppHandle, key: String) -> Result<license::ProStatus, String> {
+    let s = license::activate(&key)?;
+    let _ = app.emit("pro-changed", &s);
+    Ok(s)
+}
+
+#[tauri::command]
+fn remove_license(app: AppHandle) -> license::ProStatus {
+    let s = license::remove();
+    let _ = app.emit("pro-changed", &s);
+    s
+}
+
 #[tauri::command]
 fn get_app_info(app: AppHandle, state: State<AppState>) -> AppInfo {
     AppInfo {
@@ -1275,6 +1318,7 @@ pub fn run() {
             let settings_path = settings::settings_path(&config_dir);
             let loaded = settings::load(&settings_path);
             let first_run = !loaded.onboarded;
+            license::init(&config_dir);
             app.manage(AppState {
                 settings: Mutex::new(loaded),
                 settings_path,
@@ -1373,6 +1417,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_settings,
             update_settings,
+            get_pro,
+            activate_license,
+            remove_license,
             main_ready,
             get_phone_status,
             get_autostart,

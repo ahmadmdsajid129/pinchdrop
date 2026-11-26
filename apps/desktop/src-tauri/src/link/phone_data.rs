@@ -275,6 +275,10 @@ impl Link {
     /// v2 · OTP auto-copy: a one-time code in a text message goes on the PC clipboard, and the
     /// Island says so ("Code 482913 · copied"). Only the code is kept, in memory.
     pub(super) fn maybe_copy_otp(&self, body: &str, from: &str, dev: &str) {
+        // Pro: one-time codes copied by themselves.
+        if !crate::license::is_pro() {
+            return;
+        }
         if let Some(code) = find_otp(body) {
             if crate::clip::write(&code) {
                 let _ = self.app.emit(

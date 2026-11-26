@@ -1379,6 +1379,10 @@ impl Link {
         if files.is_empty() && texts.is_empty() {
             return Err("Nothing to send — the folders are empty.".into());
         }
+        // Free sends go up to 2 GB at a time; bigger ones need Pro.
+        if files.iter().map(|f| f.size).sum::<u64>() > crate::license::FREE_MAX_SEND_BYTES {
+            crate::license::need("large")?;
+        }
         let label = if paths.is_empty() {
             if texts.len() == 1 {
                 "Text".to_string()
