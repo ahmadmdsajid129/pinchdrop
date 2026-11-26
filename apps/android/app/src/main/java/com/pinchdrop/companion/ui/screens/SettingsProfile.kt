@@ -58,6 +58,7 @@ import com.pinchdrop.companion.ui.Segmented
 import com.pinchdrop.companion.ui.SettingRow
 import com.pinchdrop.companion.ui.ToggleRow
 import com.pinchdrop.companion.ui.theme.Pd
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun SettingsScreen(
@@ -68,6 +69,7 @@ fun SettingsScreen(
     onProfile: () -> Unit,
     onPermissions: () -> Unit,
     onDemo: (Route) -> Unit,
+    onGuide: () -> Unit = {},
 ) {
     val c = Pd.colors
     val context = LocalContext.current
@@ -189,7 +191,8 @@ fun SettingsScreen(
         SectionLabel("You & this phone")
         PdCard {
             NavRow("Profile", onClick = onProfile, value = settings.phoneName)
-            NavRow("Permissions", onClick = onPermissions, last = true)
+            NavRow("Features & permissions", onClick = onPermissions, description = "Messages, calls, photos and more on your PC")
+            NavRow("How to use PinchDrop", onClick = onGuide, last = true)
         }
 
         SectionLabel("Privacy & about")
@@ -198,8 +201,24 @@ fun SettingsScreen(
                 "Camera frames are checked in memory for an open hand and discarded. Nothing is recorded or uploaded.",
                 color = c.soft, fontSize = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(16.dp),
             )
-            SettingRow("Clear received history", description = "Nothing stored yet") { PhaseBadge(4) }
-            SettingRow("PinchDrop $version", description = "Phase 6 build — catch with an open hand", last = true)
+            val history by com.pinchdrop.companion.transfer.History.items.collectAsStateWithLifecycle()
+            var confirmClear by remember { mutableStateOf(false) }
+            NavRow(
+                "Clear received history",
+                onClick = { if (history.isNotEmpty()) confirmClear = true },
+                description = if (history.isEmpty()) "Nothing in the list" else "${history.size} item${if (history.size == 1) "" else "s"} in the list · the files stay on the phone",
+            )
+            if (confirmClear) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirmClear = false },
+                    title = { Text("Clear the Received list?") },
+                    text = { Text("Only the list is cleared. The files stay in your Gallery and Downloads.") },
+                    confirmButton = { androidx.compose.material3.TextButton(onClick = { com.pinchdrop.companion.transfer.History.clear(); confirmClear = false }) { Text("Clear", color = c.danger) } },
+                    dismissButton = { androidx.compose.material3.TextButton(onClick = { confirmClear = false }) { Text("Cancel", color = c.muted) } },
+                    containerColor = c.surface, titleContentColor = c.text, textContentColor = c.soft,
+                )
+            }
+            SettingRow("PinchDrop $version", description = "Pinch on your PC, catch on your phone", last = true)
         }
     }
 }
