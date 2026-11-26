@@ -88,7 +88,7 @@ impl Link {
         what: &str,
     ) -> Result<Value, String> {
         let (device, _) = self
-            .target_device()
+            .target_phone()
             .ok_or_else(|| friendly_error("offline", what))?;
         let tx = self
             .session_tx(&device)
