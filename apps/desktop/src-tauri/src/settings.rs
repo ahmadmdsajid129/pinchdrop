@@ -100,6 +100,8 @@ pub struct PhoneSettings {
     pub clipboard_sync: bool,
     /// While the phone rings, the webcam watches for palm (answer), swipe (reject), fist (silence).
     pub call_gestures: bool,
+    /// v2: the phone the pill shows (and Messages / Contacts use) when several are connected.
+    pub selected: Option<String>,
 }
 
 impl Default for PhoneSettings {
@@ -107,6 +109,7 @@ impl Default for PhoneSettings {
         Self {
             clipboard_sync: false,
             call_gestures: true,
+            selected: None,
         }
     }
 }
