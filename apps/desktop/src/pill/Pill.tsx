@@ -51,6 +51,13 @@ export function Pill() {
 
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
+  /** v2: fades out while the PinchDrop window is open, back in when it closes. */
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    if (!inTauri) return;
+    const off = onEvent<boolean>('pill-fade', setShown);
+    return () => void off.then((u) => u());
+  }, []);
   const [hold, setHold] = useState<HoldView | null>(null);
   /** v2: something the phone lifted, waiting to be caught here. */
   const [lift, setLift] = useState<LiftView | null>(null);
@@ -542,7 +549,13 @@ export function Pill() {
   const contentPos = `${anchorV === 'bottom' ? 'bottom-0' : 'top-0'} inset-x-0 flex ${justify}`;
 
   return (
-    <div className={`flex ${justify} ${align} w-screen h-screen`} style={{ padding: PAD }}>
+    <motion.div
+      className={`flex ${justify} ${align} w-screen h-screen`}
+      style={{ padding: PAD, transformOrigin: origin }}
+      initial={false}
+      animate={shown ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.92, y: anchorV === 'bottom' ? 8 : -8 }}
+      transition={reduced ? { duration: 0.1 } : { type: 'spring', stiffness: 420, damping: 34 }}
+    >
       <motion.div
         ref={shellRef}
         className={`relative overflow-hidden bg-black ring-1 ring-inset ${ringClass}`}
@@ -632,7 +645,7 @@ export function Pill() {
           )}
         </AnimatePresence>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
