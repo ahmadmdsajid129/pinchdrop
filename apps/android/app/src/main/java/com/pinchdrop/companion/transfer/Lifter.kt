@@ -170,6 +170,29 @@ object Lifter {
 
     // ------------------------------------------------------------ lift → in the air
 
+    /** v2 · Send these straight to the PC (a photo from its strip, a scan): no pinch needed. */
+    fun sendNow(context: Context, uris: List<Uri>) {
+        init(context)
+        val resolver = context.applicationContext.contentResolver
+        scope.launch {
+            val files = uris.mapNotNull { describe(resolver, it) }
+            if (files.isEmpty()) return@launch
+            val f = files[0]
+            val kind = when {
+                files.size > 1 -> ItemKind.FOLDER
+                f.mime.startsWith("image/") -> ItemKind.PHOTO
+                f.mime.startsWith("video/") -> ItemKind.VIDEO
+                else -> ItemKind.FILE
+            }
+            val item = Item(
+                files, emptyList(), if (files.size == 1) f.name else "${files.size} items", files.sumOf { it.size }, kind,
+                files.firstOrNull { it.mime.startsWith("image/") }?.uri?.toString(),
+            )
+            _state.value = State.Ready(item)
+            lift(sendNow = true)
+        }
+    }
+
     /** Pinched (or "Send without gesture"): tell the PC it's in the air. */
     fun lift(sendNow: Boolean = false) {
         val item = when (val s = _state.value) {
