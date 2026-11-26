@@ -174,7 +174,9 @@ impl Link {
                 self.live_entry(dev, |l| l.unread = n);
             }
             "clip.set" => {
-                if !crate::current_settings(&self.app).phone.clipboard_sync {
+                // "explicit" = the phone's Copy to PC tile: the user asked, so it always lands.
+                let explicit = p.get("explicit").and_then(Value::as_bool).unwrap_or(false);
+                if !explicit && !crate::current_settings(&self.app).phone.clipboard_sync {
                     return;
                 }
                 if let Some(t) = s(p, "text", 100_000) {
