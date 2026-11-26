@@ -34,7 +34,10 @@ object PhoneData {
     val requestTypes = setOf(
         "sms.threads", "sms.thread", "sms.send", "contacts.list", "call.dial", "notif.dismiss", "notif.reply",
         "call.answer", "call.reject", "call.silence", "phone.ring", "phone.ring.stop",
+        "media.cmd", "photos.recent", "photos.send",
     )
+
+    fun isConnected() = connected
     /** Messages from the PC that need no reply. */
     val eventTypes = setOf("clip.set", "clip.config")
 
@@ -58,6 +61,8 @@ object PhoneData {
         sync()
         UnreadWatcher.start(app)
         Calls.startListening(app)
+        MediaWatcher.start(app)
+        LocationWatcher.start(app)
         // A call already ringing (seen in the notification shade) when we connect.
         NotifyListener.instance?.let { l -> runCatching { l.activeNotifications.orEmpty().forEach { Calls.onCallNotification(app, it) } } }
         if (Calls.state != "idle") push("call.state", Calls.payload(app))
@@ -66,6 +71,8 @@ object PhoneData {
     fun onDisconnected() {
         UnreadWatcher.stop()
         if (::app.isInitialized) Calls.stopListening(app)
+        MediaWatcher.stop()
+        LocationWatcher.stop()
         ClipSync.onConfig(false)
         connected = false
         send = { false }
@@ -101,6 +108,9 @@ object PhoneData {
                     "call.reject" -> { Calls.reject(app); JSONObject() }
                     "call.silence" -> { Calls.silence(app); JSONObject() }
                     "phone.ring" -> { FindPhone.ring(app); JSONObject() }
+                    "media.cmd" -> { MediaWatcher.command(p.optString("action")); JSONObject() }
+                    "photos.recent" -> JSONObject().put("photos", Photos.recent(app, p.optInt("limit", 12).coerceIn(1, 24)))
+                    "photos.send" -> { Photos.send(app, p.optLong("id")); JSONObject() }
                     "phone.ring.stop" -> { FindPhone.stop(app); JSONObject() }
                     "notif.dismiss" -> { if (!NotifyListener.dismiss(p.optString("key"))) throw NoPermission(); JSONObject() }
                     "notif.reply" -> {
