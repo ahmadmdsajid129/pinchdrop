@@ -36,6 +36,12 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_tungstenite::tungstenite::Message;
 
 const SERVICE: &str = "_pdhuddle._tcp.local.";
+/// The huddle server's usual port (any free port when it's taken).
+const HUDDLE_PORT: u16 = 47700;
+/// Windows' Mobile Hotspot always gives its own laptop this address.
+const HOTSPOT_HOST_IP: &str = "192.168.137.1";
+/// Join codes: no 0/O, 1/I/L, so they read and type easily.
+const CODE_CHARS: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const MAGIC: &[u8; 4] = b"PDH1";
 /// Free huddles: up to this many laptops (counting the host).
 pub const FREE_MAX_LAPTOPS: usize = 4;
@@ -56,6 +62,13 @@ static SHARES: LazyLock<Mutex<HashMap<u16, tokio::task::JoinHandle<()>>>> =
     LazyLock::new(Default::default);
 /// Files being received: drop id → where they go.
 static RECEIVING: LazyLock<Mutex<HashMap<String, Receiving>>> = LazyLock::new(Default::default);
+/// The host's hotspot is on for the huddle (what to put back afterwards).
+static HOTSPOT_HOST: LazyLock<Mutex<Option<crate::hotspot::Saved>>> =
+    LazyLock::new(Default::default);
+/// This laptop joined a teammate's hotspot: (hotspot name, the Wi-Fi it was on before).
+/// (hotspot name, the Wi-Fi it was on before)
+type JoinedWifi = Option<(String, Option<String>)>;
+static JOINED_WIFI: LazyLock<Mutex<JoinedWifi>> = LazyLock::new(Default::default);
 
 fn now() -> u64 {
     SystemTime::now()
@@ -68,6 +81,24 @@ fn rand_hex(n: usize) -> String {
     let mut b = vec![0u8; n];
     rand::thread_rng().fill_bytes(&mut b);
     hex::encode(b)
+}
+
+fn new_code() -> String {
+    let mut b = [0u8; 8];
+    rand::thread_rng().fill_bytes(&mut b);
+    b.iter()
+        .map(|x| CODE_CHARS[*x as usize % CODE_CHARS.len()] as char)
+        .collect()
+}
+
+/// "kx7q-49mz", "KX7Q 49MZ" → "KX7Q49MZ" (None if it isn't a code).
+pub fn normalize_code(input: &str) -> Option<String> {
+    let c: String = input
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .map(|c| c.to_ascii_uppercase())
+        .collect();
+    (c.len() == 8 && c.bytes().all(|b| CODE_CHARS.contains(&b))).then_some(c)
 }
 
 fn b64() -> base64::engine::GeneralPurpose {
@@ -85,6 +116,8 @@ struct Member {
     tx: Option<mpsc::UnboundedSender<Vec<u8>>>,
     /// My address as this member sees it (for shared localhost links).
     my_ip: Option<IpAddr>,
+    /// This laptop opened the connection to them, so it's the one that redials after a drop-out.
+    dial: bool,
 }
 
 struct Huddle {
@@ -99,6 +132,8 @@ struct Huddle {
     members: HashMap<String, Member>,
     /// The project I last shared changes from ("Get <me>'s latest").
     last_repo: Option<PathBuf>,
+    /// 8-character join code (also names the hotspot fallback).
+    code: String,
 }
 
 struct Server {
@@ -125,12 +160,19 @@ pub struct HuddleView {
     pub me: Option<MemberView>,
     pub members: Vec<MemberView>,
     pub max_free: usize,
+    /// The join code, shown as KX7Q-49MZ.
+    pub code: Option<String>,
+    /// This laptop is sharing its hotspot for the huddle.
+    pub hotspot: bool,
+    /// This laptop joined through a teammate's hotspot.
+    pub on_hotspot: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FoundHuddle {
     pub hid: String,
+    pub code: String,
     pub name: String,
     pub host_name: String,
     pub count: usize,
@@ -227,6 +269,9 @@ pub fn view() -> HuddleView {
                 }),
                 members,
                 max_free: FREE_MAX_LAPTOPS,
+                code: Some(h.code.clone()).filter(|c| !c.is_empty()),
+                hotspot: HOTSPOT_HOST.lock().map(|x| x.is_some()).unwrap_or(false),
+                on_hotspot: JOINED_WIFI.lock().map(|x| x.is_some()).unwrap_or(false),
             }
         }
         None => HuddleView {
@@ -236,6 +281,9 @@ pub fn view() -> HuddleView {
             host: false,
             me: None,
             members: vec![],
+            code: None,
+            hotspot: false,
+            on_hotspot: false,
             max_free: FREE_MAX_LAPTOPS,
         },
     }
@@ -471,6 +519,7 @@ pub async fn start(app: AppHandle, name: Option<String>) -> Result<HuddleView, S
         port,
         members: HashMap::new(),
         last_repo: None,
+        code: new_code(),
     };
     advertise(&h);
     if let Ok(mut g) = STATE.lock() {
@@ -482,9 +531,12 @@ pub async fn start(app: AppHandle, name: Option<String>) -> Result<HuddleView, S
 
 /// Opens this PC's huddle server on a free port.
 async fn listen() -> Result<u16, String> {
-    let listener = TcpListener::bind("0.0.0.0:0")
-        .await
-        .map_err(|e| format!("Couldn't open the huddle connection: {e}"))?;
+    let listener = match TcpListener::bind(("0.0.0.0", HUDDLE_PORT)).await {
+        Ok(l) => l,
+        Err(_) => TcpListener::bind("0.0.0.0:0")
+            .await
+            .map_err(|e| format!("Couldn't open the huddle connection: {e}"))?,
+    };
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     let task = tokio::spawn(async move {
         while let Ok((tcp, addr)) = listener.accept().await {
@@ -515,6 +567,7 @@ fn advertise(h: &Huddle) {
     props.insert("name".to_string(), h.name.clone());
     props.insert("host".to_string(), h.my_name.clone());
     props.insert("n".to_string(), (h.members.len() + 1).to_string());
+    props.insert("code".to_string(), h.code.clone());
     let ips = crate::link::lan_hosts().join(",");
     let instance = format!("huddle-{}", h.hid);
     let host = format!("pdh-{}.local.", h.hid);
@@ -567,6 +620,7 @@ pub fn find() -> Vec<FoundHuddle> {
                 hid.to_string(),
                 FoundHuddle {
                     hid: hid.to_string(),
+                    code: info.get_property_val_str("code").unwrap_or("").to_string(),
                     name: info
                         .get_property_val_str("name")
                         .unwrap_or("Huddle")
@@ -689,6 +743,7 @@ pub async fn join(app: AppHandle, ip: String, port: u16) -> Result<HuddleView, S
                     {
                         m.tx = Some(tx);
                         m.my_ip = my_ip;
+                        m.dial = true;
                     }
                 }
             }
@@ -731,6 +786,7 @@ fn on_welcome(
         port,
         members: HashMap::new(),
         last_repo: None,
+        code: v["code"].as_str().unwrap_or("").chars().take(8).collect(),
     };
     let mut others = Vec::new();
     for m in v["members"].as_array().cloned().unwrap_or_default() {
@@ -761,6 +817,8 @@ fn on_welcome(
                 port,
                 tx: None,
                 my_ip: if is_host { my_ip } else { None },
+                // A newcomer dials everyone already in.
+                dial: true,
             },
         );
     }
@@ -768,7 +826,9 @@ fn on_welcome(
         *g = Some(h);
     }
     for (id, ip, port) in others {
-        tokio::spawn(connect_member(id, ip, port));
+        tokio::spawn(async move {
+            dial_member(id, ip, port).await;
+        });
     }
     emit_view();
     Ok(())
@@ -776,8 +836,8 @@ fn on_welcome(
 
 static SERVER_PORT: LazyLock<Mutex<Option<u16>>> = LazyLock::new(Default::default);
 
-/// Connects to an existing member (mesh) and proves we belong.
-async fn connect_member(id: String, ip: String, port: u16) {
+/// Connects to a member and proves we belong. True when connected.
+async fn dial_member(id: String, ip: String, port: u16) -> bool {
     let url = format!("ws://{ip}:{port}/");
     let Ok(Ok((mut ws, _))) = tokio::time::timeout(
         Duration::from_secs(8),
@@ -785,14 +845,14 @@ async fn connect_member(id: String, ip: String, port: u16) {
     )
     .await
     else {
-        return;
+        return false;
     };
     let my_ip = match ws.get_ref() {
         tokio_tungstenite::MaybeTlsStream::Plain(s) => s.local_addr().ok().map(|a| a.ip()),
         _ => None,
     };
     let Some(keys) = handshake(&mut ws, true).await else {
-        return;
+        return false;
     };
     let Some((hid, me, key, name, color, my_port)) = STATE.lock().ok().and_then(|g| {
         g.as_ref().map(|h| {
@@ -806,7 +866,7 @@ async fn connect_member(id: String, ip: String, port: u16) {
             )
         })
     }) else {
-        return;
+        return false;
     };
     let p = proof(&key, &hid, &me, &keys.bind);
     let hello = json!({ "t": "member", "hid": hid, "id": me, "name": name, "color": color, "port": my_port, "proof": p });
@@ -825,13 +885,17 @@ async fn connect_member(id: String, ip: String, port: u16) {
         },
     )
     .await;
+    let mut ok = false;
     if let Ok(mut g) = STATE.lock() {
         if let Some(m) = g.as_mut().and_then(|h| h.members.get_mut(&id)) {
             m.tx = Some(tx);
             m.my_ip = my_ip;
+            m.dial = true;
+            ok = true;
         }
     }
     emit_view();
+    ok
 }
 
 /// Someone connected to this PC's huddle server.
@@ -909,6 +973,7 @@ async fn accept_conn(tcp: TcpStream, addr: SocketAddr) {
                             port: v["port"].as_u64().unwrap_or(0) as u16,
                             tx: None,
                             my_ip,
+                            dial: false,
                         });
                         m.tx = Some(tx.clone());
                         m.my_ip = my_ip;
@@ -1004,7 +1069,7 @@ fn admit(
     }
     send_json(
         tx,
-        json!({ "t": "welcome", "hid": h.hid, "name": h.name, "key": b64().encode(h.key), "you": id, "color": color, "members": list }),
+        json!({ "t": "welcome", "hid": h.hid, "name": h.name, "key": b64().encode(h.key), "you": id, "color": color, "members": list, "code": h.code }),
     );
     h.members.insert(
         id.clone(),
@@ -1015,6 +1080,7 @@ fn admit(
             port,
             tx: Some(tx.clone()),
             my_ip,
+            dial: false,
         },
     );
     let note =
@@ -1036,14 +1102,58 @@ fn admit(
     Some(id)
 }
 
+/// How long a dropped-out teammate stays (greyed out) while their laptop tries to come back.
+const RECONNECT_FOR: Duration = Duration::from_secs(120);
+
 fn member_closed(id: &str) {
-    // Their connection ended: they've left (they rejoin to come back).
-    if let Ok(mut g) = STATE.lock() {
-        if let Some(h) = g.as_mut() {
-            h.members.remove(id);
+    // Their connection dropped (Wi-Fi blip, sleep, moved). Keep them, greyed out, and try again;
+    // only "bye" (they left) or 2 minutes without them removes them.
+    let dial = {
+        let Ok(mut g) = STATE.lock() else { return };
+        let Some(m) = g.as_mut().and_then(|h| h.members.get_mut(id)) else {
+            return;
+        };
+        if m.tx.is_none() {
+            return; // already handling it
         }
-    }
+        m.tx = None;
+        m.dial
+    };
     emit_view();
+    let id = id.to_string();
+    tokio::spawn(async move {
+        let since = Instant::now();
+        let mut wait = 2u64;
+        loop {
+            tokio::time::sleep(Duration::from_secs(wait)).await;
+            let info = STATE.lock().ok().and_then(|g| {
+                g.as_ref().and_then(|h| {
+                    h.members
+                        .get(&id)
+                        .map(|m| (m.tx.is_some(), m.ip.clone(), m.port))
+                })
+            });
+            let Some((online, ip, port)) = info else {
+                return;
+            }; // they left, or the huddle ended
+            if online {
+                return; // they came back (or we reached them)
+            }
+            if since.elapsed() > RECONNECT_FOR {
+                if let Ok(mut g) = STATE.lock() {
+                    if let Some(h) = g.as_mut() {
+                        h.members.remove(&id);
+                    }
+                }
+                emit_view();
+                return;
+            }
+            if dial && dial_member(id.clone(), ip, port).await {
+                return;
+            }
+            wait = (wait * 2).min(15);
+        }
+    });
 }
 
 fn stop_server() {
@@ -1068,6 +1178,19 @@ pub fn leave() {
         }
     }
     stop_server();
+    // Hotspot off (old name back), or back to the Wi-Fi this laptop was on. Off the UI thread.
+    let saved = HOTSPOT_HOST.lock().ok().and_then(|mut x| x.take());
+    let joined = JOINED_WIFI.lock().ok().and_then(|mut x| x.take());
+    if saved.is_some() || joined.is_some() {
+        std::thread::spawn(move || {
+            if let Some(s) = saved {
+                crate::hotspot::stop(&s);
+            }
+            if let Some((ssid, before)) = joined {
+                crate::hotspot::disconnect(&ssid, before.as_deref());
+            }
+        });
+    }
     if let Ok(mut s) = SHARES.lock() {
         for (_, t) in s.drain() {
             t.abort();
@@ -1086,6 +1209,108 @@ pub fn leave() {
     emit_view();
     emit_shelf();
     emit_inbox();
+}
+
+// ---------------------------------------------------------------- join codes and the hotspot fallback
+
+/// Host: share this laptop's Mobile Hotspot for the huddle (for Wi-Fi that keeps laptops apart).
+pub async fn hotspot_on() -> Result<HuddleView, String> {
+    let code = STATE
+        .lock()
+        .ok()
+        .and_then(|g| g.as_ref().filter(|h| h.host).map(|h| h.code.clone()))
+        .ok_or("Start a huddle first.")?;
+    if HOTSPOT_HOST.lock().map(|x| x.is_some()).unwrap_or(false) {
+        return Ok(view());
+    }
+    let (ssid, pass) = (
+        crate::hotspot::ssid_for(&code),
+        crate::hotspot::pass_for(&code),
+    );
+    let saved = tokio::task::spawn_blocking(move || crate::hotspot::start(&ssid, &pass))
+        .await
+        .map_err(|e| e.to_string())??;
+    if let Ok(mut x) = HOTSPOT_HOST.lock() {
+        *x = Some(saved);
+    }
+    // Announce on the hotspot's network too (it has its own address).
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    if let Ok(g) = STATE.lock() {
+        if let Some(h) = g.as_ref() {
+            advertise(h);
+        }
+    }
+    emit_view();
+    Ok(view())
+}
+
+pub async fn hotspot_off() -> HuddleView {
+    let saved = HOTSPOT_HOST.lock().ok().and_then(|mut x| x.take());
+    if let Some(s) = saved {
+        let _ = tokio::task::spawn_blocking(move || crate::hotspot::stop(&s)).await;
+    }
+    emit_view();
+    view()
+}
+
+fn find_code(code: &str) -> Option<FoundHuddle> {
+    find().into_iter().find(|f| f.code == code)
+}
+
+/// Joins by code: first on this Wi-Fi; if the huddle isn't visible here, through the host's
+/// hotspot (connects to it, joins, and comes back to this Wi-Fi when leaving).
+pub async fn join_code(app: AppHandle, input: String) -> Result<HuddleView, String> {
+    let code =
+        normalize_code(&input).ok_or("A join code has 8 letters and numbers, like KX7Q-49MZ.")?;
+    let c = code.clone();
+    if let Some(f) = tokio::task::spawn_blocking(move || find_code(&c))
+        .await
+        .ok()
+        .flatten()
+    {
+        return join(app, f.ip, f.port).await;
+    }
+    // Not visible here: go through the host's hotspot.
+    let (ssid, pass) = (
+        crate::hotspot::ssid_for(&code),
+        crate::hotspot::pass_for(&code),
+    );
+    let tmp = crate::outbox_dir(&app);
+    let s2 = ssid.clone();
+    let before = tokio::task::spawn_blocking(move || crate::hotspot::connect(&s2, &pass, &tmp))
+        .await
+        .map_err(|e| e.to_string())??;
+    if let Ok(mut x) = JOINED_WIFI.lock() {
+        *x = Some((ssid.clone(), before.clone()));
+    }
+    let _ = app.emit("huddle-joining", json!({ "code": null, "via": ssid }));
+    // Find it on the hotspot (discovery, or the hotspot's fixed address).
+    let deadline = Instant::now() + Duration::from_secs(20);
+    let mut last = String::from("The huddle didn't show up on the hotspot.");
+    while Instant::now() < deadline {
+        let c = code.clone();
+        if let Some(f) = tokio::task::spawn_blocking(move || find_code(&c))
+            .await
+            .ok()
+            .flatten()
+        {
+            return join(app, f.ip, f.port)
+                .await
+                .inspect_err(|_| restore_wifi());
+        }
+        match join(app.clone(), HOTSPOT_HOST_IP.to_string(), HUDDLE_PORT).await {
+            Ok(v) => return Ok(v),
+            Err(e) => last = e,
+        }
+    }
+    restore_wifi();
+    Err(last)
+}
+
+fn restore_wifi() {
+    if let Some((ssid, before)) = JOINED_WIFI.lock().ok().and_then(|mut x| x.take()) {
+        std::thread::spawn(move || crate::hotspot::disconnect(&ssid, before.as_deref()));
+    }
 }
 
 // ---------------------------------------------------------------- messages between members
@@ -1119,6 +1344,7 @@ fn on_member_msg(from: &str, v: Value, tx: &mpsc::UnboundedSender<Vec<u8>>) {
                             port: v["port"].as_u64().unwrap_or(0) as u16,
                             tx: None,
                             my_ip: None,
+                            dial: false,
                         });
                     }
                 }
@@ -2071,6 +2297,19 @@ mod tests {
         assert!(v.contains(&("gone.rs".into(), "D".into())));
         assert!(v.contains(&("b2.ts".into(), "M".into())));
         assert!(v.contains(&("b.ts".into(), "D".into())));
+    }
+
+    #[test]
+    fn join_codes() {
+        let c = new_code();
+        assert_eq!(c.len(), 8);
+        assert_eq!(
+            normalize_code(&format!("{}-{}", &c[..4], &c[4..]).to_lowercase()),
+            Some(c.clone())
+        );
+        assert_eq!(normalize_code("KX7Q 49MZ"), Some("KX7Q49MZ".into()));
+        assert_eq!(normalize_code("KX7Q-49M"), None);
+        assert_eq!(normalize_code("KX7Q-49M0"), None, "0 isn't used");
     }
 
     #[test]

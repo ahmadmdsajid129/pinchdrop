@@ -9,6 +9,7 @@ mod clip;
 mod explorer;
 mod fs_info;
 mod grab;
+mod hotspot;
 mod huddle;
 mod license;
 mod link;
@@ -1167,6 +1168,20 @@ async fn huddle_join(app: AppHandle, ip: String, port: u16) -> Result<huddle::Hu
 }
 
 #[tauri::command]
+async fn huddle_join_code(app: AppHandle, code: String) -> Result<huddle::HuddleView, String> {
+    huddle::join_code(app, code).await
+}
+
+#[tauri::command]
+async fn huddle_hotspot(on: bool) -> Result<huddle::HuddleView, String> {
+    if on {
+        huddle::hotspot_on().await
+    } else {
+        Ok(huddle::hotspot_off().await)
+    }
+}
+
+#[tauri::command]
 fn huddle_answer(req_id: String, ok: bool) {
     huddle::answer(&req_id, ok);
 }
@@ -1516,6 +1531,8 @@ pub fn run() {
             huddle_find,
             huddle_join,
             huddle_answer,
+            huddle_join_code,
+            huddle_hotspot,
             huddle_leave,
             huddle_send_text,
             huddle_send_clipboard,
