@@ -965,11 +965,14 @@ impl Link {
         hold_id: &str,
         items: &crate::grab::GrabbedItems,
         secs: u64,
+        only: Option<&str>,
     ) -> Vec<String> {
+        let only_pc = only.map(|o| o.trim_start_matches("pc:").to_string());
         let live: Vec<(String, Tx, String)> = LIVE
             .lock()
             .map(|l| {
                 l.iter()
+                    .filter(|(id, _)| only_pc.as_ref().map_or(true, |o| o == *id))
                     .map(|(id, x)| (id.clone(), x.tx.clone(), x.name.clone()))
                     .collect()
             })
