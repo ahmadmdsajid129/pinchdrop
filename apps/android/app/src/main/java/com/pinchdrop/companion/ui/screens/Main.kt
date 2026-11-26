@@ -91,6 +91,8 @@ fun HomeScreen(
             }
         }
 
+        if (pc.connected) ScanToPcCard()
+
         if (pc.paired) {
             PdCard(borderColor = if (pc.connected) c.success.copy(alpha = 0.5f) else null) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -213,6 +215,50 @@ fun ReceivedScreen() {
                     color = c.muted, fontSize = 13.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 6.dp),
                 )
             }
+        }
+    }
+}
+
+/** v2 · Scan a document with the phone's camera; the PDF lands and opens on the PC. */
+@androidx.compose.runtime.Composable
+private fun ScanToPcCard() {
+    val c = Pd.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as? android.app.Activity
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult(),
+    ) { r ->
+        if (r.resultCode == android.app.Activity.RESULT_OK) {
+            val pdf = com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult.fromActivityResultIntent(r.data)?.pdf?.uri
+            if (pdf != null) {
+                com.pinchdrop.companion.transfer.Lifter.sendNow(context, listOf(pdf))
+                android.widget.Toast.makeText(context, "Sending the scan to your PC", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    PdCard {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.Filled.CameraAlt, contentDescription = null, tint = c.primary,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text("Scan to PC", color = c.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text("Scan a document; the PDF opens on your PC", color = c.muted, fontSize = 13.sp)
+            }
+            com.pinchdrop.companion.ui.SecondaryButton("Scan", onClick = {
+                val act = activity ?: return@SecondaryButton
+                val options = com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.Builder()
+                    .setGalleryImportAllowed(true)
+                    .setResultFormats(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_PDF)
+                    .setScannerMode(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                    .build()
+                com.google.mlkit.vision.documentscanner.GmsDocumentScanning.getClient(options).getStartScanIntent(act)
+                    .addOnSuccessListener { launcher.launch(androidx.activity.result.IntentSenderRequest.Builder(it).build()) }
+                    .addOnFailureListener {
+                        android.widget.Toast.makeText(context, "The scanner isn't available on this phone", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+            })
         }
     }
 }
