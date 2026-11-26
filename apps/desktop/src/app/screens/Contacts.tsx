@@ -6,6 +6,7 @@ import { useApp } from '../context';
 import { Button, Card, EmptyState, PageTitle } from '../ui';
 import { initials } from '../Sidebar';
 import { composeTo } from './Messages';
+import { PhoneChips } from '../PhoneChips';
 
 /**
  * v2 · The phone's contacts: search, text or call (the phone makes the call).
@@ -13,6 +14,7 @@ import { composeTo } from './Messages';
  */
 export function Contacts() {
   const { phone, go } = useApp();
+  const [deviceId, setDeviceId] = useState<string | null>(phone.deviceId ?? null);
   const [list, setList] = useState<Contact[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,14 +24,14 @@ export function Contacts() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setList(await api.contacts());
+      setList(await api.contacts(deviceId));
       setError(null);
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [deviceId]);
   useEffect(() => {
     void load();
   }, [load, phone.state]);
@@ -47,7 +49,7 @@ export function Contacts() {
   async function call(c: Contact, number: string) {
     setNote(null);
     try {
-      const r = await api.dial(number);
+      const r = await api.dial(number, deviceId);
       setNote(
         r.how === 'calling'
           ? `Calling ${c.name} on your phone…`
@@ -82,9 +84,12 @@ export function Contacts() {
     <>
       <PageTitle
         actions={
+          <>
+          <PhoneChips value={deviceId} onChange={(id) => { setDeviceId(id); setList(null); }} layoutId="contacts-phone" />
           <Button size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
           </Button>
+          </>
         }
       >
         Contacts
