@@ -52,7 +52,7 @@ object Lifter {
         data object Preparing : State
         data class Ready(val item: Item, val note: String? = null) : State
         data class InAir(val item: Item, val id: String, val expiresAtMs: Long, val totalSecs: Int) : State
-        data class Sending(val item: Item, val id: String, val bytesSent: Long) : State
+        data class Sending(val item: Item, val id: String, val bytesSent: Long, val fx: String = "default") : State
         data class Done(val item: Item) : State
         data class Failed(val item: Item?, val message: String) : State
     }
@@ -297,7 +297,8 @@ object Lifter {
         when (type) {
             "lift.catch" -> if (s is State.InAir) {
                 expiry?.cancel()
-                _state.value = State.Sending(s.item, id, 0)
+                // v2: the PC's animation pack, so this phone plays the matching send-away.
+                _state.value = State.Sending(s.item, id, 0, p.optString("fx").ifBlank { "default" })
                 if (s.item.files.isNotEmpty()) startServer(s.item, id)
             }
             "lift.req" -> requests.trySend(p)

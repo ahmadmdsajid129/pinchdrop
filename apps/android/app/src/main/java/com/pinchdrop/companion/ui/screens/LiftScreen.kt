@@ -117,7 +117,7 @@ fun LiftScreen(settings: AppSettings, pcName: String?, onClose: () -> Unit) {
                 Lifter.State.Idle, Lifter.State.Preparing -> Centered { Text("Getting it ready…", color = c.muted, fontSize = 15.sp) }
                 is Lifter.State.Ready -> ReadyBody(s, settings, pcName)
                 is Lifter.State.InAir -> InAirBody(s, pcName)
-                is Lifter.State.Sending -> SendingBody(s, pcName)
+                is Lifter.State.Sending -> SendingBody(s, pcName, settings)
                 is Lifter.State.Done -> DoneBody(s.item, pcName, onClose)
                 is Lifter.State.Failed -> Centered {
                     Text(s.message, color = c.text, fontSize = 16.sp, textAlign = TextAlign.Center)
@@ -300,12 +300,15 @@ private fun InAirBody(s: Lifter.State.InAir, pcName: String?) {
 }
 
 @Composable
-private fun SendingBody(s: Lifter.State.Sending, pcName: String?) {
+private fun SendingBody(s: Lifter.State.Sending, pcName: String?, settings: AppSettings) {
     val c = Pd.colors
     val frac = if (s.item.totalBytes > 0) (s.bytesSent.toFloat() / s.item.totalBytes).coerceIn(0f, 1f) else 0f
     val shown by animateFloatAsState(frac, tween(250), label = "sent")
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(s.id) { com.pinchdrop.companion.ui.PackFeedback.departure(context, s.fx, settings.arrivalSound, settings.vibrate) }
     Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        ItemCard(s.item, big = false)
+        // v2: with an animation pack, the item leaves the way the PC's pack arrives (played in reverse).
+        com.pinchdrop.companion.ui.ArrivalArt(s.fx, reverse = true) { ItemCard(s.item, big = false) }
         Spacer(Modifier.height(26.dp))
         Text("Caught! Sending to ${pcName ?: "your PC"}", color = c.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         Spacer(Modifier.height(16.dp))
