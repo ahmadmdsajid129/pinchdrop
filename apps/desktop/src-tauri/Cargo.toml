@@ -33,6 +33,8 @@ hmac = "0.12"
 rand = "0.8"
 base64 = "0.22"
 hex = "0.4"
+# v2 Pro: checks licence keys (Ed25519). Already used by rustls, nothing new downloaded.
+ring = "0.17"
 urlencoding = "2"
 mdns-sd = "0.13"
 if-addrs = "0.13"
