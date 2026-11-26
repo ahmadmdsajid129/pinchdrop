@@ -50,7 +50,6 @@ import com.pinchdrop.companion.ui.Avatar
 import com.pinchdrop.companion.ui.DemoTag
 import com.pinchdrop.companion.ui.NavRow
 import com.pinchdrop.companion.ui.PdCard
-import com.pinchdrop.companion.ui.PhaseBadge
 import com.pinchdrop.companion.ui.Route
 import com.pinchdrop.companion.ui.SecondaryButton
 import com.pinchdrop.companion.ui.SectionLabel

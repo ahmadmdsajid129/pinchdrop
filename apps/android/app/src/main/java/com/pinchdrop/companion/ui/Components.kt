@@ -98,21 +98,6 @@ fun LinkButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
-/** "Coming in Phase N" — the honest marker for anything not built yet. */
-@Composable
-fun PhaseBadge(phase: Int, modifier: Modifier = Modifier) {
-    val c = Pd.colors
-    Text(
-        "Coming in Phase $phase",
-        modifier = modifier
-            .clip(CircleShape)
-            .background(c.warn.copy(alpha = 0.15f))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        color = c.warn,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-    )
-}
 
 @Composable
 fun DemoTag(modifier: Modifier = Modifier) {

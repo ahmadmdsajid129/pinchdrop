@@ -59,7 +59,6 @@ import com.pinchdrop.companion.data.PcStatus
 import com.pinchdrop.companion.ui.Avatar
 import com.pinchdrop.companion.ui.DemoTag
 import com.pinchdrop.companion.ui.PdCard
-import com.pinchdrop.companion.ui.PhaseBadge
 import com.pinchdrop.companion.ui.PrimaryButton
 import com.pinchdrop.companion.ui.ToggleRow
 import com.pinchdrop.companion.ui.theme.Pd
