@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type MotionStyle } from 'framer-motion';
 import { ChevronDown, ChevronUp, Hand, Smartphone, Upload, LayoutGrid, MessageSquare, PhoneCall, PhoneMissed } from 'lucide-react';
 import { api, inTauri, onEvent, usePhone, usePhoneLive, useReducedMotion, useSettings, useTheme, useTransfers } from '../shared/api';
 import { SendingIsland } from './SendingIsland';
@@ -10,6 +10,7 @@ import { CallIsland } from './CallIsland';
 import { InfoIsland, type Info } from './InfoIsland';
 import { NowPlaying, PlayingBars } from './NowPlaying';
 import { usePro } from '../shared/pro';
+import { DEFAULT_PILL_STYLE, ThemeLayer, shellLook, shellRadius, type PillMood, type PillShape, type PillThemeId } from '../shared/pillThemes';
 import { PhotoStrip } from './PhotoStrip';
 import { PhonesIsland } from './PhonesIsland';
 import { CameraRow } from './CameraRow';
@@ -550,7 +551,15 @@ export function Pill() {
   const morph = reduced ? { duration: 0.12, ease: 'easeOut' as const } : { type: 'spring' as const, stiffness: 520, damping: 42, mass: 0.9 };
   const fade = reduced ? { duration: 0.08 } : { duration: 0.18, ease: [0.2, 0, 0, 1] as const };
   const collapsed = !expanded;
-  const ringClass = hold ? 'ring-primary/70' : collapsed && phone.state === 'none' ? 'ring-white/25' : 'ring-white/[0.09]';
+  // v2 · Pill Studio: the chosen look (designed themes, shapes and the clock need Pro).
+  const style = { ...DEFAULT_PILL_STYLE, ...(settings.pill.style ?? {}) };
+  const theme: PillThemeId = pro.active ? style.theme : 'classic';
+  const shape: PillShape = pro.active ? style.shape : 'pill';
+  const look = shellLook(theme);
+  const mood: PillMood = ringing ? 'ring' : hold || lift || liveTransfer ? 'busy' : live.media?.playing ? 'music' : 'idle';
+  const notchTop = shape === 'notch' && anchorV === 'top';
+  const ringClass =
+    theme !== 'classic' ? 'ring-transparent' : hold ? 'ring-primary/70' : collapsed && phone.state === 'none' ? 'ring-white/25' : 'ring-white/[0.09]';
   // Content sits on the anchored edge and stays put while the shell grows/shrinks around it.
   // (Flex alignment, not a CSS translate: the fade/scale animation owns `transform`.)
   const contentPos = `${anchorV === 'bottom' ? 'bottom-0' : 'top-0'} inset-x-0 flex ${justify}`;
@@ -558,22 +567,30 @@ export function Pill() {
   return (
     <motion.div
       className={`flex ${justify} ${align} w-screen h-screen`}
-      style={{ padding: PAD, transformOrigin: origin }}
+      style={{ padding: notchTop ? `0 ${PAD}px ${PAD * 2}px` : shape === 'notch' ? `${PAD * 2}px ${PAD}px 0` : PAD, transformOrigin: origin }}
       initial={false}
       animate={shown ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.92, y: anchorV === 'bottom' ? 8 : -8 }}
       transition={reduced ? { duration: 0.1 } : { type: 'spring', stiffness: 420, damping: 34 }}
     >
       <motion.div
         ref={shellRef}
-        className={`relative overflow-hidden bg-black ring-1 ring-inset ${ringClass}`}
+        className={`relative overflow-hidden ring-1 ring-inset ${ringClass} ${look.className}`}
         initial={false}
-        animate={shell ? { width: shell.w, height: shell.h, borderRadius: collapsed ? shell.h / 2 : 30 } : undefined}
+        animate={shell ? { width: shell.w, height: shell.h, borderRadius: shellRadius(shape, shell.h, !collapsed, anchorV === 'top') } : undefined}
         transition={sizedOnce.current ? morph : { duration: 0 }}
         onAnimationComplete={onMorphDone}
-        style={{ transformOrigin: origin, willChange: 'width, height' }}
+        style={{ ...(look.style as MotionStyle), transformOrigin: origin, willChange: 'width, height' }}
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
+        onPointerMove={(e) => {
+          // Liquid Glass: the highlight follows the pointer.
+          if (theme !== 'glass') return;
+          const r = e.currentTarget.getBoundingClientRect();
+          e.currentTarget.style.setProperty('--mx', `${e.clientX - r.left}px`);
+          e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`);
+        }}
       >
+        <ThemeLayer theme={theme} mood={mood} expanded={expanded} />
         <AnimatePresence initial={false}>
           {expanded ? (
             <motion.div
@@ -649,6 +666,7 @@ export function Pill() {
             >
               <div ref={contentRef} data-box="pill" className="shrink-0">
                 <PillButton
+                  clock={pro.active && style.clock}
                   settings={settings}
                   phone={phone}
                   live={live}
@@ -673,6 +691,7 @@ export function Pill() {
 }
 
 function PillButton({
+  clock,
   settings,
   phone,
   live,
@@ -684,6 +703,7 @@ function PillButton({
   onPointerMove,
   onContextMenu,
 }: {
+  clock: boolean;
   settings: Settings;
   phone: PhoneStatus;
   live: PhoneLive;
@@ -728,6 +748,7 @@ function PillButton({
       style={{ height: size.h }}
       className={`inline-flex items-center ${size.gap} ${size.px} ${size.text} font-semibold whitespace-nowrap rounded-full text-text cursor-default select-none transition-[filter] duration-150 hover:brightness-125 active:brightness-90`}
     >
+      {clock && <PillClock />}
       <span className={`w-2 h-2 rounded-full ${dot}`} />
       {shows === 'name_battery' && (
         <>
@@ -929,5 +950,19 @@ function Island({
         </button>
       </div>
     </section>
+  );
+}
+
+/** v2 · Pill Studio: the time at the start of the pill. */
+function PillClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 15_000);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <span className="tabular-nums font-semibold" aria-label={`Time ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>
+      {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+    </span>
   );
 }
