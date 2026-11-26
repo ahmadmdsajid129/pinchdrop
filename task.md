@@ -111,6 +111,15 @@ Pairing, live battery and sending were confirmed working on a POCO F7 + HP lapto
 ## 🚀 v2 backlog (agreed 2026-11-25, not started)
 Full plan with how each feature works and the v2 gesture set: [docs/v2-plan.md](docs/v2-plan.md).
 
+v2 final (2026-11-26) — built, founder check open:
+- PC setup: animated welcome (a file flies from laptop to phone), How it works, Quick setup, Pair (with install steps), and a how-to guide (PC and phone tabs). The guide is also a sidebar page, "How to use". Home shows "Let's connect your phone" until a phone is paired.
+- Phone setup: three animated welcome slides; one button asks for just Wi-Fi discovery, alerts and camera; then "Pick your extras" (notifications, messages, calls, photos, files, Find my phone, always connected, instant catch). Each is an optional switch that asks Android only when tapped, with a progress bar ("3 of 8 extras on"). Home invites you to turn on more; Settings → Features & permissions and How to use.
+- Phone: each Received filter has its own empty state; Clear received history works; no placeholder folder name in alerts.
+- Calls by gesture: a forgiving call mode (palm counts without the thumb, shorter hold, shaky hands and brief tracking loss OK, no swipe from raising a hand into view, no wave). The call card shows ✋ Answer · 👋 Reject · ✊ Silence and fills the one being held; gestures go to the phone that's ringing; a ringing call takes the camera even if it was on for grabbing; missing phone permission is explained.
+- Notifications stay on the PC until opened or cleared on the phone, or dismissed or replied to on the PC, even through a short disconnect.
+- First run: no more blank window or missing pill (page waited forever for a backend still starting).
+- Names: PinchDrop.exe (installer closes and removes the old pinchdrop-desktop.exe), PinchDrop.apk; version 2.0.0 on both; branded installer artwork.
+
 v2.2 (2026-11-26) — founder bug round, built, check open:
 - Dropping on a phone's chip offers it to that phone only (its Catch screen); letting go elsewhere offers it to all, first to catch wins.
 - An app's outgoing call (e.g. Instagram "Calling…") is no longer shown as incoming; caller name taken from the text when the app titles it with its own name.
