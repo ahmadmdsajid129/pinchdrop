@@ -17,7 +17,7 @@ export function PhoneChips({ value, onChange, layoutId = 'phone-chip' }: { value
   if (phones.length < 2) return null;
   const current = value ?? phones[0].id;
   return (
-    <div role="radiogroup" aria-label="Which phone" className="inline-flex p-1 rounded-full bg-bg2 gap-1">
+    <div role="radiogroup" aria-label="Which phone" className="flex w-full max-w-[520px] p-1 rounded-full bg-bg2 gap-1">
       {phones.map((p) => {
         const on = p.id === current;
         return (
@@ -27,7 +27,7 @@ export function PhoneChips({ value, onChange, layoutId = 'phone-chip' }: { value
             role="radio"
             aria-checked={on}
             onClick={() => onChange(p.id)}
-            className={`relative h-9 px-3.5 rounded-full text-[13px] font-semibold inline-flex items-center gap-2 transition-colors ${on ? 'text-text' : 'text-muted hover:text-soft'}`}
+            className={`relative flex-1 min-w-0 h-9 px-3 rounded-full text-[13px] font-semibold inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors ${on ? 'text-text' : 'text-muted hover:text-soft'}`}
           >
             {on && (
               <motion.span
@@ -36,11 +36,11 @@ export function PhoneChips({ value, onChange, layoutId = 'phone-chip' }: { value
                 transition={{ type: 'spring', stiffness: 500, damping: 38 }}
               />
             )}
-            <span className="relative inline-flex items-center gap-2">
-              <Smartphone size={14} aria-hidden="true" />
-              {p.name}
+            <span className="relative flex items-center gap-2 min-w-0">
+              <Smartphone size={14} aria-hidden="true" className="shrink-0" />
+              <span className="truncate">{p.name}</span>
               {p.battery != null && (
-                <span className="inline-flex items-center gap-0.5 text-[11.5px] font-medium text-muted">
+                <span className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] font-medium text-muted">
                   <Battery level={p.battery} charging={p.charging} size={13} />
                   {p.battery}%
                 </span>
