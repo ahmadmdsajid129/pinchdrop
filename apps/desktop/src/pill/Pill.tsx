@@ -247,7 +247,9 @@ export function Pill() {
     if (settings?.gestures.islandCamera !== 'button') startCamera();
   }, [settings?.gestures.sounds, settings?.gestures.islandCamera, startCamera]);
   useLayoutEffect(() => {
-    const el = shellRef.current?.querySelector(`[data-box="${expanded ? 'island' : 'pill'}"]`);
+    // The newest box (during a cross-fade the old one is still leaving).
+    const all = shellRef.current?.querySelectorAll(`[data-box="${expanded ? 'island' : 'pill'}"]`);
+    const el = all && all.length ? all[all.length - 1] : null;
     if (!el) return;
     if (observed.current !== el) {
       observer.current?.disconnect();
@@ -620,7 +622,8 @@ export function Pill() {
             </motion.div>
           ) : (
             <motion.div
-              key="pill"
+              // Keyed by phone: switching phones cross-fades the content while the shell springs to the new width.
+              key={`pill-${phone.deviceId ?? phone.name ?? "none"}`}
               className={`absolute ${contentPos}`}
               initial={{ opacity: 0, scale: 0.94 }}
               animate={{ opacity: 1, scale: 1, transition: { ...fade, delay: reduced ? 0 : 0.08 } }}
