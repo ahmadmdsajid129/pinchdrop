@@ -199,3 +199,70 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .pd-fly, .pd-hand, .pd-land, .pd-glow, .pd-float, .pd-ripple { animation: none; }
 }
+
+/* ---------------- v2 · Pill Studio themes ----------------
+   Transform / opacity animations only. Every theme has a mood: idle, ring, music, busy. */
+
+/* Aurora: three soft light blobs drifting, much larger than the pill, so only colour shows. */
+.pd-aur { position: absolute; width: 75%; height: 300%; top: -100%; border-radius: 50%; filter: blur(10px); will-change: transform; }
+.pd-aur-a { left: -18%; background: radial-gradient(closest-side, rgba(34, 211, 238, 0.95), rgba(34, 211, 238, 0.25) 60%, transparent); animation: pd-aur-a 11s ease-in-out infinite alternate; }
+.pd-aur-b { left: 22%; background: radial-gradient(closest-side, rgba(168, 85, 247, 0.95), rgba(168, 85, 247, 0.25) 60%, transparent); animation: pd-aur-b 14s ease-in-out infinite alternate; }
+.pd-aur-c { left: 58%; background: radial-gradient(closest-side, rgba(52, 211, 153, 0.85), rgba(52, 211, 153, 0.2) 60%, transparent); animation: pd-aur-c 17s ease-in-out infinite alternate; }
+@keyframes pd-aur-a { from { transform: translate(0, 0) scale(1); } to { transform: translate(45%, 6%) scale(1.2); } }
+@keyframes pd-aur-b { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-45%, 8%) scale(0.9); } }
+@keyframes pd-aur-c { from { transform: translate(0, 0) scale(0.95); } to { transform: translate(-60%, -4%) scale(1.25); } }
+.pd-mood-ring .pd-aur { animation-duration: 2.4s; }
+.pd-mood-ring .pd-aur-b { background: radial-gradient(closest-side, rgba(52, 211, 153, 0.95), rgba(52, 211, 153, 0.25) 60%, transparent); }
+.pd-mood-ring .pd-aur-c { background: radial-gradient(closest-side, rgba(163, 230, 53, 0.8), transparent); }
+.pd-mood-music .pd-aur { animation-duration: 6s; }
+.pd-mood-busy .pd-aur { animation-duration: 4s; }
+.pd-theme-aurora { text-shadow: 0 1px 6px rgba(5, 8, 22, 0.6); }
+
+/* Liquid Glass: pointer highlight + slow shine. */
+.pd-glass-spec {
+  background: radial-gradient(120px circle at var(--mx, 30%) var(--my, 0%), rgba(255, 255, 255, 0.22), transparent 60%);
+  transition: opacity 0.3s;
+}
+.pd-glass-shine {
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: translateX(0) skewX(-18deg);
+  animation: pd-shine 7s ease-in-out infinite;
+}
+@keyframes pd-shine { 0%, 70% { transform: translateX(0) skewX(-18deg); } 100% { transform: translateX(560%) skewX(-18deg); } }
+.pd-mood-ring .pd-glass-shine { animation-duration: 1.6s; background: linear-gradient(100deg, transparent, rgba(91, 224, 127, 0.45), transparent); }
+.pd-mood-busy .pd-glass-shine { animation-duration: 2.6s; }
+
+/* Neon Tokyo: a tube that flickers on, breathes, and turns cyan when a call rings. */
+.pd-neon-tube {
+  border: 1.5px solid #FF5BDF;
+  box-shadow: 0 0 6px rgba(255, 43, 214, 0.9), 0 0 14px rgba(255, 43, 214, 0.45), inset 0 0 8px rgba(255, 43, 214, 0.55);
+  animation: pd-neon-on 1.1s steps(1, end) 1, pd-neon-breathe 3.2s ease-in-out 1.1s infinite;
+}
+.pd-neon-haze { background: radial-gradient(ellipse at 50% 120%, rgba(34, 228, 255, 0.16), transparent 60%), radial-gradient(ellipse at 50% -20%, rgba(255, 43, 214, 0.18), transparent 60%); }
+@keyframes pd-neon-on {
+  0% { opacity: 1; } 8% { opacity: 0.2; } 14% { opacity: 1; } 22% { opacity: 0.35; } 30% { opacity: 1; } 46% { opacity: 0.6; } 52%, 100% { opacity: 1; }
+}
+@keyframes pd-neon-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.78; } }
+.pd-mood-ring .pd-neon-tube {
+  border-color: #5BF3FF;
+  box-shadow: 0 0 6px rgba(34, 228, 255, 0.95), 0 0 16px rgba(34, 228, 255, 0.5), inset 0 0 8px rgba(34, 228, 255, 0.6);
+  animation: pd-neon-breathe 0.7s ease-in-out infinite;
+}
+.pd-mood-music .pd-neon-tube { animation: pd-neon-breathe 1.2s ease-in-out infinite; }
+.pd-theme-neon { text-shadow: 0 0 6px rgba(255, 91, 223, 0.55); letter-spacing: 0.02em; }
+
+/* Cassette: rolling stripes and spinning reels while something plays or sends. */
+.pd-cas-stripes {
+  background: repeating-linear-gradient(90deg, #E86A33 0 24px, #F2B544 24px 48px, #2F8F83 48px 72px);
+  background-size: 72px 100%;
+}
+.pd-mood-music .pd-cas-stripes, .pd-mood-busy .pd-cas-stripes, .pd-mood-ring .pd-cas-stripes { animation: pd-stripes 1.2s linear infinite; }
+@keyframes pd-stripes { from { background-position: 0 0; } to { background-position: 72px 0; } }
+.pd-reel { animation: pd-spin 2.2s linear infinite; animation-play-state: paused; }
+.pd-mood-music .pd-reel, .pd-mood-busy .pd-reel, .pd-mood-ring .pd-reel { animation-play-state: running; }
+@keyframes pd-spin { to { transform: rotate(360deg); } }
+.pd-theme-cassette { font-feature-settings: 'tnum'; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-aur, .pd-glass-shine, .pd-neon-tube, .pd-cas-stripes, .pd-reel { animation: none !important; }
+}
