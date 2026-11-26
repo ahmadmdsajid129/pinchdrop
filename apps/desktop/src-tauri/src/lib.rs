@@ -648,6 +648,30 @@ async fn call_action(
         .map(|_| ())
 }
 
+/// v2 · Now playing: play / pause / next / previous on a phone.
+#[tauri::command]
+async fn media_cmd(
+    app: AppHandle,
+    action: String,
+    device_id: Option<String>,
+) -> Result<(), String> {
+    if !matches!(
+        action.as_str(),
+        "play" | "pause" | "toggle" | "next" | "previous"
+    ) {
+        return Err("Unknown media action".into());
+    }
+    link_or_err(&app)?
+        .phone_request_to(
+            device_id.as_deref(),
+            "media.cmd",
+            serde_json::json!({ "action": action }),
+            "notification access",
+        )
+        .await
+        .map(|_| ())
+}
+
 /// Find my phone: ring it loudly (or stop).
 #[tauri::command]
 async fn find_phone(app: AppHandle, stop: bool) -> Result<(), String> {
@@ -1112,6 +1136,7 @@ pub fn run() {
             clear_missed,
             call_action,
             find_phone,
+            media_cmd,
             hold_send_now,
             gesture_session_start,
             gesture_session_stop,
