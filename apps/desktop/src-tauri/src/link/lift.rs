@@ -30,7 +30,13 @@ struct LiftFile {
 
 struct Lift {
     id: String,
+    /// The phone's device id, or "pc:<pcId>" for a hold offered by a paired PC (laptop ↔ laptop).
     device_id: String,
+    /// From a paired PC: catching sends `hold.catch`; the files come as a normal send.
+    from_pc: bool,
+    /// Announced file count (a PC's hold doesn't list its files up front).
+    file_count: usize,
+    is_folder: bool,
     phone_name: String,
     label: String,
     files: Vec<LiftFile>,
@@ -55,7 +61,7 @@ pub struct LiftView {
     pub preview: crate::preview::Preview,
 }
 
-type ChunkTx = mpsc::UnboundedSender<(u64, u64, Vec<u8>)>;
+pub type ChunkTx = mpsc::UnboundedSender<(u64, u64, Vec<u8>)>;
 
 #[derive(Default)]
 struct LiftState {
@@ -105,6 +111,17 @@ pub fn safe_name(raw: &str) -> String {
     name
 }
 
+/// "CPP/src/main.cpp" from another device → ["CPP", "src", "main.cpp"], each part made safe;
+/// ".." and empty parts are dropped, so the result never climbs out of the save folder.
+pub fn safe_rel_path(raw: &str) -> Vec<String> {
+    raw.split(['/', '\\'])
+        .map(str::trim)
+        .filter(|seg| !seg.is_empty() && *seg != "." && *seg != "..")
+        .take(32)
+        .map(safe_name)
+        .collect()
+}
+
 /// `dir\name`, or `dir\name (2).ext` … if that's taken.
 pub fn unique_path(dir: &Path, name: &str) -> PathBuf {
     let first = dir.join(name);
@@ -127,6 +144,27 @@ fn str_of<'a>(p: &'a Value, k: &str) -> &'a str {
 
 fn preview_of(l: &Lift) -> crate::preview::Preview {
     use crate::preview::{kind_for_ext, Preview};
+    if l.from_pc && l.files.is_empty() && l.texts.is_empty() {
+        let ext = l
+            .label
+            .rsplit_once('.')
+            .map(|(_, e)| e.to_ascii_uppercase())
+            .unwrap_or_default();
+        let mut pv = Preview {
+            kind: if l.is_folder {
+                "folder".into()
+            } else {
+                kind_for_ext(&ext).to_string()
+            },
+            ext: if l.is_folder { String::new() } else { ext },
+            ..Default::default()
+        };
+        if l.file_count > 1 && !l.is_folder {
+            pv.kind = format!("multi:{}", pv.kind);
+            pv.child_count = l.file_count as u64;
+        }
+        return pv;
+    }
     if l.files.is_empty() {
         let t = l.texts.first().map(String::as_str).unwrap_or("");
         return if crate::clip::is_link(t) {
@@ -143,6 +181,9 @@ fn preview_of(l: &Lift) -> crate::preview::Preview {
     let first = &l.files[0];
     let ext = first
         .name
+        .rsplit('/')
+        .next()
+        .unwrap_or(&first.name)
         .rsplit_once('.')
         .map(|(_, e)| e.to_ascii_uppercase())
         .unwrap_or_default();
@@ -179,7 +220,11 @@ impl Link {
             id: l.id.clone(),
             phone_name: l.phone_name.clone(),
             label: l.label.clone(),
-            file_count: l.files.len(),
+            file_count: if l.files.is_empty() {
+                l.file_count
+            } else {
+                l.files.len()
+            },
             total_bytes: l.total_bytes,
             expires_in_ms: l.total.saturating_sub(l.started.elapsed()).as_millis() as u64,
             total_ms: l.total.as_millis() as u64,
@@ -223,9 +268,10 @@ impl Link {
             .into_iter()
             .take(MAX_FILES)
             .map(|f| LiftFile {
-                name: safe_name(&f.name),
+                name: safe_rel_path(&f.name).join("/"),
                 ..f
             })
+            .filter(|f| !f.name.is_empty())
             .collect();
         let texts: Vec<String> = p
             .get("texts")
@@ -270,6 +316,9 @@ impl Link {
         let lift = Lift {
             id: id.clone(),
             device_id: device_id.to_string(),
+            from_pc: false,
+            file_count: files.len(),
+            is_folder: false,
             phone_name,
             label,
             total_bytes: files.iter().map(|f| f.size).sum(),
@@ -302,6 +351,59 @@ impl Link {
             tokio::time::sleep(Duration::from_secs(secs) + Duration::from_millis(300)).await;
             me.lift_drop(Some(&id), "expired");
         });
+    }
+
+    /// v2 · A paired PC put something in the air (`hold.offer` on our client link to it).
+    pub(super) fn peer_hold_offer(self: &Arc<Self>, device_id: &str, pc_name: &str, p: &Value) {
+        let id = str_of(p, "holdId").to_string();
+        if id.is_empty() || id.len() > 64 {
+            return;
+        }
+        let secs = p
+            .get("expiresInSecs")
+            .and_then(Value::as_u64)
+            .unwrap_or(30)
+            .clamp(5, 120);
+        let lift = Lift {
+            id: id.clone(),
+            device_id: device_id.to_string(),
+            from_pc: true,
+            file_count: p.get("fileCount").and_then(Value::as_u64).unwrap_or(0) as usize,
+            is_folder: p.get("isFolder").and_then(Value::as_bool).unwrap_or(false),
+            phone_name: pc_name.to_string(),
+            label: str_of(p, "label").chars().take(120).collect(),
+            files: Vec::new(),
+            texts: Vec::new(),
+            total_bytes: p.get("totalBytes").and_then(Value::as_u64).unwrap_or(0),
+            thumb: None,
+            started: Instant::now(),
+            total: Duration::from_secs(secs),
+        };
+        if let Ok(mut c) = LIFTS.current.lock() {
+            *c = Some(lift);
+        }
+        crate::force_show_pill(&self.app, secs + 2);
+        let _ = self.app.emit_to("pill", "island-open", ());
+        self.emit_lift();
+    }
+
+    /// Put away quietly (the other side already knows: expired, caught elsewhere, cancelled).
+    pub(super) fn lift_drop_local(&self, id: &str) {
+        let gone = LIFTS
+            .current
+            .lock()
+            .map(|mut c| {
+                if c.as_ref().is_some_and(|l| l.id == id) {
+                    *c = None;
+                    true
+                } else {
+                    false
+                }
+            })
+            .unwrap_or(false);
+        if gone {
+            self.emit_lift();
+        }
     }
 
     /// The phone took it back (or it failed there).
@@ -344,11 +446,14 @@ impl Link {
             }
         });
         if let Some(l) = taken {
-            self.tell(
-                &l.device_id,
-                "lift.cancel",
-                json!({ "liftId": l.id, "reason": reason }),
-            );
+            // A paired PC's hold just keeps counting down there; a phone is told.
+            if !l.from_pc {
+                self.tell(
+                    &l.device_id,
+                    "lift.cancel",
+                    json!({ "liftId": l.id, "reason": reason }),
+                );
+            }
             self.emit_lift();
         }
     }
@@ -386,6 +491,11 @@ impl Link {
                 }
             })
             .ok_or("Nothing from the phone is waiting any more.")?;
+        if lift.from_pc {
+            // Ask the other PC for it; its files arrive as a normal send (accepted automatically).
+            self.emit_lift();
+            return self.peer_catch_hold(&lift.device_id, &lift.id);
+        }
         let Some(tx) = self.session_tx(&lift.device_id) else {
             self.emit_lift();
             return Err("The phone isn't connected any more.".into());
@@ -482,20 +592,93 @@ impl Link {
         Ok(())
     }
 
-    /// Pulls every file of a caught lift. Returns where they were saved.
+    /// Pulls every file of a caught lift from the phone. Returns where they were saved.
     async fn pull(&self, lift: &Lift, tx: &Tx, dir: &Path) -> Result<Vec<PathBuf>, String> {
-        use std::io::Write;
-        std::fs::create_dir_all(dir)
-            .map_err(|_| "Couldn't create the Downloads\\PinchDrop folder.".to_string())?;
-        let (ctx, mut crx) = mpsc::unbounded_channel();
+        let (ctx, crx) = mpsc::unbounded_channel();
         if let Ok(mut p) = LIFTS.pulls.lock() {
             p.insert(lift.id.clone(), (lift.device_id.clone(), ctx));
         }
+        let files: Vec<(Vec<String>, u64)> = lift
+            .files
+            .iter()
+            .map(|f| (f.name.split('/').map(str::to_string).collect(), f.size))
+            .collect();
+        let id = lift.id.clone();
+        let req_tx = tx.clone();
+        let result = self
+            .pull_into(
+                &lift.id,
+                &files,
+                dir,
+                crx,
+                transfer::LIFT_CHUNK,
+                move |index, offset, length| {
+                    req_tx
+                        .send(Out::Text(message(
+                            "lift.req",
+                            json!({ "liftId": id, "index": index, "offset": offset, "length": length }),
+                        )))
+                        .is_ok()
+                },
+                |_| {},
+            )
+            .await;
+        if result.as_ref().err().is_some_and(|e| e == "Cancelled.") {
+            self.tell(
+                &lift.device_id,
+                "lift.cancel",
+                json!({ "liftId": lift.id, "reason": "cancelled" }),
+            );
+        }
+        result
+    }
+
+    /// The pull engine shared by lifts and PC → PC sends: asks for each file in chunks (a few in
+    /// flight), writes a `.pinchdrop-part`, renames it when complete. Folders are recreated
+    /// under `dir` from already-cleaned path parts. Deletes the partial file on any failure.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) async fn pull_into(
+        &self,
+        transfer_id: &str,
+        files: &[(Vec<String>, u64)],
+        dir: &Path,
+        mut chunks: mpsc::UnboundedReceiver<(u64, u64, Vec<u8>)>,
+        chunk: u64,
+        request: impl Fn(u64, u64, u64) -> bool,
+        file_done: impl Fn(u64),
+    ) -> Result<Vec<PathBuf>, String> {
+        use std::io::Write;
+        std::fs::create_dir_all(dir)
+            .map_err(|_| "Couldn't create the Downloads\\PinchDrop folder.".to_string())?;
         let mut saved = Vec::new();
         let mut before = 0u64;
-        for (index, f) in lift.files.iter().enumerate() {
+        // A folder that already exists here gets a fresh name once ("CPP (2)"), then all its files go in it.
+        let mut renamed_top: HashMap<String, String> = HashMap::new();
+        for (index, (segs, size)) in files.iter().enumerate() {
             let index = index as u64;
-            let dest = unique_path(dir, &f.name);
+            let size = *size;
+            let Some((name, folders)) = segs.split_last() else {
+                continue;
+            };
+            let mut parent = dir.to_path_buf();
+            if let Some((top, rest)) = folders.split_first() {
+                let top = renamed_top
+                    .entry(top.clone())
+                    .or_insert_with(|| {
+                        unique_path(dir, top)
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_else(|| top.clone())
+                    })
+                    .clone();
+                parent.push(top);
+                for f in rest {
+                    parent.push(f);
+                }
+                std::fs::create_dir_all(&parent)
+                    .map_err(|_| "Couldn't create a folder in Downloads\\PinchDrop.".to_string())?;
+            }
+            let dest = unique_path(&parent, name);
             let part = dest.with_file_name(format!(
                 "{}.pinchdrop-part",
                 dest.file_name()
@@ -510,48 +693,41 @@ impl Link {
             let mut offset = 0u64;
             let mut requested = 0u64;
             let mut in_flight = 0u64;
-            while offset < f.size {
-                while in_flight < WINDOW && requested < f.size {
-                    let len = transfer::LIFT_CHUNK.min(f.size - requested);
-                    let req = json!({ "liftId": lift.id, "index": index, "offset": requested, "length": len });
-                    if tx.send(Out::Text(message("lift.req", req))).is_err() {
+            while offset < size {
+                while in_flight < WINDOW && requested < size {
+                    let len = chunk.min(size - requested);
+                    if !request(index, requested, len) {
                         cleanup(&part);
-                        return Err("The phone disconnected.".into());
+                        return Err("The other device disconnected.".into());
                     }
                     requested += len;
                     in_flight += 1;
                 }
-                let got = timeout(CHUNK_TIMEOUT, crx.recv()).await;
-                let Ok(Some((i, o, data))) = got else {
+                let Ok(Some((i, o, data))) = timeout(CHUNK_TIMEOUT, chunks.recv()).await else {
                     cleanup(&part);
-                    return Err("The phone stopped sending.".into());
+                    return Err("The other device stopped sending.".into());
                 };
                 if i != index || o != offset {
                     continue; // stale or out of order: ignore
                 }
-                if data.is_empty() || offset + data.len() as u64 > f.size {
+                if data.is_empty() || offset + data.len() as u64 > size {
                     cleanup(&part);
-                    return Err("The phone sent something unexpected.".into());
+                    return Err("The other device sent something unexpected.".into());
                 }
                 if out.write_all(&data).is_err() {
                     cleanup(&part);
                     return Err("Couldn't write the file (is the disk full?).".into());
                 }
                 offset += data.len() as u64;
-                in_flight -= 1;
+                in_flight = in_flight.saturating_sub(1);
                 let still = self
-                    .update_transfer(&lift.id, |t| {
+                    .update_transfer(transfer_id, |t| {
                         t.bytes_done = before + offset;
                         t.state == "sending"
                     })
                     .unwrap_or(false);
                 if !still {
                     cleanup(&part);
-                    self.tell(
-                        &lift.device_id,
-                        "lift.cancel",
-                        json!({ "liftId": lift.id, "reason": "cancelled" }),
-                    );
                     return Err("Cancelled.".into());
                 }
                 self.emit_transfers(false);
@@ -562,8 +738,9 @@ impl Link {
                 cleanup(&part);
                 "Couldn't finish saving the file.".to_string()
             })?;
-            before += f.size;
-            self.update_transfer(&lift.id, |t| {
+            before += size;
+            file_done(index);
+            self.update_transfer(transfer_id, |t| {
                 t.files_done = index as u32 + 1;
                 if let Some(e) = t.files.get_mut(index as usize) {
                     e.source = dest.to_string_lossy().into_owned();
@@ -611,6 +788,15 @@ pub fn save_dir(app: &AppHandle) -> PathBuf {
 }
 
 /// Links open in the browser, short text goes on the clipboard, long text becomes a note that opens.
+pub fn land_texts_pub(app: &AppHandle, dir: &Path, texts: &[String]) -> bool {
+    land_texts(app, dir, texts)
+}
+
+/// Opens what just landed (shared with PC → PC sends).
+pub fn open_landed_pub(app: &AppHandle, dir: &Path, saved: &[PathBuf]) {
+    open_landed(app, dir, saved)
+}
+
 fn land_texts(app: &AppHandle, dir: &Path, texts: &[String]) -> bool {
     use tauri_plugin_opener::OpenerExt;
     let mut opened = false;
@@ -641,7 +827,20 @@ fn open_landed(app: &AppHandle, dir: &Path, saved: &[PathBuf]) {
     let target = if saved.len() == 1 {
         saved[0].clone()
     } else {
-        dir.to_path_buf()
+        // All in one folder ("CPP\\…")? Open that folder; else the save folder.
+        let tops: std::collections::HashSet<_> = saved
+            .iter()
+            .filter_map(|p| {
+                p.strip_prefix(dir)
+                    .ok()
+                    .and_then(|r| r.components().next())
+                    .map(|c| c.as_os_str().to_owned())
+            })
+            .collect();
+        match (tops.len(), tops.iter().next()) {
+            (1, Some(t)) if dir.join(t).is_dir() => dir.join(t),
+            _ => dir.to_path_buf(),
+        }
     };
     let _ = app
         .opener()
@@ -665,6 +864,23 @@ mod tests {
         let long = format!("{}.mp4", "x".repeat(300));
         let s = safe_name(&long);
         assert!(s.ends_with(".mp4") && s.chars().count() == 150);
+    }
+
+    #[test]
+    fn paths_from_other_devices_stay_inside() {
+        assert_eq!(
+            safe_rel_path("CPP/src/main.cpp"),
+            vec!["CPP", "src", "main.cpp"]
+        );
+        assert_eq!(
+            safe_rel_path("../../Windows/evil.dll"),
+            vec!["Windows", "evil.dll"]
+        );
+        assert_eq!(
+            safe_rel_path("a\\..\\b\\CON.txt"),
+            vec!["a", "b", "_CON.txt"]
+        );
+        assert!(safe_rel_path("../..").is_empty());
     }
 
     #[test]
