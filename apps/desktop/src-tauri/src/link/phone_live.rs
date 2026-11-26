@@ -23,6 +23,20 @@ pub struct PhoneLive {
     /// A call rang out unanswered and hasn't been looked at yet (who, and through which app).
     pub missed: Option<String>,
     pub missed_app: Option<String>,
+    /// v2 · Now playing on the phone (music, YouTube, podcasts…).
+    pub media: Option<MediaView>,
+}
+
+/// What's playing on a phone, for the Island's Now Playing row.
+#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaView {
+    pub app: String,
+    pub title: String,
+    pub artist: String,
+    /// Album art / video thumbnail as a small JPEG data URL.
+    pub art: Option<String>,
+    pub playing: bool,
 }
 
 static LIVE: LazyLock<Mutex<HashMap<String, PhoneLive>>> = LazyLock::new(Default::default);
@@ -132,6 +146,24 @@ impl Link {
                 if let Some(g) = self.app.try_state::<crate::grab::Grab>() {
                     g.tick(&self.app);
                 }
+            }
+            "media.state" => {
+                let title = s(p, "title", 200).unwrap_or_default();
+                let media = if title.is_empty() {
+                    None
+                } else {
+                    Some(MediaView {
+                        app: s(p, "app", 60).unwrap_or_default(),
+                        title,
+                        artist: s(p, "artist", 200).unwrap_or_default(),
+                        art: s(p, "art", 64 * 1024).filter(|a| {
+                            a.starts_with("data:image/jpeg;base64,")
+                                || a.starts_with("data:image/png;base64,")
+                        }),
+                        playing: p.get("playing").and_then(Value::as_bool).unwrap_or(false),
+                    })
+                };
+                self.live_entry(dev, |l| l.media = media);
             }
             "status.messages" => {
                 let n = p
