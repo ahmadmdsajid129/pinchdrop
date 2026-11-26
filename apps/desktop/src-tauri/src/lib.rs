@@ -1306,6 +1306,14 @@ pub fn run() {
             link::phone_live::spawn_clipboard_watch(handle.clone());
             allow_camera_in_webviews(&handle);
             build_tray(&handle)?;
+            // v2: the program is now PinchDrop.exe; re-register "start with Windows" so it
+            // points at this exe and not an older file name.
+            {
+                let auto = handle.autolaunch();
+                if auto.is_enabled().unwrap_or(false) {
+                    let _ = auto.enable();
+                }
+            }
             place_pill_initially(&handle);
             refresh_pill_visibility(&handle);
 

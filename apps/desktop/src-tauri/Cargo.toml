@@ -1,6 +1,6 @@
 [package]
 name = "pinchdrop-desktop"
-version = "0.1.0"
+version = "2.0.0"
 description = "PinchDrop for Windows"
 authors = ["PinchDrop Contributors"]
 edition = "2021"

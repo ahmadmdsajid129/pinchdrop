@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "PinchDrop",
-  "version": "0.1.0",
+  "mainBinaryName": "PinchDrop",
+  "version": "2.0.0",
   "identifier": "com.pinchdrop.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -84,6 +85,7 @@
         "installerIcon": "icons/icon.ico",
         "headerImage": "installer/header.bmp",
         "sidebarImage": "installer/sidebar.bmp",
+        "installerHooks": "installer/hooks.nsh",
         "installMode": "currentUser"
       }
     }
