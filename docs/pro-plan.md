@@ -1,6 +1,6 @@
 # PinchDrop Pro: the plan (not built yet)
 
-Status: step 1 built (2026-11-26): licence keys, 7-day trial, Pro gating on the PC (§1 table), Pro page, upgrade prompt, lock screens. Everything else is planned. Prices are a starting point to test.
+Status: step 1 built (2026-11-26): licence keys, 7-day trial, Pro gating on the PC (§1 table), Pro page, upgrade prompt, lock screens. Step 2 built (2026-11-26): Pill Studio v1 (sidebar → Pill Studio): Aurora, Liquid Glass, Neon Tokyo, Cassette, each reacting to idle / ringing / music / sending; Pill, Soft and Notch shapes; a clock on the pill; live preview with moods, Island view and wallpapers. Still planned from §2: widget slots beyond the clock, edge lighting, schedules, per-phone colours, theme sharing, festival drops. Prices are a starting point to test.
 
 **How keys work:** `pnpm license --name "Asha" --plan lifetime|year|month` prints a key, signed with the private key in `%USERPROFILE%\.pinchdrop\license-signing-key.pem` (never in the repo; back it up privately). The buyer pastes it into PinchDrop → Pro. The Buy button appears once `BUY_URL` in `apps/desktop/src/shared/pro.ts` is set. Not gated yet: the phone app's own extras (Scan to PC); the PC gates everything that shows on the PC.
 
