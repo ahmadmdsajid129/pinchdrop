@@ -435,12 +435,12 @@ impl Link {
                 (Some(dev), "lift.offer") => self.on_lift_offer(&dev, &env.payload),
                 // v2 · notifications, messages, contacts (§6.6)
                 (Some(_), "phone.reply") => self.on_phone_reply(&env.payload),
-                (Some(_), kind @ ("notif.posted" | "notif.removed" | "notif.sync")) => {
-                    self.on_notif_event(kind, &env.payload)
+                (Some(dev), kind @ ("notif.posted" | "notif.removed" | "notif.sync")) => {
+                    self.on_notif_event(&dev, kind, &env.payload)
                 }
-                (Some(_), "sms.new") => self.on_sms_new(&env.payload),
-                (Some(_), kind @ ("call.state" | "status.messages" | "clip.set")) => {
-                    self.on_live_event(kind, &env.payload)
+                (Some(dev), "sms.new") => self.on_sms_new(&dev, &env.payload),
+                (Some(dev), kind @ ("call.state" | "status.messages" | "clip.set")) => {
+                    self.on_live_event(&dev, kind, &env.payload)
                 }
                 (Some(dev), "lift.cancel") => self.on_lift_cancel(&dev, &env.payload),
                 (Some(dev), "unpair") => {
@@ -854,8 +854,8 @@ impl Link {
         }
         let Some(dev) = device else { return };
         self.lift_device_gone(&dev);
-        self.phone_data_gone();
-        self.live_gone();
+        self.phone_data_gone(&dev);
+        self.live_gone(&dev);
         self.pause_transfers_of(&dev);
         let removed = self
             .sessions
@@ -984,6 +984,13 @@ impl Link {
             })
             .collect();
         list.sort_by_key(|(_, s)| std::cmp::Reverse(s.since));
+        let selected = crate::current_settings(&self.app).phone.selected;
+        if let Some(sel) = selected {
+            if let Some(pos) = list.iter().position(|(id, _)| **id == sel) {
+                let item = list.remove(pos);
+                list.insert(0, item);
+            }
+        }
         let (id, _) = list.first()?;
         let name = devices
             .get(id)
@@ -994,14 +1001,36 @@ impl Link {
 
     /// The phone the pill shows: the most recently connected one, else the most recently seen.
     pub fn primary_phone(&self) -> Option<PhoneStatus> {
+        // v2: the phone picked on the pill (if connected), else the most recent one.
+        let selected = crate::current_settings(&self.app).phone.selected;
         let connected = self.sessions.lock().ok().and_then(|s| {
-            s.iter()
-                .max_by_key(|(_, x)| x.since)
-                .map(|(id, x)| (id.clone(), x.report.clone()))
+            selected
+                .as_ref()
+                .and_then(|sel| s.get(sel).map(|x| (sel.clone(), x.report.clone())))
+                .or_else(|| {
+                    s.iter()
+                        .max_by_key(|(_, x)| x.since)
+                        .map(|(id, x)| (id.clone(), x.report.clone()))
+                })
         });
         if let Some((id, r)) = connected {
             let stored = self.devices.lock().ok().and_then(|d| d.get(&id).cloned());
+            let others: Vec<crate::phone::OtherPhone> = self
+                .sessions
+                .lock()
+                .map(|s| {
+                    s.keys()
+                        .filter(|k| **k != id)
+                        .map(|k| crate::phone::OtherPhone {
+                            id: k.clone(),
+                            name: self.device_name(k),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             return Some(PhoneStatus {
+                device_id: Some(id.clone()),
+                others,
                 state: "connected".into(),
                 name: stored.as_ref().map(|d| d.name.clone()).or(r.name),
                 model: stored.map(|d| d.model).or(r.model),
@@ -1021,6 +1050,8 @@ impl Link {
             .max_by_key(|d| d.last_seen)
             .cloned()?;
         Some(PhoneStatus {
+            device_id: Some(d.id.clone()),
+            others: Vec::new(),
             state: "offline".into(),
             name: Some(d.name),
             model: Some(d.model),
