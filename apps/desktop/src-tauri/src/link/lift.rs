@@ -36,6 +36,8 @@ struct Lift {
     from_pc: bool,
     /// Announced file count (a PC's hold doesn't list its files up front).
     file_count: usize,
+    /// v2: phone → phone through this PC: pass it straight on to this device; don't open it here.
+    relay: Option<String>,
     is_folder: bool,
     phone_name: String,
     label: String,
@@ -72,6 +74,15 @@ struct LiftState {
 }
 
 static LIFTS: LazyLock<LiftState> = LazyLock::new(LiftState::default);
+/// v2: relayed sends (phone → phone): transfer id → its temporary folder, removed when it ends.
+static RELAYS: LazyLock<Mutex<HashMap<String, PathBuf>>> = LazyLock::new(Default::default);
+
+/// A send ended (done, declined, cancelled, failed): drop the relay copy if it was one.
+pub fn relay_finished(transfer_id: &str) {
+    if let Some(dir) = RELAYS.lock().ok().and_then(|mut r| r.remove(transfer_id)) {
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}
 
 /// A plain, Windows-safe file name from whatever the phone sent.
 pub fn safe_name(raw: &str) -> String {
@@ -319,6 +330,9 @@ impl Link {
             from_pc: false,
             file_count: files.len(),
             is_folder: false,
+            relay: Some(str_of(p, "relay"))
+                .filter(|r| !r.is_empty() && r.len() <= 80 && *r != device_id)
+                .map(str::to_string),
             phone_name,
             label,
             total_bytes: files.iter().map(|f| f.size).sum(),
@@ -368,6 +382,7 @@ impl Link {
             id: id.clone(),
             device_id: device_id.to_string(),
             from_pc: true,
+            relay: None,
             file_count: p.get("fileCount").and_then(Value::as_u64).unwrap_or(0) as usize,
             is_folder: p.get("isFolder").and_then(Value::as_bool).unwrap_or(false),
             phone_name: pc_name.to_string(),
@@ -506,7 +521,12 @@ impl Link {
         )));
         self.emit_lift();
 
-        let dir = save_dir(&self.app);
+        // A relay lands in a temporary folder (deleted once it's on the other device), never in Downloads.
+        let relay = lift.relay.clone();
+        let dir = match &relay {
+            Some(_) => crate::outbox_dir(&self.app).join(format!("relay-{}", lift.id)),
+            None => save_dir(&self.app),
+        };
         if lift.files.is_empty() {
             let opened = land_texts(&self.app, &dir, &lift.texts);
             let _ = tx.send(Out::Text(message(
@@ -570,7 +590,37 @@ impl Link {
                         "lift.done",
                         json!({ "liftId": lift.id, "opened": true }),
                     )));
-                    open_landed(&me.app, &dir, &saved);
+                    match relay {
+                        // Phone → phone: straight on to the other device.
+                        Some(to) => {
+                            let paths: Vec<String> = saved
+                                .iter()
+                                .map(|p| p.to_string_lossy().into_owned())
+                                .collect();
+                            let link = me.clone();
+                            let dir = dir.clone();
+                            tauri::async_runtime::spawn(async move {
+                                let sent = if super::peer::is_peer_device_id(&to) {
+                                    link.peer_send_now(&to, paths, Vec::new(), None).await
+                                } else {
+                                    link.send_items(paths, Vec::new(), "auto".into(), Some(to))
+                                        .await
+                                };
+                                match sent {
+                                    Ok(transfer_id) => {
+                                        if let Ok(mut r) = RELAYS.lock() {
+                                            r.insert(transfer_id, dir);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        let _ = std::fs::remove_dir_all(&dir);
+                                        let _ = link.app.emit("gesture-error", e);
+                                    }
+                                }
+                            });
+                        }
+                        None => open_landed(&me.app, &dir, &saved),
+                    }
                 }
                 Err(reason) => {
                     me.update_transfer(&lift.id, |t| {
