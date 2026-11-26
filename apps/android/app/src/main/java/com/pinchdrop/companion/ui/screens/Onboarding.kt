@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -259,6 +261,13 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
         listOf(Manifest.permission.CALL_PHONE, Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_CALL_LOG, Manifest.permission.ANSWER_PHONE_CALLS),
         resumeTick,
     )
+    val (location, askLocation) = rememberRuntimePermissions(
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), resumeTick,
+    )
+    val bgLocPerm = if (Build.VERSION.SDK_INT >= 29) Manifest.permission.ACCESS_BACKGROUND_LOCATION else null
+    val (bgLocation, askBgLocation) = rememberRuntimePermission(bgLocPerm, resumeTick)
+    val photosPerm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+    val (photos, askPhotos) = rememberRuntimePermission(photosPerm, resumeTick)
     val autoOpen = remember(resumeTick) {
         if (com.pinchdrop.companion.transfer.AutoOpen.allowed(context)) PermState.GRANTED else PermState.ASK
     }
@@ -319,6 +328,23 @@ fun PermissionsScreen(step: String?, onContinue: () -> Unit, onBack: () -> Unit)
                 Icons.Filled.Call, "Calls on your PC",
                 "See who's calling on the PC's pill; answer (open palm), reject (swipe) or silence (fist). Click a contact to call. The call stays on your phone.",
                 calls, askCalls,
+            )
+            PermissionRow(
+                Icons.Filled.LocationOn, "Location on your PC",
+                "See this phone on the PC's map, and the last place it was if it goes missing. Stays between this phone and your PC.",
+                location, askLocation,
+            )
+            if (location == PermState.GRANTED && bgLocPerm != null) {
+                PermissionRow(
+                    Icons.Filled.LocationOn, "Location while closed",
+                    "Choose “Allow all the time” so the map stays up to date when PinchDrop isn't open.",
+                    bgLocation, askBgLocation,
+                )
+            }
+            PermissionRow(
+                Icons.Filled.PhotoLibrary, "Recent photos on your PC",
+                "Your latest photos show on the PC's Island; click one to bring it over.",
+                photos, askPhotos,
             )
             PermissionRow(
                 Icons.Filled.Folder, "Saving files",
