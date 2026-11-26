@@ -10,6 +10,7 @@ import { CallIsland } from './CallIsland';
 import { InfoIsland, type Info } from './InfoIsland';
 import { NowPlaying, PlayingBars } from './NowPlaying';
 import { PhotoStrip } from './PhotoStrip';
+import { PhonesIsland } from './PhonesIsland';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
 import { sound, playAlert, startRing, stopRing, DEFAULT_PHONE_SOUNDS } from '../shared/sound';
@@ -69,6 +70,8 @@ export function Pill() {
   /** The banner opened the Island (so closing the banner closes it again). */
   const bannerOpened = useRef(false);
   const [replyNonce, setReplyNonce] = useState(0);
+  /** v2: the "+1 ⌄" phone list is open on the Island. */
+  const [phonesOpen, setPhonesOpen] = useState(false);
   /** v2: a small note (code copied, battery, clipboard) shown for a few seconds. */
   const [info, setInfo] = useState<Info | null>(null);
   const infoOpened = useRef(false);
@@ -234,6 +237,7 @@ export function Pill() {
     if (sessionRef.current) void api.gestureSessionStop(); // closing the Island switches the camera off
     setBanner(null);
     bannerOpened.current = false;
+    setPhonesOpen(false);
     setExpanded((was) => {
       if (was && settings?.gestures.sounds) sound.close();
       return false;
@@ -586,6 +590,17 @@ export function Pill() {
                 <LiftIsland lift={lift} width={ISLAND_W} cameraOn={!!settings.gestures.enabled} />
               ) : ringing ? (
                 <CallIsland live={ringingLive!} width={ISLAND_W} showDevice={manyPhones} listening={!!settings.gestures.enabled && !!settings.phone?.callGestures} />
+              ) : phonesOpen ? (
+                <PhonesIsland
+                  phone={phone}
+                  lives={lives}
+                  width={ISLAND_W}
+                  onPick={(id) => {
+                    void update({ phone: { selected: id } });
+                    setPhonesOpen(false);
+                    setExpanded(false);
+                  }}
+                />
               ) : info && !banner ? (
                 <InfoIsland info={info} width={ISLAND_W} showDevice={manyPhones} />
               ) : banner ? (
@@ -637,7 +652,10 @@ export function Pill() {
                   live={live}
                   ringingLive={ringingLive}
                   missedLive={missedLive}
-                  onSwitchPhone={(id) => void update({ phone: { selected: id } })}
+                  onOpenPhones={() => {
+                    setPhonesOpen(true);
+                    setExpanded(true);
+                  }}
                   onClick={onPillClick}
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
@@ -658,7 +676,7 @@ function PillButton({
   live,
   ringingLive,
   missedLive,
-  onSwitchPhone,
+  onOpenPhones,
   onClick,
   onPointerDown,
   onPointerMove,
@@ -669,7 +687,7 @@ function PillButton({
   live: PhoneLive;
   ringingLive: PhoneLive | null;
   missedLive: PhoneLive | null;
-  onSwitchPhone: (id: string) => void;
+  onOpenPhones: () => void;
   onClick: () => void;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
@@ -695,27 +713,12 @@ function PillButton({
   const ringing = !!ringingLive;
   const others = phone.others ?? [];
   const multi = others.length > 0;
-  /** "+1 ⌄": pick which phone the pill shows. */
-  async function pickPhone(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!inTauri) {
-      if (others[0]) onSwitchPhone(others[0].id);
-      return;
-    }
-    const { Menu, MenuItem } = await import('@tauri-apps/api/menu');
-    const items = await Promise.all(
-      others.map((o) => MenuItem.new({ text: `Show ${o.name}`, action: () => onSwitchPhone(o.id) })),
-    );
-    const menu = await Menu.new({ items });
-    await menu.popup();
-  }
   const badge = 'inline-flex items-center gap-1 rounded-full px-2 h-[70%] font-semibold cursor-pointer select-none';
   return (
     <div className="inline-flex items-center" style={{ height: size.h }}>
     <button
       type="button"
       aria-label={aria}
-      title="Click: Island · Double-click: open PinchDrop · Drag: move · Right-click: menu"
       onClick={onClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -739,21 +742,20 @@ function PillButton({
         </>
       )}
       {paused && shows !== 'dot' && (
-        <span className="text-muted" title="Gestures paused">
+        <span className="text-muted">
           <Hand size={size.icon - 2} aria-label="Gestures paused" />
         </span>
       )}
     </button>
     {/* v2: what's happening on the phone: unread texts, ringing (with who), a missed call */}
     {live.media?.playing && (
-      <span className="mr-1.5 inline-flex items-center" title={`Playing: ${live.media.title}`}>
+      <span className="mr-1.5 inline-flex items-center">
         <PlayingBars size={size.icon - 4} />
       </span>
     )}
     {live.unread > 0 && (
       <button
         type="button"
-        title={`${live.unread} unread message${live.unread === 1 ? '' : 's'} (open Messages)`}
         aria-label={`${live.unread} unread messages. Open Messages`}
         onClick={() => void api.openMain('messages')}
         className={`${badge} ${size.text} mr-1 bg-[#0A84FF]/20 text-[#64B5FF] hover:bg-[#0A84FF]/30`}
@@ -777,7 +779,6 @@ function PillButton({
     {!ringing && missedLive?.missed && (
       <button
         type="button"
-        title={`Missed ${missedLive.missedApp ? `${missedLive.missedApp} ` : ''}call from ${missedLive.missed}${multi ? ` on ${missedLive.deviceName}` : ''} (click to clear)`}
         aria-label={`Missed call from ${missedLive.missed}. Clear`}
         onClick={() => void api.clearMissed(missedLive.deviceId)}
         className={`${badge} ${size.text} mr-1 text-[#FF6961] hover:bg-white/10`}
@@ -788,9 +789,11 @@ function PillButton({
     {multi && (
       <button
         type="button"
-        title={`${others.length} more phone${others.length === 1 ? '' : 's'} connected: ${others.map((o) => o.name).join(', ')}. Click to switch.`}
         aria-label={`Switch phone. ${others.length} more connected`}
-        onClick={(e) => void pickPhone(e)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenPhones();
+        }}
         className={`${badge} ${size.text} mr-1.5 bg-white/10 text-soft hover:text-text hover:bg-white/15`}
       >
         +{others.length}
