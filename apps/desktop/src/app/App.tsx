@@ -68,7 +68,8 @@ export function App() {
   // v2: the window appears only once this page has drawn (no blank flash on first run).
   useEffect(() => {
     if (!inTauri) return;
-    requestAnimationFrame(() => void import('@tauri-apps/api/core').then(({ invoke }) => invoke('main_ready').catch(() => undefined)));
+    // Not requestAnimationFrame: a hidden window never gets a frame, so it would never fire.
+    void import('@tauri-apps/api/core').then(({ invoke }) => invoke('main_ready').catch(() => undefined));
   }, []);
 
   if (!settings.onboarded || route === 'onboarding') return <Onboarding />;
