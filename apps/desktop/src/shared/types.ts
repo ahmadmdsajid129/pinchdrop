@@ -202,6 +202,16 @@ export interface Contact {
   numbers: { number: string; label: string }[];
 }
 
+/** v2 · A file or folder on a phone (Phone files page). */
+export interface PhoneFileEntry {
+  name: string;
+  dir: boolean;
+  size: number;
+  modified: number;
+  mime: string;
+  count: number;
+}
+
 /** v2 · A phone's last known place (map). */
 export interface PlaceView {
   deviceId: string;
