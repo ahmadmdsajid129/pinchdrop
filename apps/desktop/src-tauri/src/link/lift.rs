@@ -517,7 +517,8 @@ impl Link {
         };
         let _ = tx.send(Out::Text(message(
             "lift.catch",
-            json!({ "liftId": lift.id }),
+            // v2: the animation pack, so the phone plays the matching send-away.
+            json!({ "liftId": lift.id, "fx": super::current_fx(&self.app) }),
         )));
         self.emit_lift();
 
