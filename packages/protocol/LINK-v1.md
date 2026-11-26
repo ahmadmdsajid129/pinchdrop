@@ -228,6 +228,21 @@ Events from the PC (no reply):
 - `hold.offer` goes to **every** connected device. The first `hold.catch` wins; the others get `hold.cancel` `{ reason: "caught_elsewhere" }`.
 - A send aimed at one device (a device chip on the PC, or the Send screen) goes only to that device.
 
+### More from the phone (v2.1)
+
+| Message | Direction | Payload | Notes |
+|---|---|---|---|
+| `call.state` | phone → PC | adds `app` | Who's calling through an app (WhatsApp, Instagram, Messenger…). `null` means a SIM call. App calls are seen from their call notification; `call.answer` / `call.reject` press that notification's own buttons. |
+| `notif.posted` | phone → PC | adds `kind` | One of `"sms" \| "message" \| "other"`. It picks the PC's sound. A code in an `sms` notification is copied to the PC clipboard (OTP). |
+| `media.state` | phone → PC | `{ app, title, artist, art?, playing }` | Now playing. An empty `title` means nothing is playing. `art` is a JPEG data URL of at most 48 KB. |
+| `media.cmd` | PC → phone, request | `{ reqId, action }` | `action` is one of `"play" \| "pause" \| "toggle" \| "next" \| "previous"`. |
+| `location` | phone → PC | `{ lat, lon, accuracy, time }` | About once a minute while connected. The PC keeps the last one per phone (`places.json`). |
+| `photos.recent` | PC → phone, request | `{ reqId, limit ≤ 24 }` | Returns `{ photos: [ { id, name, date, size, thumb } ] }`, newest first. |
+| `photos.send` | PC → phone, request | `{ reqId, id }` | The phone sends that photo as a lift with `sendNow: true` (§6.5). |
+| `clip.set` | phone → PC | adds `explicit` | `true` when the user tapped the phone's "Copy to PC" tile. The PC takes it even with clipboard sharing switched off. |
+
+The PC also emits a battery alert when a phone's `status` crosses 15 % or 5 % unplugged, or reaches 100 % while charging.
+
 ## 6.7 Fast mode (v2)
 - `welcome` carries `caps: ["chunk2m"]`. A phone that sees it may ask for chunks of up to **2 MiB** (`length ≤ 2097152`) and keep up to **6** requests in flight.
 - PCs without `caps` stay at 512 KiB / 4.
