@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { api } from '../../shared/api';
+import { api, useDevices } from '../../shared/api';
+import { ALERTS, DEFAULT_PHONE_SOUNDS, RINGS, playAlert } from '../../shared/sound';
 import { useApp } from '../context';
 import { Button, Card, PageTitle, PhaseBadge, Radio, Row, Segmented, Select, Toggle } from '../ui';
 import { CameraPreview, listCameras, requestCameraAccess } from '../CameraPreview';
@@ -240,6 +241,10 @@ function PhoneSection() {
       <Row title="Share the clipboard" description="Copy text on the PC and paste it on the phone. Text copied on the phone comes over when you open PinchDrop there (Android only allows that).">
         <Toggle label="Share the clipboard" checked={ph.clipboardSync} onChange={(v) => void update({ phone: { clipboardSync: v } })} />
       </Row>
+      <Row title="Sounds on the PC" description="A soft sound when a chat message, a text (SMS) or a call comes in on your phone">
+        <Toggle label="Sounds on the PC" checked={ph.soundsOn !== false} onChange={(v) => void update({ phone: { soundsOn: v } })} />
+      </Row>
+      {ph.soundsOn !== false && <PhoneSoundRows />}
       <Row title="Find my phone" description={note ?? 'Rings your phone loudly, even on silent, for up to a minute'} last>
         {ringing ? (
           <Button size="sm" onClick={() => void find(true)}>Stop ringing</Button>
@@ -247,6 +252,36 @@ function PhoneSection() {
           <Button size="sm" variant="primary" onClick={() => void find(false)}>Ring my phone</Button>
         )}
       </Row>
+    </>
+  );
+}
+
+/** v2 · Pick the message / text / call sound for each phone (like the phone's own settings). */
+function PhoneSoundRows() {
+  const { settings, update } = useApp();
+  const phones = useDevices().filter((d) => d.model !== 'Windows PC');
+  const all = settings.phone?.sounds ?? {};
+  const rows = phones.length > 0 ? phones.map((d) => ({ id: d.id, name: d.name })) : [{ id: 'default', name: 'Your phone' }];
+  const set = (id: string, key: 'message' | 'sms' | 'call', v: string) => {
+    const cur = { ...DEFAULT_PHONE_SOUNDS, ...(all[id] ?? {}) };
+    void update({ phone: { sounds: { [id]: { ...cur, [key]: v } } } });
+  };
+  const alertOpts = Object.entries(ALERTS).map(([value, a]) => ({ value, label: a.label }));
+  const ringOpts = Object.entries(RINGS).map(([value, r]) => ({ value, label: r.label }));
+  return (
+    <>
+      {rows.map((p) => {
+        const cur = { ...DEFAULT_PHONE_SOUNDS, ...(all[p.id] ?? {}) };
+        return (
+          <Row key={p.id} title={p.name} description="Chat messages · Texts (SMS) · Calls">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select label={`${p.name} chat message sound`} value={cur.message} options={alertOpts} onChange={(v) => { set(p.id, 'message', v); playAlert(v); }} />
+              <Select label={`${p.name} text message sound`} value={cur.sms} options={alertOpts} onChange={(v) => { set(p.id, 'sms', v); playAlert(v); }} />
+              <Select label={`${p.name} ringing sound`} value={cur.call} options={ringOpts} onChange={(v) => { set(p.id, 'call', v); RINGS[v]?.play(); }} />
+            </div>
+          </Row>
+        );
+      })}
     </>
   );
 }
