@@ -68,7 +68,9 @@ export function classifyPose(h: HandShape): Pose {
   if (h.pinchRatio < 0.25 && f.middle) return 'pinch';
   if (four === 4 && f.thumb && h.pinchRatio >= 0.55) return 'open';
   if (four === 0 && h.thumbUp) return 'thumbs_up';
-  if (four === 0 && !f.thumb) return 'fist';
+  // A fist has the thumb wrapped over the fingers, not touching the index tip (that's a pinch
+  // on its way): fingers curling into a pinch must never read as a fist.
+  if (four === 0 && !f.thumb && h.pinchRatio >= 0.3) return 'fist';
   if (f.index && f.middle && !f.ring && !f.pinky) return 'peace';
   if (f.index && !f.middle && !f.ring && !f.pinky) return f.thumb ? 'l_shape' : 'point';
   return 'other';
