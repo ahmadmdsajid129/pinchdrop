@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LocateFixed, MapPin } from 'lucide-react';
-import { api, onEvent } from '../../shared/api';
+import { api, onEvent, useDevices } from '../../shared/api';
 import type { PlaceView } from '../../shared/types';
 import { Button, Card, EmptyState, PageTitle } from '../ui';
 
@@ -33,6 +33,8 @@ function pin(p: PlaceView): L.DivIcon {
  */
 export function MapScreen() {
   const [places, setPlaces] = useState<PlaceView[]>([]);
+  // Connected phones that haven't sent a position yet (permission off, location off…).
+  const waiting = useDevices().filter((d) => d.connected && d.model !== 'Windows PC' && !places.some((p) => p.deviceId === d.id));
   const box = useRef<HTMLDivElement | null>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
@@ -107,6 +109,21 @@ export function MapScreen() {
               <Button size="sm" onClick={() => focus(p)}>
                 <LocateFixed size={14} /> Show
               </Button>
+            </Card>
+          ))}
+        </div>
+      )}
+      {waiting.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {waiting.map((d) => (
+            <Card key={d.id} className="px-4 py-3 flex items-center gap-3 min-w-[260px] flex-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-warn" />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-[14px] truncate">{d.name}</div>
+                <div className="text-[12px] text-muted">
+                  No location yet. On this phone: PinchDrop → Settings → Permissions → Location on your PC, and turn Location on.
+                </div>
+              </div>
             </Card>
           ))}
         </div>
