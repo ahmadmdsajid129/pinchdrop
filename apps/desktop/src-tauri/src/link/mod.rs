@@ -8,6 +8,7 @@ pub mod lift;
 pub mod peer;
 pub mod phone_data;
 pub mod phone_live;
+pub mod places;
 pub mod proto;
 pub mod store;
 pub mod transfer;
@@ -241,8 +242,9 @@ impl Link {
 
     /// Binds the listener (default port, else any free one), advertises over mDNS and accepts phones.
     pub fn start(self: &Arc<Self>) {
-        // v2: keep paired PCs (laptop ↔ laptop) connected.
+        // v2: keep paired PCs (laptop ↔ laptop) connected; remember where phones were.
         self.peers_start();
+        self.places_load();
         let link = self.clone();
         tauri::async_runtime::spawn(async move {
             let acceptor = match tls_acceptor(&link.identity) {
@@ -439,6 +441,7 @@ impl Link {
                     self.on_notif_event(&dev, kind, &env.payload)
                 }
                 (Some(dev), "sms.new") => self.on_sms_new(&dev, &env.payload),
+                (Some(dev), "location") => self.on_location(&dev, &env.payload),
                 (
                     Some(dev),
                     kind @ ("call.state" | "status.messages" | "clip.set" | "media.state"),
@@ -873,6 +876,7 @@ impl Link {
         self.lift_device_gone(&dev);
         self.phone_data_gone(&dev);
         self.live_gone(&dev);
+        self.places_flush();
         self.pause_transfers_of(&dev);
         let removed = self
             .sessions
@@ -987,6 +991,17 @@ impl Link {
         out
     }
 
+    /// v2: write the Explorer Send-to entries for the paired phones.
+    pub fn refresh_sendto(&self) {
+        crate::sendto::refresh(
+            self.devices()
+                .iter()
+                .filter(|d| d.model != "Windows PC")
+                .map(|d| (d.id.clone(), d.name.clone()))
+                .collect(),
+        );
+    }
+
     /// The phone for phone-only requests (texts, contacts, calls): never a paired PC.
     pub(super) fn target_phone(&self) -> Option<(String, String)> {
         let sessions = self.sessions.lock().ok()?;
@@ -1081,7 +1096,15 @@ impl Link {
     }
 
     fn emit_devices(&self) {
-        let _ = self.app.emit("devices-changed", self.devices());
+        let list = self.devices();
+        // v2: Explorer → Send to → one entry per paired phone.
+        crate::sendto::refresh(
+            list.iter()
+                .filter(|d| d.model != "Windows PC")
+                .map(|d| (d.id.clone(), d.name.clone()))
+                .collect(),
+        );
+        let _ = self.app.emit("devices-changed", list);
         crate::emit_phone_status(&self.app);
     }
 
