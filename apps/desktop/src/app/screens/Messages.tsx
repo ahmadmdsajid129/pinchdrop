@@ -5,6 +5,7 @@ import type { SmsThread, SmsThreadDetail } from '../../shared/types';
 import { useApp } from '../context';
 import { Button, Card, EmptyState, PageTitle } from '../ui';
 import { initials } from '../Sidebar';
+import { PhoneChips } from '../PhoneChips';
 
 /** Another screen (Contacts) can ask Messages to open a conversation with someone. */
 let pendingCompose: { address: string; name: string | null } | null = null;
@@ -29,6 +30,10 @@ const digits = (s: string) => s.replace(/\D/g, '').slice(-10);
  */
 export function Messages() {
   const { phone, go } = useApp();
+  // v2: several phones → choose whose messages (starts on the one shown on the pill).
+  const [deviceId, setDeviceId] = useState<string | null>(phone.deviceId ?? null);
+  const deviceRef = useRef(deviceId);
+  deviceRef.current = deviceId;
   const [threads, setThreads] = useState<SmsThread[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -45,7 +50,7 @@ export function Messages() {
   const loadThreads = useCallback(async () => {
     setLoading(true);
     try {
-      setThreads(await api.smsThreads());
+      setThreads(await api.smsThreads(deviceRef.current));
       setError(null);
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
@@ -56,7 +61,7 @@ export function Messages() {
 
   const loadThread = useCallback(async (threadId: number) => {
     try {
-      setDetail(await api.smsThread(threadId));
+      setDetail(await api.smsThread(threadId, deviceRef.current));
     } catch (e) {
       setSendError(String(e instanceof Error ? e.message : e));
     }
@@ -69,7 +74,7 @@ export function Messages() {
         pendingCompose = null;
       }
     });
-  }, [loadThreads, phone.state]);
+  }, [loadThreads, phone.state, deviceId]);
 
   // A text arrived: refresh the list (and the open conversation if it's from them).
   useEffect(() => {
@@ -111,7 +116,7 @@ export function Messages() {
     setSending(true);
     setSendError(null);
     try {
-      await api.smsSend(open.address, text.trim());
+      await api.smsSend(open.address, text.trim(), deviceRef.current);
       setText('');
       // Android files it in a moment; then show it.
       window.setTimeout(async () => {
@@ -149,6 +154,15 @@ export function Messages() {
       <PageTitle
         actions={
           <>
+            <PhoneChips
+              value={deviceId}
+              onChange={(id) => {
+                setDeviceId(id);
+                setOpen(null);
+                setThreads(null);
+              }}
+              layoutId="messages-phone"
+            />
             <Button size="sm" onClick={() => void loadThreads()} disabled={loading}>
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
             </Button>
