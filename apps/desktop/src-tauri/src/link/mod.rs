@@ -1471,6 +1471,13 @@ impl Link {
             }
             _ => {}
         });
+        // v2: a relayed send (phone → phone) that ended no longer needs its PC copy.
+        if self
+            .update_transfer(&id, |t| !t.is_active())
+            .unwrap_or(false)
+        {
+            lift::relay_finished(&id);
+        }
         if let Some(roots) = finished_move {
             // Move: the phone confirmed every file, so the PC copies go to the Recycle Bin (never a permanent delete).
             let result = trash::delete_all(&roots);
