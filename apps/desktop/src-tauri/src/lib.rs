@@ -610,9 +610,13 @@ async fn notif_reply(app: AppHandle, key: String, text: String) -> Result<(), St
 }
 
 #[tauri::command]
-async fn sms_threads(app: AppHandle) -> Result<serde_json::Value, String> {
+async fn sms_threads(
+    app: AppHandle,
+    device_id: Option<String>,
+) -> Result<serde_json::Value, String> {
     link_or_err(&app)?
-        .phone_request(
+        .phone_request_to(
+            device_id.as_deref(),
             "sms.threads",
             serde_json::json!({ "limit": 80 }),
             "messages",
@@ -621,9 +625,14 @@ async fn sms_threads(app: AppHandle) -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-async fn sms_thread(app: AppHandle, thread_id: i64) -> Result<serde_json::Value, String> {
+async fn sms_thread(
+    app: AppHandle,
+    thread_id: i64,
+    device_id: Option<String>,
+) -> Result<serde_json::Value, String> {
     link_or_err(&app)?
-        .phone_request(
+        .phone_request_to(
+            device_id.as_deref(),
             "sms.thread",
             serde_json::json!({ "threadId": thread_id, "limit": 200 }),
             "messages",
@@ -632,12 +641,18 @@ async fn sms_thread(app: AppHandle, thread_id: i64) -> Result<serde_json::Value,
 }
 
 #[tauri::command]
-async fn sms_send(app: AppHandle, address: String, text: String) -> Result<(), String> {
+async fn sms_send(
+    app: AppHandle,
+    address: String,
+    text: String,
+    device_id: Option<String>,
+) -> Result<(), String> {
     if address.trim().is_empty() || text.trim().is_empty() {
         return Err("Type a message first.".into());
     }
     link_or_err(&app)?
-        .phone_request(
+        .phone_request_to(
+            device_id.as_deref(),
             "sms.send",
             serde_json::json!({ "address": address, "text": text }),
             "messages",
@@ -647,16 +662,29 @@ async fn sms_send(app: AppHandle, address: String, text: String) -> Result<(), S
 }
 
 #[tauri::command]
-async fn contacts_list(app: AppHandle) -> Result<serde_json::Value, String> {
+async fn contacts_list(
+    app: AppHandle,
+    device_id: Option<String>,
+) -> Result<serde_json::Value, String> {
     link_or_err(&app)?
-        .phone_request("contacts.list", serde_json::json!({}), "contacts")
+        .phone_request_to(
+            device_id.as_deref(),
+            "contacts.list",
+            serde_json::json!({}),
+            "contacts",
+        )
         .await
 }
 
 #[tauri::command]
-async fn phone_dial(app: AppHandle, number: String) -> Result<serde_json::Value, String> {
+async fn phone_dial(
+    app: AppHandle,
+    number: String,
+    device_id: Option<String>,
+) -> Result<serde_json::Value, String> {
     link_or_err(&app)?
-        .phone_request(
+        .phone_request_to(
+            device_id.as_deref(),
             "call.dial",
             serde_json::json!({ "number": number }),
             "calls",
