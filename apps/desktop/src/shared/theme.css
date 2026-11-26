@@ -266,3 +266,16 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .pd-aur, .pd-glass-shine, .pd-neon-tube, .pd-cas-stripes, .pd-reel { animation: none !important; }
 }
+
+/* v2 · Pill Studio: small looping pictures of the send animation packs */
+@keyframes pd-fx-plane { 0% { transform: translate(0, 10px) rotate(10deg); opacity: 0; } 15% { opacity: 1; } 50% { transform: translate(90px, -26px) rotate(-14deg); } 85% { opacity: 1; } 100% { transform: translate(190px, 0) rotate(8deg); opacity: 0; } }
+.pd-fx-plane { margin-top: -13px; animation: pd-fx-plane 2.4s ease-in-out infinite; }
+@keyframes pd-fx-portal { 0%, 100% { transform: scale(0.85) rotate(0deg); } 50% { transform: scale(1) rotate(180deg); } }
+.pd-fx-portal { animation: pd-fx-portal 2.4s linear infinite; }
+@keyframes pd-fx-portal-card { 0% { transform: translate(-60px, -10px) rotate(0) scale(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(0, 0) rotate(540deg) scale(0); opacity: 0; } }
+.pd-fx-portal-card { animation: pd-fx-portal-card 2.4s ease-in infinite; }
+@keyframes pd-fx-comet { 0% { transform: translate(-80px, 20px) rotate(-14deg); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(240px, -30px) rotate(-14deg); opacity: 0; } }
+.pd-fx-comet { margin-top: -7px; animation: pd-fx-comet 1.8s cubic-bezier(0.6, 0, 0.3, 1) infinite; }
+@keyframes pd-fx-lift { 0% { transform: translate(-50%, 0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-50%, -52px); opacity: 0; } }
+.pd-fx-lift { animation: pd-fx-lift 2s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pd-fx-plane, .pd-fx-portal, .pd-fx-portal-card, .pd-fx-comet, .pd-fx-lift { animation: none; } }
