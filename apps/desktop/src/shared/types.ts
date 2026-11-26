@@ -56,6 +56,10 @@ export interface PhoneSettings {
   callGestures: boolean;
   /** The phone the pill shows when several are connected. */
   selected?: string | null;
+  /** Play sounds on the PC for phone messages, texts and calls. */
+  soundsOn?: boolean;
+  /** Sound names per phone (device id, or "default"). */
+  sounds?: Record<string, { message: string; sms: string; call: string }>;
 }
 
 /** v2 · Live phone status for the pill (mirrors link::phone_live::PhoneLive). */
@@ -306,5 +310,5 @@ export const DEFAULT_SETTINGS: Settings = {
   crashReports: false,
   profile: { pcName: 'My PC', avatarColor: '#22D3EE' },
   demoPhone: false,
-  phone: { clipboardSync: false, callGestures: true },
+  phone: { clipboardSync: false, callGestures: true, soundsOn: true, sounds: {} },
 };
