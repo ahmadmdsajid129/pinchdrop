@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlyHero, Guide } from './Illustrations';
+import { ProGate, ProPage, UpgradeDialog } from './Pro';
 import { PageTitle } from './ui';
 import { Upload } from 'lucide-react';
 import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
@@ -83,13 +84,14 @@ export function App() {
     messages: <Messages />,
     contacts: <Contacts />,
     notifications: <PhoneNotifications />,
-    map: <MapScreen />,
-    files: <PhoneFiles />,
     devices: <Devices />,
     pair: <Pair />,
     settings: <SettingsScreen />,
     profile: <Profile />,
     guide: <GuidePage />,
+    pro: <ProPage />,
+    files: <ProGate feature="files"><PhoneFiles /></ProGate>,
+    map: <ProGate feature="map"><MapScreen /></ProGate>,
     onboarding: null,
   }[route];
 
@@ -105,6 +107,7 @@ export function App() {
           {screen}
         </div>
       </main>
+      <UpgradeDialog />
       {dragOver && (
         <div className="fixed inset-0 z-50 bg-bg/90 flex items-center justify-center pointer-events-none animate-[pd-fade_120ms_ease-out]">
           <div className="rounded-3xl border-2 border-dashed border-primary px-16 py-12 flex flex-col items-center gap-3 bg-surface">

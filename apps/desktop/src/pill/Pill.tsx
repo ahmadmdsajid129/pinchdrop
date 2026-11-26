@@ -9,6 +9,7 @@ import { NotifIsland } from './NotifIsland';
 import { CallIsland } from './CallIsland';
 import { InfoIsland, type Info } from './InfoIsland';
 import { NowPlaying, PlayingBars } from './NowPlaying';
+import { usePro } from '../shared/pro';
 import { PhotoStrip } from './PhotoStrip';
 import { PhonesIsland } from './PhonesIsland';
 import { CameraRow } from './CameraRow';
@@ -47,6 +48,7 @@ function fxInfo(t: TransferView) {
 export function Pill() {
   const { settings, update } = useSettings();
   const phone = usePhone();
+  const pro = usePro();
   useTheme(undefined, 'dark');
   const reduced = useReducedMotion(settings?.motion);
 
@@ -610,8 +612,9 @@ export function Pill() {
                 <Island
                   nowPlaying={
                     <>
-                      {live.media ? <NowPlaying media={live.media} deviceId={live.deviceId} /> : null}
-                      {phone?.state === 'connected' && live.deviceId ? <PhotoStrip deviceId={live.deviceId} /> : null}
+                      {/* Pro: Now Playing and the photo strip */}
+                      {pro.active && live.media ? <NowPlaying media={live.media} deviceId={live.deviceId} /> : null}
+                      {pro.active && phone?.state === 'connected' && live.deviceId ? <PhotoStrip deviceId={live.deviceId} /> : null}
                     </>
                   }
                   settings={settings}

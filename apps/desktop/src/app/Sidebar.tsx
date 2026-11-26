@@ -1,5 +1,7 @@
-import { Bell, Clock, FolderOpen, Hand, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users, LifeBuoy } from 'lucide-react';
+import { Bell, Clock, FolderOpen, Hand, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users, LifeBuoy, Crown } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { usePro } from '../shared/pro';
+import { ProTag, proSummary } from './Pro';
 import { useApp } from './context';
 import type { Route } from './context';
 import { Battery } from '../shared/Battery';
@@ -30,6 +32,7 @@ export function initials(name: string): string {
 export function Sidebar() {
   const { route, go, phone, settings, queue, update } = useApp();
   const phones = useConnectedPhones();
+  const pro = usePro();
   const active = (r: Route) => route === r || (r === 'devices' && route === 'pair');
 
   return (
@@ -56,6 +59,7 @@ export function Sidebar() {
           <span className="hidden max-[860px]:contents">
             <HoverTip text={n.label} />
           </span>
+          {!pro.active && (n.route === 'files' || n.route === 'map') && <ProTag className="max-[860px]:hidden" />}
           {n.route === 'send' && queue.length > 0 && (
             <span className="min-w-5 h-5 px-1.5 rounded-full max-[860px]:absolute max-[860px]:-top-1 max-[860px]:-right-1 bg-primary text-white text-[11px] font-bold flex items-center justify-center">{queue.length}</span>
           )}
@@ -63,6 +67,26 @@ export function Sidebar() {
       ))}
 
       <div className="flex-1 min-h-2" />
+
+      {/* v2 Pro: plan at a glance (trial countdown, or an invitation once it's over) */}
+      <button
+        type="button"
+        onClick={() => go('pro')}
+        aria-current={route === 'pro' ? 'page' : undefined}
+        className={`group relative shrink-0 flex items-center gap-2.5 h-[42px] px-3 rounded-xl text-left text-[13px] max-[860px]:justify-center max-[860px]:px-0 ${
+          route === 'pro' ? 'bg-surface2 font-semibold' : 'hover:bg-surface'
+        }`}
+      >
+        <span className="w-6 h-6 shrink-0 rounded-lg bg-gradient-to-br from-[#F59E0B] to-[#F97316] text-white flex items-center justify-center">
+          <Crown size={14} aria-hidden="true" />
+        </span>
+        <span className="flex-1 min-w-0 truncate max-[860px]:hidden">
+          {pro.plan === 'pro' ? 'PinchDrop Pro' : pro.plan === 'trial' ? `Pro trial · ${pro.trialDaysLeft}d left` : 'Upgrade to Pro'}
+        </span>
+        <span className="hidden max-[860px]:contents">
+          <HoverTip text={proSummary(pro)} />
+        </span>
+      </button>
 
       {phones.length > 1 ? (
         <div className="shrink-0 rounded-[14px] bg-surface border border-line p-1.5 flex flex-col gap-0.5">
