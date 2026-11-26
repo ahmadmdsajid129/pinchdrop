@@ -26,6 +26,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Laptop
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material3.FilterChip
@@ -72,6 +75,8 @@ fun HomeScreen(
     onPair: () -> Unit,
     onSeeAll: () -> Unit,
     onProfile: () -> Unit,
+    onFeatures: () -> Unit = {},
+    onGuide: () -> Unit = {},
 ) {
     val c = Pd.colors
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -91,6 +96,8 @@ fun HomeScreen(
                 TextButton(onClick = clearNotice) { Text("OK", color = c.accent) }
             }
         }
+
+        if (pc.paired) ExtrasCard(onOpen = onFeatures)
 
         if (pc.connected) ScanToPcCard()
 
@@ -143,9 +150,9 @@ fun HomeScreen(
         }
 
         Text(
-            "How to receive: select something on your PC → pinch in front of the laptop camera → open your hand over this phone.",
+            "How to receive: select something on your PC → pinch in front of the laptop camera → open your hand over this phone.  See the full guide ›",
             color = c.soft, fontSize = 14.sp, lineHeight = 20.sp,
-            modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(c.bg2).padding(14.dp),
+            modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(c.bg2).clickable(role = Role.Button, onClickLabel = "Open the guide", onClick = onGuide).padding(14.dp),
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -161,16 +168,28 @@ fun HomeScreen(
 }
 
 @Composable
-private fun EmptyReceived(compact: Boolean) {
+private fun EmptyReceived(compact: Boolean, filter: ReceivedFilter = ReceivedFilter.ALL) {
     val c = Pd.colors
+    // Each filter says what's missing (a photo filter with no photos says so, with its own icon).
+    val (icon, title, body) = when (filter) {
+        ReceivedFilter.ALL -> Triple(Icons.Filled.Inventory2, "Nothing received yet", "Files you catch from your PC show up here.")
+        ReceivedFilter.PHOTOS -> Triple(Icons.Filled.Image, "No photos yet", "Pinch a photo on your PC and open your hand over this phone. It lands in your Gallery too.")
+        ReceivedFilter.VIDEOS -> Triple(Icons.Filled.Movie, "No videos yet", "Videos you catch from your PC show up here and in your Gallery.")
+        ReceivedFilter.FILES -> Triple(Icons.Filled.Description, "No files yet", "Documents, folders, links and text from your PC show up here. Files are saved in Downloads/PinchDrop.")
+    }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(c.surface).padding(if (compact) 20.dp else 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(Icons.Filled.Inventory2, contentDescription = null, tint = c.muted, modifier = Modifier.size(if (compact) 28.dp else 40.dp))
-        Text("Nothing received yet", color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-        Text("Files you catch from your PC show up here.", color = c.muted, fontSize = 13.sp, textAlign = TextAlign.Center)
+        Box(
+            Modifier.size(if (compact) 48.dp else 72.dp).clip(CircleShape).background(c.primary.copy(alpha = 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = c.primary, modifier = Modifier.size(if (compact) 26.dp else 36.dp))
+        }
+        Text(title, color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(body, color = c.muted, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 18.sp)
     }
 }
 
@@ -207,7 +226,7 @@ fun ReceivedScreen() {
             }
         }
         if (shown.isEmpty()) {
-            item { EmptyReceived(compact = false) }
+            item(key = "empty-${filter.name}") { EmptyReceived(compact = false, filter = filter) }
         } else {
             items(shown, key = { it.id }) { ReceivedRow(it) }
             item {
