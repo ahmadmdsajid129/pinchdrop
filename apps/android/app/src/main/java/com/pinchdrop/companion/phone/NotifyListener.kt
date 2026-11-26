@@ -47,6 +47,8 @@ class NotifyListener : NotificationListenerService() {
         val n = sbn.notification
         if (sbn.packageName == packageName) return false
         if (sbn.isOngoing || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return false
+        // Calls are shown on the PC as a call card, not a banner.
+        if (n.category == Notification.CATEGORY_CALL) return false
         val r = Ranking()
         if (currentRanking?.getRanking(sbn.key, r) == true && r.importance < NotificationManager.IMPORTANCE_DEFAULT) return false
         val e = n.extras
@@ -92,10 +94,23 @@ class NotifyListener : NotificationListenerService() {
                 .put("text", text.take(600))
                 .put("time", sbn.postTime)
                 .put("canReply", replyAction(sbn.notification) != null)
+                .put("kind", kindOf(context, sbn))
             val first = synchronized(this) { iconsSent.add(sbn.packageName) }
             if (first) iconOf(context, sbn.packageName)?.let { p.put("icon", it) }
             p
         }.getOrNull()
+
+        /** "sms" (the phone's messages app) · "message" (chats) · "other": picks the sound on the PC. */
+        private fun kindOf(context: Context, sbn: StatusBarNotification): String {
+            val sms = runCatching { android.provider.Telephony.Sms.getDefaultSmsPackage(context) }.getOrNull()
+            val n = sbn.notification
+            return when {
+                sbn.packageName == sms -> "sms"
+                n.category == Notification.CATEGORY_MESSAGE || replyAction(n) != null ||
+                    n.extras.getString(Notification.EXTRA_TEMPLATE)?.contains("MessagingStyle") == true -> "message"
+                else -> "other"
+            }
+        }
 
         private fun iconOf(context: Context, pkg: String): String? = runCatching {
             val d = context.packageManager.getApplicationIcon(pkg)
