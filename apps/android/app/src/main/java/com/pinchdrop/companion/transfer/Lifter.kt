@@ -146,7 +146,16 @@ object Lifter {
         (if (Build.VERSION.SDK_INT >= 33) i.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java) else i.getParcelableArrayListExtra(Intent.EXTRA_STREAM))
             ?.toList() ?: emptyList()
 
+    /** v2: the PC should pass this send straight on to another device (Phone files, phone → phone). */
+    @Volatile private var pendingRelay: String? = null
+
     private fun describe(resolver: android.content.ContentResolver, u: Uri): OutFile? = runCatching {
+        if (u.scheme == "file") {
+            val f = java.io.File(u.path ?: return@runCatching null)
+            if (!f.isFile) return@runCatching null
+            val mime = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(f.extension.lowercase()) ?: "application/octet-stream"
+            return@runCatching OutFile(u, f.name, f.length(), mime)
+        }
         var name: String? = null
         var size = -1L
         resolver.query(u, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
@@ -171,8 +180,9 @@ object Lifter {
     // ------------------------------------------------------------ lift → in the air
 
     /** v2 · Send these straight to the PC (a photo from its strip, a scan): no pinch needed. */
-    fun sendNow(context: Context, uris: List<Uri>) {
+    fun sendNow(context: Context, uris: List<Uri>, relay: String? = null) {
         init(context)
+        pendingRelay = relay
         val resolver = context.applicationContext.contentResolver
         scope.launch {
             val files = uris.mapNotNull { describe(resolver, it) }
@@ -219,6 +229,8 @@ object Lifter {
                 .put("files", files)
                 .put("texts", JSONArray(item.texts))
                 .put("sendNow", sendNow)
+            pendingRelay?.let { p.put("relay", it) }
+            pendingRelay = null
             thumbOf(item)?.let { p.put("thumb", it) }
             if (!sendText(Proto.message("lift.offer", p))) {
                 _state.value = State.Ready(item, "Couldn't reach your PC. Try again.")
