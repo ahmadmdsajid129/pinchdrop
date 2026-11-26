@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { FlyHero, Guide } from './Illustrations';
 import { ProGate, ProPage, UpgradeDialog } from './Pro';
 import { StudioPage } from './Studio';
+import { HuddleJoinDialog, HuddlePage } from './screens/Huddle';
+import { huddleApi } from '../shared/huddle';
 import { PageTitle } from './ui';
 import { Upload } from 'lucide-react';
 import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
@@ -42,8 +44,34 @@ export function App() {
         const el = document.elementFromPoint(pos.x / k, pos.y / k)?.closest('[data-drop-device]') as HTMLElement | null;
         return el ? { id: el.dataset.dropDevice!, name: el.dataset.dropName ?? 'phone', path: el.dataset.dropPath ?? '' } : null;
       };
+      // v2 Huddle: files dropped on a teammate's face go to them.
+      const faceAt = (pos: { x: number; y: number } | undefined) => {
+        if (!pos) return null;
+        const k = window.devicePixelRatio || 1;
+        return (document.elementFromPoint(pos.x / k, pos.y / k)?.closest('[data-huddle-member]') as HTMLElement | null) ?? null;
+      };
+      const lightFace = (el: HTMLElement | null) => {
+        document.querySelectorAll('.pd-huddle-face').forEach((f) => f.classList.toggle('pd-face-hot', f === el));
+      };
       off = await getCurrentWebview().onDragDropEvent((e) => {
         const p = e.payload as { type: string; paths?: string[]; position?: { x: number; y: number } };
+        if (routeRef.current === 'huddle') {
+          if (p.type === 'enter' || p.type === 'over') lightFace(faceAt(p.position));
+          else if (p.type === 'leave') lightFace(null);
+          else if (p.type === 'drop') {
+            const face = faceAt(p.position);
+            lightFace(null);
+            const id = face?.dataset.huddleMember;
+            const result = (ok: boolean, text: string) => window.dispatchEvent(new CustomEvent('pd-huddle-result', { detail: { ok, text } }));
+            if (!face || !id || !p.paths?.length) result(false, 'Drop it on a face');
+            else
+              void huddleApi
+                .sendPaths(id === '__all' ? null : id, p.paths)
+                .then((t) => result(true, t))
+                .catch((err) => result(false, String(err instanceof Error ? err.message : err)));
+          }
+          return;
+        }
         const onFiles = routeRef.current === 'files';
         if (p.type === 'enter' || p.type === 'over') {
           if (onFiles) window.dispatchEvent(new CustomEvent('pd-os-drag', { detail: paneAt(p.position)?.id ?? null }));
@@ -92,6 +120,7 @@ export function App() {
     guide: <GuidePage />,
     pro: <ProPage />,
     studio: <StudioPage />,
+    huddle: <HuddlePage />,
     files: <ProGate feature="files"><PhoneFiles /></ProGate>,
     map: <ProGate feature="map"><MapScreen /></ProGate>,
     onboarding: null,
@@ -110,6 +139,7 @@ export function App() {
         </div>
       </main>
       <UpgradeDialog />
+      <HuddleJoinDialog />
       {dragOver && (
         <div className="fixed inset-0 z-50 bg-bg/90 flex items-center justify-center pointer-events-none animate-[pd-fade_120ms_ease-out]">
           <div className="rounded-3xl border-2 border-dashed border-primary px-16 py-12 flex flex-col items-center gap-3 bg-surface">

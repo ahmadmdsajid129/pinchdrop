@@ -286,3 +286,7 @@ html {
 @keyframes pd-fx-liquid { 0%, 100% { transform: translateY(70%) rotate(0deg); } 50% { transform: translateY(10%) rotate(3deg); } }
 .pd-fx-liquid { animation: pd-fx-liquid 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .pd-fx-pixel, .pd-fx-ink, .pd-fx-liquid { animation: none; } }
+
+/* v2 · Huddle: the face under a file being dragged in from Explorer */
+.pd-huddle-face { transition: transform 120ms ease-out, border-color 120ms, background-color 120ms; }
+.pd-face-hot { transform: scale(1.04); border-color: rgb(var(--primary)) !important; border-style: solid !important; background-color: rgb(var(--primary) / 0.08) !important; }

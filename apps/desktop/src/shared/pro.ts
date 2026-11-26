@@ -34,11 +34,12 @@ export const PRO_FEATURES: Record<string, { title: string; line: string }> = {
   map: { title: 'Find my phones', line: 'See where your phones are, and where they were last seen.' },
   otp: { title: 'Codes copied for you', line: 'One-time codes from texts land on your PC clipboard.' },
   large: { title: `Sends over ${FREE_LIMIT_TEXT}`, line: 'Send whole projects, films and backups in one go.' },
+  huddle: { title: 'Bigger huddles', line: 'Huddles with more than 4 laptops (free huddles are up to 4).' },
   themes: { title: 'Pill Studio', line: 'Designed pill themes (Aurora, Liquid Glass, Neon Tokyo, Cassette), shapes and a clock.' },
 };
 
 /** The order the Pro page lists them in. */
-export const PRO_LIST = ['themes', 'phones', 'reply', 'calls', 'files', 'photos', 'music', 'map', 'otp', 'large'];
+export const PRO_LIST = ['themes', 'huddle', 'phones', 'reply', 'calls', 'files', 'photos', 'music', 'map', 'otp', 'large'];
 
 const FREE: ProStatus = { plan: 'free', active: false, trialDaysLeft: 0, kind: null, licensee: null, expires: null, problem: null };
 /** Outside the app (UI preview in a browser): pretend the trial is on. */
