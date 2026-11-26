@@ -336,9 +336,9 @@ export function Overlay() {
       fist_hold: '✊ Fist',
       wave: '👋 Wave',
     };
-    const sendGesture = (g: string) => {
+    const sendGesture = (g: string, quiet = false) => {
       activity();
-      flash(LABEL[g] ?? g);
+      if (!quiet) flash(LABEL[g] ?? g);
       void import('@tauri-apps/api/event').then(({ emitTo }) => emitTo('pill', 'gesture', g)).catch(() => undefined);
     };
     let shownProgress = 0;
@@ -691,7 +691,9 @@ export function Overlay() {
         // v2 gestures only while nothing is pinched or carried, so they never fight the grab.
         if (!machine.holding && machine.state !== 'PINCHING' && !ev) {
           const g = poses.step(now, shapeNow);
-          if (g) sendGesture(g);
+          // While grabbing, only gestures that mean something on the Island (reply, dismiss,
+          // take it) go through, silently; the Island shows the result.
+          if (g === 'peace_hold' || g === 'thumbs_up' || g === 'swipe_left' || g === 'swipe_right') sendGesture(g, true);
         } else poses.reset();
         if (ev?.type === 'grab') void onGrab();
         else if (ev?.type === 'release') void onRelease();
