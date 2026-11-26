@@ -519,6 +519,29 @@ impl Grab {
 /// Builds what a pinch grabs right now: the Explorer / Desktop selection, or — when nothing is
 /// selected — the clipboard (a link, a short note, or a long text turned into a file).
 pub fn grab_selection(outbox: &std::path::Path) -> Option<GrabbedItems> {
+    // v2 · "Open on the other device": a browser in front → the page you're looking at.
+    if crate::browser::browser_in_front() {
+        if let Some(url) = crate::browser::active_url() {
+            let host = url
+                .split("://")
+                .nth(1)
+                .and_then(|r| r.split('/').next())
+                .unwrap_or("Link")
+                .trim_start_matches("www.")
+                .to_string();
+            return Some(GrabbedItems {
+                paths: Vec::new(),
+                preview: crate::preview::for_link(&url, &host),
+                total_bytes: url.len() as u64,
+                texts: vec![url],
+                open_on_arrival: true,
+                label: host,
+                file_count: 0,
+                is_folder: false,
+                partial: false,
+            });
+        }
+    }
     if let Some(sel) = explorer::current() {
         let infos: Vec<fs_info::PathInfo> = sel.paths.iter().map(|p| fs_info::inspect(p)).collect();
         let readable: Vec<&fs_info::PathInfo> =
