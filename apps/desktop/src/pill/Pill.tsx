@@ -50,6 +50,9 @@ export function Pill() {
   const { settings, update } = useSettings();
   const phone = usePhone();
   const pro = usePro();
+  /** v2 Pro: the send animation pack (Classic lift-off without Pro). */
+  const packRef = useRef<string>('default');
+  packRef.current = pro.active ? settings?.pill.style?.fx ?? 'default' : 'default';
   useTheme(undefined, 'dark');
   const reduced = useReducedMotion(settings?.motion);
 
@@ -133,14 +136,14 @@ export function Pill() {
         const fxMs = reduced ? 600 : 1550;
         fxEndAt.current = Date.now() + fxMs + 400;
         void api.transferPreview(t.id).then(async (preview) => {
-          await api.playSendFx({ kind: 'launch', ...fxInfo(t), preview });
+          await api.playSendFx({ kind: 'launch', ...fxInfo(t), preview, pack: packRef.current });
           fxEndAt.current = Date.now() + fxMs;
           window.setTimeout(() => setExpanded(true), fxMs);
         });
       } else if (!active && seenActive.current.has(t.id)) {
         seenActive.current.delete(t.id);
         // Big sends get a "landed" burst at the Island.
-        if (t.state === 'done' && t.totalBytes >= 50 * 1024 * 1024) void api.playSendFx({ kind: 'landed', ...fxInfo(t) });
+        if (t.state === 'done' && t.totalBytes >= 50 * 1024 * 1024) void api.playSendFx({ kind: 'landed', ...fxInfo(t), pack: packRef.current });
         setShownDone(t.id);
         const id = t.id;
         // A quick send may finish during the lift-off: still show "Delivered" for a moment after it.

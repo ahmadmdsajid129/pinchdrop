@@ -4,6 +4,8 @@ import { Check, File, Folder, Link2 } from 'lucide-react';
 import { formatBytes } from '../shared/api';
 import { ItemPreview } from '../shared/ItemPreview';
 import type { ItemPreviewData } from '../shared/types';
+import type { FxPack } from '../shared/pillThemes';
+import { LandedPack, LaunchPack } from './PackFx';
 
 /** A send that just started (or a big one that just landed), shown full screen. Mirrors the pill's payload. */
 export interface SendFxEvent {
@@ -17,6 +19,8 @@ export interface SendFxEvent {
   reduced?: boolean;
   /** The item's real look (photo, folder, first lines…) when known. */
   preview?: ItemPreviewData | null;
+  /** v2 Pro: the animation pack. */
+  pack?: FxPack;
 }
 
 const PARTICLES = 14;
@@ -29,8 +33,14 @@ const PARTICLES = 14;
 export function SendFx({ ev, onDone }: { ev: SendFxEvent | null; onDone: () => void }) {
   const [phase, setPhase] = useState<'rise' | 'fly' | 'gone'>('rise');
 
+  const pack = ev && !ev.reduced && ev.pack && ev.pack !== 'default' ? ev.pack : null;
   useEffect(() => {
     if (!ev) return;
+    if (pack) {
+      // Packs run on their own clock (≈1.6 s).
+      const t = window.setTimeout(onDone, ev.kind === 'landed' ? 1300 : 1650);
+      return () => clearTimeout(t);
+    }
     if (ev.kind === 'landed') {
       const t = window.setTimeout(onDone, ev.reduced ? 400 : 1300);
       return () => clearTimeout(t);
@@ -45,9 +55,10 @@ export function SendFx({ ev, onDone }: { ev: SendFxEvent | null; onDone: () => v
       clearTimeout(a);
       clearTimeout(b);
     };
-  }, [ev, onDone]);
+  }, [ev, onDone, pack]);
 
   if (!ev) return null;
+  if (pack) return ev.kind === 'landed' ? <LandedPack ev={ev} pack={pack} /> : <LaunchPack ev={ev} pack={pack} />;
   const W = window.innerWidth;
   const H = window.innerHeight;
   // Target relative to this (full-monitor) window.
