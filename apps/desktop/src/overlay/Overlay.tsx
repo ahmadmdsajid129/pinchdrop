@@ -9,6 +9,7 @@ import {
   frameRect,
   PoseMachine,
   poseConfigFor,
+  callPoseConfigFor,
   handShape,
   CatchMachine,
   catchConfigFor,
@@ -326,7 +327,16 @@ export function Overlay() {
     // v2: in catch mode only an open hand counts (no pinching, nothing is picked up here).
     const catcher = arm.mode === 'catch' ? new CatchMachine(catchConfigFor(arm.sensitivity)) : null;
     // v2 gestures (palm hold, swipe, peace, thumbs up, fist, wave): the Island decides what they do.
-    const poses = new PoseMachine(poseConfigFor(arm.sensitivity));
+    // While the phone rings, the easier call set (palm without thumb, shaky hand OK, no wave).
+    const poses = new PoseMachine(arm.mode === 'attention' ? callPoseConfigFor(arm.sensitivity) : poseConfigFor(arm.sensitivity));
+    /** Ringing: tell the call card which pose is being held and how far (it lights that action up). */
+    let lastPose = '';
+    const tellPose = (pose: string | null, progress: number) => {
+      const key = `${pose ?? ''}:${Math.round(progress * 10)}`;
+      if (key === lastPose) return;
+      lastPose = key;
+      void import('@tauri-apps/api/event').then(({ emitTo }) => emitTo('pill', 'call-pose', { pose, progress })).catch(() => undefined);
+    };
     const LABEL: Record<string, string> = {
       palm_hold: '✋ Open palm',
       swipe_left: '👈 Swipe',
@@ -566,6 +576,7 @@ export function Overlay() {
           track.current.live = false;
           setHandIfChanged(null);
           poses.step(now, null);
+          if (arm?.mode === 'attention') tellPose(null, 0);
           if (catcher || arm?.mode === 'attention') {
             catcher?.step(now, null);
             showProgress(0);
@@ -584,6 +595,7 @@ export function Overlay() {
           setHandIfChanged({ pinched: false });
           const ev = poses.step(now, shapeNow);
           showProgress(poses.holding?.progress ?? 0);
+          tellPose(poses.holding?.pose ?? (shapeNow ? 'seen' : null), poses.holding?.progress ?? 0);
           if (ev) sendGesture(ev);
           return;
         }
