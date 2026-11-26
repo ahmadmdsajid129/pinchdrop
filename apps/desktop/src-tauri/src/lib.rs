@@ -39,6 +39,10 @@ pub struct AppState {
     /// Shown on purpose (shortcut, camera session, hold) even over a full-screen app, until then.
     shown_until: Mutex<Option<Instant>>,
     tray_show_pill: Mutex<Option<CheckMenuItem<Wry>>>,
+    /// v2: the pill is fading out before it hides.
+    pub pill_fading: std::sync::atomic::AtomicBool,
+    /// v2: first run: show the main window once its page has drawn.
+    pub show_main_when_ready: std::sync::atomic::AtomicBool,
 }
 
 impl AppState {
@@ -165,13 +169,40 @@ fn refresh_pill_visibility(app: &AppHandle) {
         .map(|until| Instant::now() < until)
         .unwrap_or(false);
     let fullscreen = s.pill.hide_in_fullscreen && !forced && pill::fullscreen_app_active();
-    let want = s.pill.visible && !snoozed && !fullscreen;
+    // v2: the pill steps aside while the PinchDrop window is open (and before setup is done);
+    // it comes back when the window is closed or minimised.
+    let main_open = main_window(app)
+        .map(|m| m.is_visible().unwrap_or(false) && !m.is_minimized().unwrap_or(false))
+        .unwrap_or(false);
+    let want = s.pill.visible && s.onboarded && !snoozed && !fullscreen && (!main_open || forced);
     let is = win.is_visible().unwrap_or(false);
-    if want && !is {
+    let fading = state.pill_fading.load(std::sync::atomic::Ordering::Relaxed);
+    if want && (!is || fading) {
+        state
+            .pill_fading
+            .store(false, std::sync::atomic::Ordering::Relaxed);
         let _ = win.show();
         let _ = win.set_always_on_top(true);
-    } else if !want && is {
-        let _ = win.hide();
+        // Fade in (the pill page animates it).
+        let _ = app.emit_to("pill", "pill-fade", true);
+    } else if !want && is && !fading {
+        // Fade out first, then hide the window.
+        state
+            .pill_fading
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        let _ = app.emit_to("pill", "pill-fade", false);
+        let h = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(260));
+            let st = h.state::<AppState>();
+            if st.pill_fading.load(std::sync::atomic::Ordering::Relaxed) {
+                if let Some(w) = pill_window(&h) {
+                    let _ = w.hide();
+                }
+                st.pill_fading
+                    .store(false, std::sync::atomic::Ordering::Relaxed);
+            }
+        });
     }
 }
 
@@ -255,6 +286,23 @@ fn open_main_at(app: &AppHandle, route: &str) {
         let _ = win.show();
         let _ = win.set_focus();
         let _ = win.emit("navigate", route);
+    }
+    refresh_pill_visibility(app);
+}
+
+/// The main window's page has drawn: show it now if it's waiting (first run), so it never
+/// appears as a blank or black rectangle.
+#[tauri::command]
+fn main_ready(app: AppHandle) {
+    let pending = app
+        .try_state::<AppState>()
+        .map(|s| {
+            s.show_main_when_ready
+                .swap(false, std::sync::atomic::Ordering::Relaxed)
+        })
+        .unwrap_or(false);
+    if pending {
+        open_main_at(&app, "onboarding");
     }
 }
 
@@ -1104,6 +1152,8 @@ pub fn run() {
                 hidden_until: Mutex::new(None),
                 shown_until: Mutex::new(None),
                 tray_show_pill: Mutex::new(None),
+                pill_fading: Default::default(),
+                show_main_when_ready: Default::default(),
             });
 
             let handle = app.handle().clone();
@@ -1132,22 +1182,38 @@ pub fn run() {
 
             if let Some(main) = main_window(&handle) {
                 let h = handle.clone();
-                main.on_window_event(move |event| {
-                    if let WindowEvent::CloseRequested { api, .. } = event {
+                main.on_window_event(move |event| match event {
+                    WindowEvent::CloseRequested { api, .. } => {
                         if h.state::<AppState>().snapshot().keep_running_on_close {
                             api.prevent_close();
                             if let Some(w) = main_window(&h) {
                                 let _ = w.hide();
                             }
+                            // The pill comes back as the window goes.
+                            refresh_pill_visibility(&h);
                         } else {
                             h.exit(0);
                         }
                     }
+                    // Minimised / restored / shown: the pill follows at once.
+                    WindowEvent::Resized(_) | WindowEvent::Focused(_) => {
+                        refresh_pill_visibility(&h)
+                    }
+                    _ => {}
                 });
             }
 
             if first_run {
-                open_main_at(&handle, "onboarding");
+                // Show the setup screen as soon as its page has drawn (main_ready), or after 4 s anyway.
+                handle
+                    .state::<AppState>()
+                    .show_main_when_ready
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                let h = handle.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(4));
+                    main_ready(h);
+                });
             }
 
             // Re-check every 1.5 s whether the pill should hide for a full-screen app.
@@ -1169,6 +1235,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_settings,
             update_settings,
+            main_ready,
             get_phone_status,
             get_autostart,
             set_autostart,
