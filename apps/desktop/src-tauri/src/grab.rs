@@ -381,7 +381,14 @@ impl Grab {
     }
 
     /// Starts holding grabbed items: counts down on the Island and offers them to the phone.
-    pub fn hold_start(&self, app: &AppHandle, items: GrabbedItems) -> HoldView {
+    /// v2: `target` = dropped on a device's chip: only that device is offered it (its Catch
+    /// screen opens, the others stay quiet). `None` = every device; the first to catch wins.
+    pub fn hold_start_to(
+        &self,
+        app: &AppHandle,
+        items: GrabbedItems,
+        target: Option<&str>,
+    ) -> HoldView {
         let secs = crate::current_settings(app)
             .gestures
             .catch_secs
@@ -396,13 +403,18 @@ impl Grab {
                 items.total_bytes,
                 items.is_folder,
                 secs,
+                target.filter(|t| !crate::link::peer::is_peer_device_id(t)),
             )
+            .filter(|_| target.map_or(true, |t| !crate::link::peer::is_peer_device_id(t)))
         });
-        // v2: paired PCs get it too (their webcam can catch it).
-        let pcs = link
-            .as_ref()
-            .map(|l| l.peers_offer_lift(&id, &items, secs))
-            .unwrap_or_default();
+        // v2: paired PCs get it too (their webcam can catch it), unless it's aimed at a phone.
+        let pcs = match target {
+            Some(t) if !crate::link::peer::is_peer_device_id(t) => Vec::new(),
+            _ => link
+                .as_ref()
+                .map(|l| l.peers_offer_lift(&id, &items, secs, target))
+                .unwrap_or_default(),
+        };
         let mut names: Vec<String> = phones.into_iter().collect();
         names.extend(pcs);
         let phone_name = match names.len() {
