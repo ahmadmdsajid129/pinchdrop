@@ -329,7 +329,9 @@ impl Grab {
                     .map(|v| v.label),
                 "catch",
             )
-        } else if ringing && !want {
+        } else if ringing {
+            // The call comes first: even if the camera was on for grabbing, it now listens
+            // for palm / swipe / fist (grabbing comes back when the ringing stops).
             (true, None, "attention")
         } else {
             (want, label, "grab")
