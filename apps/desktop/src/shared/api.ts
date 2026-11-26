@@ -157,14 +157,16 @@ export const api = {
   phoneNotifications: (): Promise<NotifView[]> => (inTauri ? invoke('phone_notifications') : Promise.resolve([])),
   notifDismiss: (key: string) => (inTauri ? invoke<void>('notif_dismiss', { key }) : Promise.resolve()),
   notifReply: (key: string, text: string) => (inTauri ? invoke<void>('notif_reply', { key, text }) : Promise.resolve()),
-  smsThreads: async (): Promise<SmsThread[]> =>
-    inTauri ? ((await invoke<{ threads: SmsThread[] }>('sms_threads')).threads ?? []) : DEMO_THREADS,
-  smsThread: (threadId: number): Promise<SmsThreadDetail> =>
-    inTauri ? invoke('sms_thread', { threadId }) : Promise.resolve(demoThread(threadId)),
-  smsSend: (address: string, text: string) => (inTauri ? invoke<void>('sms_send', { address, text }) : Promise.resolve()),
-  contacts: async (): Promise<Contact[]> =>
-    inTauri ? ((await invoke<{ contacts: Contact[] }>('contacts_list')).contacts ?? []) : DEMO_CONTACTS,
-  dial: (number: string): Promise<{ how: string }> => (inTauri ? invoke('phone_dial', { number }) : Promise.resolve({ how: 'calling' })),
+  smsThreads: async (deviceId?: string | null): Promise<SmsThread[]> =>
+    inTauri ? ((await invoke<{ threads: SmsThread[] }>('sms_threads', { deviceId: deviceId ?? null })).threads ?? []) : DEMO_THREADS,
+  smsThread: (threadId: number, deviceId?: string | null): Promise<SmsThreadDetail> =>
+    inTauri ? invoke('sms_thread', { threadId, deviceId: deviceId ?? null }) : Promise.resolve(demoThread(threadId)),
+  smsSend: (address: string, text: string, deviceId?: string | null) =>
+    inTauri ? invoke<void>('sms_send', { address, text, deviceId: deviceId ?? null }) : Promise.resolve(),
+  contacts: async (deviceId?: string | null): Promise<Contact[]> =>
+    inTauri ? ((await invoke<{ contacts: Contact[] }>('contacts_list', { deviceId: deviceId ?? null })).contacts ?? []) : DEMO_CONTACTS,
+  dial: (number: string, deviceId?: string | null): Promise<{ how: string }> =>
+    inTauri ? invoke('phone_dial', { number, deviceId: deviceId ?? null }) : Promise.resolve({ how: 'calling' }),
 
   // v2 · Map and photos.
   phonePlaces: (): Promise<PlaceView[]> => (inTauri ? invoke('phone_places') : Promise.resolve([])),
