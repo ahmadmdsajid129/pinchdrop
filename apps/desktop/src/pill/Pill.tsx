@@ -53,6 +53,9 @@ export function Pill() {
   /** v2 Pro: the send animation pack (Classic lift-off without Pro). */
   const packRef = useRef<string>('default');
   packRef.current = pro.active ? settings?.pill.style?.fx ?? 'default' : 'default';
+  /** Gesture & send sounds on (Settings → Gestures). */
+  const soundsRef = useRef(true);
+  soundsRef.current = settings?.gestures.sounds !== false;
   useTheme(undefined, 'dark');
   const reduced = useReducedMotion(settings?.motion);
 
@@ -124,9 +127,12 @@ export function Pill() {
     for (const t of transfers) {
       const active = t.state === 'sending' || t.state === 'offered' || t.state === 'paused';
       if (active && !seenActive.current.has(t.id) && t.direction === 'in') {
-        // Caught from the phone: the Island shows it arriving.
+        // Caught from the phone: the Island shows it arriving (with Pro, the pack's arrival first).
         seenActive.current.add(t.id);
-        setExpanded(true);
+        if (packRef.current !== 'default' && !reduced) {
+          void api.playSendFx({ kind: 'arrive', ...fxInfo(t), pack: packRef.current, sounds: soundsRef.current });
+          window.setTimeout(() => setExpanded(true), 1500);
+        } else setExpanded(true);
       } else if (active && !seenActive.current.has(t.id)) {
         // A new send started (caught by the phone or dropped on the app). First the lift-off plays
         // on its own, showing the item itself; when it lands at the top, the Island opens on the
@@ -136,14 +142,14 @@ export function Pill() {
         const fxMs = reduced ? 600 : 1550;
         fxEndAt.current = Date.now() + fxMs + 400;
         void api.transferPreview(t.id).then(async (preview) => {
-          await api.playSendFx({ kind: 'launch', ...fxInfo(t), preview, pack: packRef.current });
+          await api.playSendFx({ kind: 'launch', ...fxInfo(t), preview, pack: packRef.current, sounds: soundsRef.current });
           fxEndAt.current = Date.now() + fxMs;
           window.setTimeout(() => setExpanded(true), fxMs);
         });
       } else if (!active && seenActive.current.has(t.id)) {
         seenActive.current.delete(t.id);
         // Big sends get a "landed" burst at the Island.
-        if (t.state === 'done' && t.totalBytes >= 50 * 1024 * 1024) void api.playSendFx({ kind: 'landed', ...fxInfo(t), pack: packRef.current });
+        if (t.state === 'done' && t.totalBytes >= 50 * 1024 * 1024) void api.playSendFx({ kind: 'landed', ...fxInfo(t), pack: packRef.current, sounds: soundsRef.current });
         setShownDone(t.id);
         const id = t.id;
         // A quick send may finish during the lift-off: still show "Delivered" for a moment after it.
