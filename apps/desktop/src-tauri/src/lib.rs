@@ -9,6 +9,7 @@ mod clip;
 mod explorer;
 mod fs_info;
 mod grab;
+mod huddle;
 mod license;
 mod link;
 mod phone;
@@ -1141,6 +1142,95 @@ struct AppInfo {
     fingerprint: Option<String>,
 }
 
+// ---------------------------------------------------------------- Huddle (v2)
+
+#[tauri::command]
+fn huddle_state() -> huddle::HuddleView {
+    huddle::view()
+}
+
+#[tauri::command]
+async fn huddle_start(app: AppHandle, name: Option<String>) -> Result<huddle::HuddleView, String> {
+    huddle::start(app, name).await
+}
+
+#[tauri::command]
+async fn huddle_find() -> Vec<huddle::FoundHuddle> {
+    tauri::async_runtime::spawn_blocking(huddle::find)
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+async fn huddle_join(app: AppHandle, ip: String, port: u16) -> Result<huddle::HuddleView, String> {
+    huddle::join(app, ip, port).await
+}
+
+#[tauri::command]
+fn huddle_answer(req_id: String, ok: bool) {
+    huddle::answer(&req_id, ok);
+}
+
+#[tauri::command]
+fn huddle_leave() {
+    huddle::leave();
+}
+
+#[tauri::command]
+fn huddle_send_text(to: Option<String>, text: String) -> Result<String, String> {
+    huddle::send_text(to, text)
+}
+
+#[tauri::command]
+fn huddle_send_clipboard(to: Option<String>) -> Result<String, String> {
+    huddle::send_clipboard(to)
+}
+
+#[tauri::command]
+async fn huddle_send_paths(to: Option<String>, paths: Vec<String>) -> Result<String, String> {
+    huddle::send_paths(to, paths).await
+}
+
+#[tauri::command]
+async fn huddle_share(to: Option<String>, address: String) -> Result<String, String> {
+    huddle::share(to, address).await
+}
+
+#[tauri::command]
+fn huddle_pull(member: String) -> Result<(), String> {
+    huddle::pull(&member)
+}
+
+#[tauri::command]
+fn huddle_shelf() -> Vec<huddle::ShelfItem> {
+    huddle::shelf()
+}
+
+#[tauri::command]
+fn huddle_inbox() -> Vec<huddle::Incoming> {
+    huddle::inbox()
+}
+
+#[tauri::command]
+fn huddle_accept(
+    app: AppHandle,
+    id: String,
+    folder: Option<String>,
+    choices: Option<std::collections::HashMap<String, String>>,
+) -> Result<huddle::AcceptResult, String> {
+    huddle::accept(&app, &id, folder, choices.unwrap_or_default())
+}
+
+#[tauri::command]
+fn huddle_dismiss(id: String) {
+    huddle::dismiss(&id);
+}
+
+#[tauri::command]
+fn huddle_open(app: AppHandle, id: String) -> Result<(), String> {
+    huddle::open_item(&app, &id)
+}
+
 // ---------------------------------------------------------------- Pro (licence, trial)
 
 #[tauri::command]
@@ -1319,6 +1409,7 @@ pub fn run() {
             let loaded = settings::load(&settings_path);
             let first_run = !loaded.onboarded;
             license::init(&config_dir);
+            huddle::init(app.handle());
             app.manage(AppState {
                 settings: Mutex::new(loaded),
                 settings_path,
@@ -1420,6 +1511,22 @@ pub fn run() {
             get_pro,
             activate_license,
             remove_license,
+            huddle_state,
+            huddle_start,
+            huddle_find,
+            huddle_join,
+            huddle_answer,
+            huddle_leave,
+            huddle_send_text,
+            huddle_send_clipboard,
+            huddle_send_paths,
+            huddle_share,
+            huddle_pull,
+            huddle_shelf,
+            huddle_inbox,
+            huddle_accept,
+            huddle_dismiss,
+            huddle_open,
             main_ready,
             get_phone_status,
             get_autostart,
