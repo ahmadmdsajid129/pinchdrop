@@ -387,7 +387,8 @@ impl Grab {
             .catch_secs
             .clamp(5, 120) as u64;
         let id = crate::link::proto::random_id();
-        let phone_name = crate::link_of(app).and_then(|l| {
+        let link = crate::link_of(app);
+        let phones = link.as_ref().and_then(|l| {
             l.hold_offer(
                 &id,
                 &items.label,
@@ -397,6 +398,18 @@ impl Grab {
                 secs,
             )
         });
+        // v2: paired PCs get it too (their webcam can catch it).
+        let pcs = link
+            .as_ref()
+            .map(|l| l.peers_offer_lift(&id, &items, secs))
+            .unwrap_or_default();
+        let mut names: Vec<String> = phones.into_iter().collect();
+        names.extend(pcs);
+        let phone_name = match names.len() {
+            0 => None,
+            1 => names.pop(),
+            _ => Some(names.join(" or ")),
+        };
         if let Ok(mut h) = self.hold.lock() {
             *h = Some(Hold {
                 id,
@@ -440,6 +453,22 @@ impl Grab {
         if expired {
             self.hold_end(app, "expired");
         }
+    }
+
+    /// v2: a paired PC caught it (as a lift): end the hold here; phones stop waiting.
+    pub fn hold_taken_elsewhere(&self, app: &AppHandle, hold_id: &str) -> Option<GrabbedItems> {
+        let h = self.hold.lock().ok().and_then(|mut g| {
+            if g.as_ref().is_some_and(|h| h.id == hold_id) {
+                g.take()
+            } else {
+                None
+            }
+        })?;
+        if let Some(l) = crate::link_of(app) {
+            l.hold_cancel_phones(&h.id, "caught_elsewhere");
+        }
+        self.emit_hold(app);
+        Some(h.items)
     }
 
     pub fn hold_cancel(&self, app: &AppHandle) {
