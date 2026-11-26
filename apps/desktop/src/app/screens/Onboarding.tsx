@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Bell, Camera, Check, Hand, Power, Wifi } from 'lucide-react';
+import { ArrowRight, Bell, Camera, Check, Hand, Lock, MousePointer2, Power, Smartphone, Sparkles, Wifi } from 'lucide-react';
+import { FlyHero, Guide } from '../Illustrations';
 import { api, useTheme } from '../../shared/api';
 import { useApp } from '../context';
 import { Button, Toggle } from '../ui';
 import { PairPanel } from './Pair';
 import { listCameras, requestCameraAccess } from '../CameraPreview';
 
-const STEPS = ['Welcome', 'Permissions', 'Pair phone', 'Meet the pill'];
+const STEPS = ['Welcome', 'How it works', 'Quick setup', 'Pair phone', 'Guide'];
 
 function PermissionCard({ icon, title, children, control, ok }: { icon: ReactNode; title: string; children: ReactNode; control: ReactNode; ok?: boolean }) {
   return (
@@ -76,24 +77,91 @@ export function Onboarding() {
         </ol>
 
         {step === 0 && (
-          <div className="flex flex-col items-start gap-5 py-6">
-            <span className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white">
-              <Hand size={34} aria-hidden="true" />
-            </span>
-            <h1 className="m-0 font-display text-[34px] font-semibold leading-tight">Welcome to PinchDrop</h1>
-            <p className="m-0 text-[16px] text-muted max-w-[560px] leading-relaxed">
-              Send files, folders, photos and links from this PC to your phone — pick them in the app, or pinch them in mid-air and open your hand over the phone.
-              Everything stays on your Wi-Fi. No cloud, no account.
-            </p>
-            <Button variant="primary" size="lg" onClick={() => setStep(1)}>Get started</Button>
+          <div className="flex flex-col gap-8 py-2">
+            <div className="flex items-center gap-8 flex-wrap">
+              <div className="flex-[1_1_320px] flex flex-col items-start gap-5">
+                <span className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-primary/10 text-primary-ink text-[12px] font-semibold">
+                  <Sparkles size={13} aria-hidden="true" /> Move things with your hands
+                </span>
+                <h1 className="m-0 font-display text-[38px] font-semibold leading-[1.1]">
+                  Pinch it on your PC.
+                  <br />
+                  <span className="bg-gradient-to-r from-[#0071E3] to-[#22D3EE] bg-clip-text text-transparent">Drop it on your phone.</span>
+                </h1>
+                <p className="m-0 text-[16px] text-muted max-w-[460px] leading-relaxed">
+                  Files, photos and links fly between this PC and your phones with a gesture. And your phone's calls, messages and notifications show up right here.
+                </p>
+                <div className="flex gap-3 flex-wrap">
+                  <Button variant="primary" size="lg" onClick={() => setStep(1)}>
+                    Get started <ArrowRight size={18} aria-hidden="true" />
+                  </Button>
+                </div>
+                <p className="m-0 text-[13px] text-muted">Takes about a minute · no account needed</p>
+              </div>
+              <div className="flex-[1_1_380px] flex justify-center">
+                <FlyHero />
+              </div>
+            </div>
+            <ul className="m-0 p-0 list-none grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+              {(
+                [
+                  [<Hand key="h" size={20} />, 'Pinch & drop', 'Grab in the air, open your hand over the phone.'],
+                  [<Smartphone key="p" size={20} />, 'Your phone, here', 'Calls, messages, notifications, photos and files.'],
+                  [<Lock key="l" size={20} />, 'Private by design', 'Only your Wi-Fi. No cloud, nothing recorded.'],
+                ] as const
+              ).map(([icon, t, d]) => (
+                <li key={t} className="flex gap-3 p-4 rounded-2xl bg-surface border border-line">
+                  <span className="w-10 h-10 shrink-0 rounded-xl bg-primary/10 text-primary-ink flex items-center justify-center">{icon}</span>
+                  <div>
+                    <div className="font-semibold text-[14px]">{t}</div>
+                    <div className="text-[13px] text-muted leading-snug">{d}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
         {step === 1 && (
           <>
             <div>
-              <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">A few permissions first</h1>
-              <p className="m-0 text-[15px] text-muted leading-relaxed">Each one says why it's needed. You can change any of them later in Settings.</p>
+              <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">How it works</h1>
+              <p className="m-0 text-[15px] text-muted leading-relaxed">Three moves. That's all.</p>
+            </div>
+            <div className="flex justify-center">
+              <FlyHero />
+            </div>
+            <ol className="m-0 p-0 list-none grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+              {(
+                [
+                  [<MousePointer2 key="m" size={22} />, 'Select', 'Click a file, folder, photo or link on your PC like you always do.'],
+                  [<Hand key="h" size={22} />, 'Pinch', 'Pinch your thumb and index in front of the webcam. The file lifts with your hand.'],
+                  [<Smartphone key="s" size={22} />, 'Open your hand', 'Open your hand towards the phone. On the phone, hold your open hand over it and it lands.'],
+                ] as const
+              ).map(([icon, t, d], i) => (
+                <li key={t} className="relative p-5 rounded-2xl bg-surface border border-line flex flex-col gap-2">
+                  <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0071E3] to-[#22D3EE] text-white flex items-center justify-center pd-float" style={{ animationDelay: `${i * 0.4}s` }}>
+                    {icon}
+                  </span>
+                  <div className="text-[12px] font-semibold text-primary-ink mt-1">STEP {i + 1}</div>
+                  <div className="font-display font-semibold text-[18px]">{t}</div>
+                  <div className="text-[13px] text-muted leading-relaxed">{d}</div>
+                </li>
+              ))}
+            </ol>
+            <p className="m-0 text-[13px] text-muted">Rather click? Drag files onto this window or use right-click → Send to → PinchDrop. Gestures are optional.</p>
+            <div className="flex justify-between items-center flex-wrap gap-3">
+              <Button variant="ghost" onClick={() => setStep(0)}>Back</Button>
+              <Button variant="primary" onClick={() => setStep(2)}>Next</Button>
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <div>
+              <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">Quick setup</h1>
+              <p className="m-0 text-[15px] text-muted leading-relaxed">Turn on what you like. Everything can be changed later in Settings.</p>
             </div>
             <div className="flex flex-col gap-3">
               <PermissionCard
@@ -126,22 +194,8 @@ export function Onboarding() {
               </PermissionCard>
             </div>
             <div className="flex justify-between items-center flex-wrap gap-3">
-              <Button variant="ghost" onClick={() => setStep(0)}>Back</Button>
-              <Button variant="primary" onClick={() => setStep(2)}>Continue to pairing</Button>
-            </div>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <div>
-              <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">Pair your phone</h1>
-              <p className="m-0 text-[15px] text-muted">You can skip this for now and pair later from Devices.</p>
-            </div>
-            <PairPanel compact onPaired={() => setStep(3)} />
-            <div className="flex justify-between items-center flex-wrap gap-3">
               <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
-              <Button variant="primary" onClick={() => setStep(3)}>Continue</Button>
+              <Button variant="primary" onClick={() => setStep(3)}>Continue to pairing</Button>
             </div>
           </>
         )}
@@ -149,24 +203,31 @@ export function Onboarding() {
         {step === 3 && (
           <>
             <div>
-              <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">Meet your pill</h1>
-              <p className="m-0 text-[15px] text-muted leading-relaxed">It sits at the top of your screen all the time.</p>
+              <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">Pair your phone</h1>
+              <p className="m-0 text-[15px] text-muted leading-relaxed">
+                Install <b className="text-text">PinchDrop</b> on your Android phone, open it, and scan this code. Both need to be on the same Wi-Fi. You can skip this and pair later from Devices.
+              </p>
             </div>
-            <ul className="m-0 pl-0 list-none flex flex-col gap-3 text-[15px]">
-              {[
-                ['Click once', 'opens the Dynamic Island and turns the camera on — select something, pinch, open your hand. It switches off after 30 s of nothing happening'],
-                ['Double-click', 'opens this window'],
-                ['Drag', 'moves it anywhere — it sticks to the nearest edge'],
-                ['Right-click', 'menu: send files, pause gestures, hide for an hour, quit'],
-              ].map(([k, v]) => (
-                <li key={k} className="p-4 rounded-2xl bg-surface border border-line">
-                  <strong className="text-text">{k}</strong> <span className="text-muted">— {v}</span>
-                </li>
-              ))}
-            </ul>
+            <PairPanel compact onPaired={() => setStep(4)} />
             <div className="flex justify-between items-center flex-wrap gap-3">
               <Button variant="ghost" onClick={() => setStep(2)}>Back</Button>
-              <Button variant="primary" size="lg" onClick={() => void finish()}>Finish</Button>
+              <Button variant="primary" onClick={() => setStep(4)}>Continue</Button>
+            </div>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <div>
+              <h1 className="m-0 mb-2 font-display text-[30px] font-semibold">You're ready. Here's how to use it</h1>
+              <p className="m-0 text-[15px] text-muted leading-relaxed">
+                Your pill now sits at the top of the screen. This guide is always under <b className="text-text">How to use</b> in the sidebar.
+              </p>
+            </div>
+            <Guide />
+            <div className="flex justify-between items-center flex-wrap gap-3">
+              <Button variant="ghost" onClick={() => setStep(3)}>Back</Button>
+              <Button variant="primary" size="lg" onClick={() => void finish()}>Start using PinchDrop</Button>
             </div>
           </>
         )}
