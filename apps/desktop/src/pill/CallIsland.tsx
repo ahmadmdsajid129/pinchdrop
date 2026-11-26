@@ -8,7 +8,7 @@ import type { PhoneLive } from '../shared/types';
  * v2 · The phone is ringing: who's calling, and Answer / Reject / Silence. With the camera
  * listening: open palm = answer, swipe = reject, fist = silence. The call stays on the phone.
  */
-export function CallIsland({ live, width, listening }: { live: PhoneLive; width: number; listening: boolean }) {
+export function CallIsland({ live, width, listening, showDevice = false }: { live: PhoneLive; width: number; listening: boolean; showDevice?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const who = live.callerName ?? live.callerNumber ?? 'Unknown caller';
@@ -23,7 +23,7 @@ export function CallIsland({ live, width, listening }: { live: PhoneLive; width:
     setBusy(a);
     setError(null);
     try {
-      await api.callAction(a);
+      await api.callAction(a, live.deviceId);
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
     } finally {
@@ -49,7 +49,10 @@ export function CallIsland({ live, width, listening }: { live: PhoneLive; width:
           </span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] text-muted uppercase tracking-wide font-semibold">Incoming call</div>
+          <div className="text-[11px] text-muted uppercase tracking-wide font-semibold">
+            {live.callApp ? `${live.callApp} call` : 'Incoming call'}
+            {showDevice && live.deviceName ? ` · ${live.deviceName}` : ''}
+          </div>
           <div className="font-display font-semibold text-[18px] truncate">{who}</div>
           {live.callerName && live.callerNumber && <div className="text-[12px] text-muted truncate">{live.callerNumber}</div>}
         </div>
