@@ -101,7 +101,7 @@ The PC sends `push.offer`:
   - `auto`: a photo or video picked **on its own** goes to the Gallery (`Pictures/PinchDrop`, `Movies/PinchDrop`).
   - Everything else goes to `Download/PinchDrop/…`, keeping the folder structure.
 - `texts` are notes or links. They are saved to the phone's Received list straight away, and copied to the clipboard when the app is on screen.
-- `fx` (v2, optional): the PC's animation pack, `default`, `plane`, `portal` or `comet` (Pill Studio, Pro). The phone plays the matching arrival on its receive sheet; anything unknown or missing means `default`.
+- `fx` (v2, optional): the PC's animation pack: `default`, `plane`, `portal`, `comet`, `blackhole`, `origami`, `pixel`, `ink` or `liquid` (Pill Studio, Pro). `lift.catch` carries it too, so the phone's send-away matches. The phone plays the matching arrival on its receive sheet; anything unknown or missing means `default`.
 
 The phone replies with one of:
 - `push.accept` `{ transferId }`. This is automatic when its "Manual sends" setting is *Auto*; otherwise the user is asked.
