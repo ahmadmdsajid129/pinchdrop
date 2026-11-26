@@ -3,9 +3,21 @@ package com.pinchdrop.companion.transfer
 import com.pinchdrop.companion.data.ItemKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SaverTest {
+    @Test
+    fun aFolderPickedOnThePcIsUsedOnlyWhenSafe() {
+        assertEquals(listOf("DCIM", "Camera"), Saver.folderOf("folder:DCIM/Camera"))
+        assertEquals(emptyList<String>(), Saver.folderOf("folder:"))
+        assertNull(Saver.folderOf("folder:../Android/data"))
+        assertNull(Saver.folderOf("auto"))
+        val p = Saver.place(listOf("CPP", "main.cpp"), "folder:Documents")
+        assertEquals("Documents/CPP", p.relativeDir)
+        assertTrue(p.direct)
+    }
+
     @Test
     fun rejectsPathsThatCouldEscape() {
         assertNull(Saver.safeSegments("../etc/passwd"))
