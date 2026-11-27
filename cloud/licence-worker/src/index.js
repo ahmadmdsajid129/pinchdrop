@@ -17,7 +17,15 @@
 const SUB_DAYS = 40;
 
 const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'no-referrer',
+    },
+  });
 
 const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
@@ -53,12 +61,17 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (req.method !== 'POST' || url.pathname !== '/redeem') return json({ error: 'Not found' }, 404);
+    // Real requests are a few hundred bytes; refuse anything big before reading it.
+    if (Number(req.headers.get('content-length') || 0) > 4096) return json({ error: 'Too large' }, 413);
     let b;
     try {
-      b = await req.json();
+      const text = await req.text();
+      if (text.length > 4096) return json({ error: 'Too large' }, 413);
+      b = JSON.parse(text);
     } catch {
       return json({ error: 'Bad request' }, 400);
     }
+    if (!b || typeof b !== 'object') return json({ error: 'Bad request' }, 400);
     const licenseKey = String(b.licenseKey ?? '').trim().slice(0, 120);
     if (!licenseKey) return json({ error: 'Missing licence key.' }, 400);
     const now = Math.floor(Date.now() / 1000);

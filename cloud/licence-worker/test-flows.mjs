@@ -73,4 +73,14 @@ r = await redeem({ licenseKey: 'KEY-2', instanceId: 'lki_2', machine: FP });
 p = verify(r.key);
 check('renewed key keeps the PC fingerprint', p && p.m === FP);
 
+// Abuse: oversized and malformed requests are refused without calling Dodo.
+const before = calls.length;
+let res = await worker.fetch(new Request('https://x/redeem', { method: 'POST', body: 'x'.repeat(10000) }), env);
+check('oversized request refused', res.status === 413);
+res = await worker.fetch(new Request('https://x/redeem', { method: 'POST', body: 'null' }), env);
+check('junk JSON refused', res.status === 400);
+res = await worker.fetch(new Request('https://x/other', { method: 'GET' }), env);
+check('other paths are 404', res.status === 404);
+check('none of that reached Dodo', calls.length === before);
+
 process.exit(fails ? 1 : 0);
