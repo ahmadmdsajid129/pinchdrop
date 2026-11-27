@@ -3,7 +3,7 @@
 // Buyers pay on the PinchDrop website through Dodo Payments, which emails them a licence key.
 // They paste it in PinchDrop → Pro. The app sends it here:
 //
-// POST /redeem { licenseKey, instanceId?, instanceName?, plan? }
+// POST /redeem { licenseKey, instanceId?, instanceName?, plan?, machine? }
 //   • no instanceId (first time on this PC): activates the key with Dodo (which enforces the
 //     2-PCs-per-key limit), reads which product it's for, and answers with a PinchDrop key signed
 //     with the PinchDrop private key (Ed25519), which the app checks offline.
@@ -62,6 +62,8 @@ export default {
     const licenseKey = String(b.licenseKey ?? '').trim().slice(0, 120);
     if (!licenseKey) return json({ error: 'Missing licence key.' }, 400);
     const now = Math.floor(Date.now() / 1000);
+    // The PC's fingerprint (a hash, never anything personal): the key works on that PC only.
+    const m = /^[0-9a-f]{32}$/.test(String(b.machine ?? '')) ? String(b.machine) : undefined;
 
     // Renewing a subscription on a PC that's already activated.
     if (b.instanceId) {
@@ -73,7 +75,7 @@ export default {
       // Only subscriptions renew; the plan name is just a label, the expiry is always short.
       const plan = b.plan === 'year' ? 'year' : 'month';
       const key = await sign(
-        { v: 1, id: `dodo-${String(b.instanceId).slice(0, 40)}`, name: String(b.name ?? '').slice(0, 60), plan, issued: now, expires: now + SUB_DAYS * 86400 },
+        { v: 1, id: `dodo-${String(b.instanceId).slice(0, 40)}`, name: String(b.name ?? '').slice(0, 60), plan, issued: now, expires: now + SUB_DAYS * 86400, m },
         env.PD_SIGNING_KEY,
       );
       return json({ key, instanceId: b.instanceId, plan, expires: now + SUB_DAYS * 86400 });
@@ -97,7 +99,7 @@ export default {
     }
     const expires = plan === 'lifetime' ? null : now + SUB_DAYS * 86400;
     const name = String(data.customer?.name ?? '').slice(0, 60);
-    const key = await sign({ v: 1, id: `dodo-${String(data.license_key_id ?? data.id).slice(0, 40)}`, name, plan, issued: now, expires }, env.PD_SIGNING_KEY);
+    const key = await sign({ v: 1, id: `dodo-${String(data.license_key_id ?? data.id).slice(0, 40)}`, name, plan, issued: now, expires, m }, env.PD_SIGNING_KEY);
     return json({ key, instanceId: data.id, plan, expires, name });
   },
 };

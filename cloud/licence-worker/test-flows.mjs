@@ -59,4 +59,18 @@ dodoReply = () => ({ status: 200, body: { valid: false } });
 r = await redeem({ licenseKey: 'KEY-2', instanceId: 'lki_2' });
 check('cancelled subscription → no key', !r.key && /no longer active/.test(r.error));
 
+// The key is tied to the PC that asked (its fingerprint), and junk fingerprints are ignored.
+const FP = '0123456789abcdef0123456789abcdef';
+dodoReply = () => ({ status: 201, body: { id: 'lki_3', license_key_id: 'lic_3', product: { product_id: 'pdt_life' }, customer: { name: 'Asha' } } });
+r = await redeem({ licenseKey: 'KEY-3', machine: FP });
+p = verify(r.key);
+check('key carries the PC fingerprint', p && p.m === FP);
+r = await redeem({ licenseKey: 'KEY-3', machine: '<script>' });
+p = verify(r.key);
+check('a bad fingerprint is left out, not copied', p && p.m === undefined);
+dodoReply = () => ({ status: 200, body: { valid: true } });
+r = await redeem({ licenseKey: 'KEY-2', instanceId: 'lki_2', machine: FP });
+p = verify(r.key);
+check('renewed key keeps the PC fingerprint', p && p.m === FP);
+
 process.exit(fails ? 1 : 0);
