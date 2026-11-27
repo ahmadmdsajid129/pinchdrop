@@ -4,8 +4,30 @@
     {
       "name": "desktop-ui",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--dir", "apps/desktop", "exec", "vite", "--port", "5175", "--strictPort"],
+      "runtimeArgs": [
+        "--dir",
+        "apps/desktop",
+        "exec",
+        "vite",
+        "--port",
+        "5175",
+        "--strictPort"
+      ],
       "port": 5175
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5180",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "site"
+      ],
+      "port": 5180
     }
   ]
 }
