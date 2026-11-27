@@ -31,6 +31,8 @@ export async function sign(payload, pkcs8Base64) {
 
 function planOf(productId, env) {
   if (productId && productId === String(env.DODO_PRODUCT_LIFETIME)) return 'lifetime';
+  // Family / team packs are lifetime keys; Dodo enforces their bigger PC limit.
+  if (productId && productId === String(env.DODO_PRODUCT_FAMILY)) return 'lifetime';
   if (productId && productId === String(env.DODO_PRODUCT_YEARLY)) return 'year';
   if (productId && productId === String(env.DODO_PRODUCT_MONTHLY)) return 'month';
   return null;

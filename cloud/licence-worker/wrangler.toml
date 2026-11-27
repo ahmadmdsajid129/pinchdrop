@@ -9,9 +9,11 @@ compatibility_date = "2026-11-01"
 DODO_PRODUCT_LIFETIME = ""
 DODO_PRODUCT_YEARLY = ""
 DODO_PRODUCT_MONTHLY = ""
+# Optional: a family / team pack (one-time, bigger activation limit set in Dodo).
+DODO_PRODUCT_FAMILY = ""
 # Live payments. For a test run use "https://test.dodopayments.com".
 DODO_BASE = "https://live.dodopayments.com"
 
-# Secret (never here): PD_SIGNING_KEY = the text between the BEGIN/END lines of
+# Secret (never here): PD_SIGNING_KEY = the contents of
 # %USERPROFILE%\.pinchdrop\license-signing-key.pem
-#   npx wrangler secret put PD_SIGNING_KEY
+#   Get-Content "$env:USERPROFILE.pinchdropicense-signing-key.pem" -Raw | npx wrangler secret put PD_SIGNING_KEY
