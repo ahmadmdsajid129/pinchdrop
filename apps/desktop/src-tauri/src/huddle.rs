@@ -417,6 +417,29 @@ fn proof(key: &[u8; 32], hid: &str, member: &str, bind: &[u8; 32]) -> String {
     hex::encode(mac.finalize().into_bytes())
 }
 
+/// The same, compared in constant time (no timing hints for someone guessing proofs).
+fn proof_ok(key: &[u8; 32], hid: &str, member: &str, bind: &[u8; 32], given: &str) -> bool {
+    let Ok(given) = hex::decode(given) else {
+        return false;
+    };
+    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(key).expect("hmac key");
+    mac.update(hid.as_bytes());
+    mac.update(b"|");
+    mac.update(member.as_bytes());
+    mac.update(b"|");
+    mac.update(bind);
+    mac.verify_slice(&given).is_ok()
+}
+
+/// Huddle messages are capped: the biggest real one is a 256 KB file chunk (sealed).
+fn ws_limits() -> tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
+    tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
+        max_message_size: Some(2 << 20),
+        max_frame_size: Some(2 << 20),
+        ..Default::default()
+    }
+}
+
 type Ws<S> = tokio_tungstenite::WebSocketStream<S>;
 
 /// Key exchange: each side sends MAGIC + its X25519 public key.
@@ -663,7 +686,7 @@ pub async fn join(app: AppHandle, ip: String, port: u16) -> Result<HuddleView, S
     let url = format!("ws://{ip}:{port}/");
     let (mut ws, _) = tokio::time::timeout(
         Duration::from_secs(8),
-        tokio_tungstenite::connect_async(&url),
+        tokio_tungstenite::connect_async_with_config(&url, Some(ws_limits()), false),
     )
     .await
     .map_err(|_| "The huddle didn't answer. Are you on the same Wi-Fi?".to_string())?
@@ -852,7 +875,7 @@ async fn dial_member(id: String, ip: String, port: u16) -> bool {
     let url = format!("ws://{ip}:{port}/");
     let Ok(Ok((mut ws, _))) = tokio::time::timeout(
         Duration::from_secs(8),
-        tokio_tungstenite::connect_async(&url),
+        tokio_tungstenite::connect_async_with_config(&url, Some(ws_limits()), false),
     )
     .await
     else {
@@ -916,7 +939,7 @@ async fn accept_conn(tcp: TcpStream, addr: SocketAddr) {
     let my_ip = tcp.local_addr().ok().map(|a| a.ip());
     let Ok(Ok(mut ws)) = tokio::time::timeout(
         Duration::from_secs(10),
-        tokio_tungstenite::accept_async(tcp),
+        tokio_tungstenite::accept_async_with_config(tcp, Some(ws_limits())),
     )
     .await
     else {
@@ -967,11 +990,13 @@ async fn accept_conn(tcp: TcpStream, addr: SocketAddr) {
                 let ok = STATE.lock().ok().and_then(|g| {
                     g.as_ref().map(|h| {
                         v["hid"] == h.hid.as_str()
-                            && v["proof"].as_str()
-                                == Some(
-                                    proof(&h.key, &h.hid, v["id"].as_str().unwrap_or(""), &bind)
-                                        .as_str(),
-                                )
+                            && proof_ok(
+                                &h.key,
+                                &h.hid,
+                                v["id"].as_str().unwrap_or(""),
+                                &bind,
+                                v["proof"].as_str().unwrap_or(""),
+                            )
                     })
                 });
                 if ok != Some(true) {
@@ -2346,6 +2371,16 @@ mod tests {
         assert_eq!(a, proof(&key, "h1", "m1", &[1u8; 32]));
         assert_ne!(a, proof(&key, "h1", "m1", &[2u8; 32]));
         assert_ne!(a, proof(&[4u8; 32], "h1", "m1", &[1u8; 32]));
+        assert!(proof_ok(&key, "h1", "m1", &[1u8; 32], &a));
+        assert!(!proof_ok(
+            &key,
+            "h1",
+            "m1",
+            &[1u8; 32],
+            &a.replace('a', "b")
+        ));
+        assert!(!proof_ok(&key, "h1", "m1", &[1u8; 32], "not hex"));
+        assert!(!proof_ok(&key, "h1", "m2", &[1u8; 32], &a));
     }
 
     #[test]

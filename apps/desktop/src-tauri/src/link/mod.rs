@@ -343,9 +343,15 @@ impl Link {
                 Err(r)
             }
         };
+        // Messages are capped: the biggest real one is a 2 MB file chunk.
+        let ws_config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
+            max_message_size: Some(4 << 20),
+            max_frame_size: Some(4 << 20),
+            ..Default::default()
+        };
         let Ok(Ok(ws)) = timeout(
             Duration::from_secs(10),
-            tokio_tungstenite::accept_hdr_async(tls, check_path),
+            tokio_tungstenite::accept_hdr_async_with_config(tls, check_path, Some(ws_config)),
         )
         .await
         else {
@@ -388,15 +394,21 @@ impl Link {
                 Message::Close(_) => break,
                 Message::Binary(b) => {
                     // Lift data from the phone (§6.5); only from an authenticated phone.
-                    if let Some(dev) = authed.lock().ok().and_then(|g| g.clone()) {
-                        self.on_lift_chunk(&dev, &b);
+                    match authed.lock().ok().and_then(|g| g.clone()) {
+                        Some(dev) => self.on_lift_chunk(&dev, &b),
+                        None => break,
                     }
                     continue;
                 }
                 _ => continue, // pings/pongs keep the timeout fresh
             };
-            let Some(env) = parse(&text) else { continue };
             let device = authed.lock().ok().and_then(|g| g.clone());
+            let Some(env) = parse(&text) else {
+                if device.is_none() {
+                    break; // garbage before signing in
+                }
+                continue;
+            };
             match (device, env.kind.as_str()) {
                 (None, "pair.request") => {
                     self.on_pair_request(conn_id, &env.payload, &pc_nonce, &tx, &authed)
@@ -451,6 +463,8 @@ impl Link {
                     self.forget(&dev, false);
                     break;
                 }
+                // Not signed in and not pairing: nothing else is allowed, so hang up.
+                (None, _) => break,
                 _ => {}
             }
         }
