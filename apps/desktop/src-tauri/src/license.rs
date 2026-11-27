@@ -7,9 +7,9 @@
 //! payload: {"v":1,"id":"…","name":"…","plan":"lifetime"|"year"|"month","issued":unix,"expires":unix|null}
 //! ```
 //!
-//! Keys bought on the PinchDrop website come from Lemon Squeezy (emailed to the buyer). Pasting
+//! Keys bought on the PinchDrop website come from Dodo Payments (emailed to the buyer). Pasting
 //! one here asks the PinchDrop licence service (a small Cloudflare Worker, `cloud/licence-worker`)
-//! to check it with Lemon Squeezy and send back a signed PD1 key, which then works offline.
+//! to check it with Dodo and send back a signed PD1 key, which then works offline.
 //! Yearly / monthly keys are refreshed in the background while the subscription runs.
 //!
 //! The app holds only the public key, so it can check a key but never make one. Keys are made
@@ -28,8 +28,8 @@ const PUBLIC_KEY_HEX: &str = "4696cacafcf53605bcd5ebe84fa07d9860ce1f4d059d6fd832
 
 /// The licence service (cloud/licence-worker). Set when the Worker is deployed (docs/launch.md).
 pub const REDEEM_URL: &str = "https://pinchdrop-licence.ahmadmdsajid129.workers.dev/redeem";
-/// Lemon Squeezy's licence API (public; frees this PC's seat when the key is removed).
-const LS_DEACTIVATE: &str = "https://api.lemonsqueezy.com/v1/licenses/deactivate";
+/// Dodo Payments' public licence API: frees this PC's seat when the key is removed.
+const DODO_DEACTIVATE: &str = "https://live.dodopayments.com/licenses/deactivate";
 
 /// New installs (and existing ones, the first time they run v2) get Pro free for this long.
 pub const TRIAL_DAYS: u64 = 7;
@@ -44,7 +44,7 @@ const DAY: u64 = 86_400;
 struct LicenseFile {
     key: Option<String>,
     trial_started: u64,
-    /// A Lemon Squeezy key this PC activated, and its activation (to refresh / free the seat).
+    /// A key bought on the website (Dodo Payments) this PC activated, and its activation (to refresh / free the seat).
     ls_key: Option<String>,
     ls_instance: Option<String>,
 }
@@ -214,7 +214,7 @@ pub async fn activate_any(key: &str) -> Result<ProStatus, String> {
     if k.len() < 16 {
         return Err("That isn't a PinchDrop licence key. Check that it was copied in full.".into());
     }
-    let (pd1, instance) = redeem(&k, None).await?;
+    let (pd1, instance) = redeem(&k, None, None).await?;
     let st = activate(&pd1)?;
     if let Ok(mut g) = STATE.lock() {
         if let Some(s) = g.as_mut() {
@@ -227,9 +227,20 @@ pub async fn activate_any(key: &str) -> Result<ProStatus, String> {
 }
 
 /// Asks the licence service for a signed key. Returns (PD1 key, activation id).
-async fn redeem(ls_key: &str, instance: Option<&str>) -> Result<(String, Option<String>), String> {
+async fn redeem(
+    ls_key: &str,
+    instance: Option<&str>,
+    current: Option<&Payload>,
+) -> Result<(String, Option<String>), String> {
     let machine = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "PC".into());
-    let body = serde_json::json!({ "licenseKey": ls_key, "instanceId": instance, "instanceName": format!("PinchDrop on {machine}") });
+    // Renewing: the plan and name to keep (the service decides the expiry).
+    let body = serde_json::json!({
+        "licenseKey": ls_key,
+        "instanceId": instance,
+        "instanceName": format!("PinchDrop on {machine}"),
+        "plan": current.map(|p| p.plan.clone()),
+        "name": current.map(|p| p.name.clone()),
+    });
     let resp = reqwest::Client::new()
         .post(REDEEM_URL)
         .timeout(std::time::Duration::from_secs(20))
@@ -254,26 +265,22 @@ async fn redeem(ls_key: &str, instance: Option<&str>) -> Result<(String, Option<
 }
 
 /// A yearly / monthly key: get a fresh PD1 key when it's within 10 days of running out (the
-/// subscription renews on Lemon Squeezy's side). Quietly does nothing offline.
+/// subscription renews on Dodo's side). Quietly does nothing offline.
 pub async fn refresh() {
-    let (ls, inst, expires) = {
+    let (ls, inst, current) = {
         let Ok(g) = STATE.lock() else { return };
         let Some(s) = g.as_ref() else { return };
-        let exp = s
-            .file
-            .key
-            .as_deref()
-            .and_then(|k| verify(k).ok())
-            .and_then(|p| p.expires);
-        (s.file.ls_key.clone(), s.file.ls_instance.clone(), exp)
+        let p = s.file.key.as_deref().and_then(|k| verify(k).ok());
+        (s.file.ls_key.clone(), s.file.ls_instance.clone(), p)
     };
-    let (Some(ls), Some(exp)) = (ls, expires) else {
+    let (Some(ls), Some(cur)) = (ls, current) else {
         return;
     };
+    let Some(exp) = cur.expires else { return }; // lifetime: nothing to renew
     if exp > now() + 10 * DAY {
         return;
     }
-    if let Ok((pd1, _)) = redeem(&ls, inst.as_deref()).await {
+    if let Ok((pd1, _)) = redeem(&ls, inst.as_deref(), Some(&cur)).await {
         let _ = activate(&pd1);
     }
 }
@@ -304,15 +311,9 @@ pub async fn remove() -> ProStatus {
     });
     if let Some((Some(k), Some(i))) = seat {
         let _ = reqwest::Client::new()
-            .post(LS_DEACTIVATE)
+            .post(DODO_DEACTIVATE)
             .timeout(std::time::Duration::from_secs(15))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(format!(
-                "license_key={}&instance_id={}",
-                urlencoding::encode(&k),
-                urlencoding::encode(&i)
-            ))
+            .json(&serde_json::json!({ "license_key": k, "license_key_instance_id": i }))
             .send()
             .await;
     }
