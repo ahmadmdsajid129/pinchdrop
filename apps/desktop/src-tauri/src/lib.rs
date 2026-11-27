@@ -1173,6 +1173,7 @@ fn huddle_state() -> huddle::HuddleView {
 
 #[tauri::command]
 async fn huddle_start(app: AppHandle, name: Option<String>) -> Result<huddle::HuddleView, String> {
+    license::need("huddle")?;
     huddle::start(app, name).await
 }
 
@@ -1185,11 +1186,13 @@ async fn huddle_find() -> Vec<huddle::FoundHuddle> {
 
 #[tauri::command]
 async fn huddle_join(app: AppHandle, ip: String, port: u16) -> Result<huddle::HuddleView, String> {
+    license::need("huddle")?;
     huddle::join(app, ip, port).await
 }
 
 #[tauri::command]
 async fn huddle_join_code(app: AppHandle, code: String) -> Result<huddle::HuddleView, String> {
+    license::need("huddle")?;
     huddle::join_code(app, code).await
 }
 

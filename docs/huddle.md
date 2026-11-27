@@ -21,7 +21,7 @@ The laptops at one table, connected in one click. Teammates appear as faces (on 
 - **Join with a code:** first looks for that code on the current Wi-Fi. If it isn't visible (Wi-Fi that keeps laptops apart), it connects to the host's hotspot `PinchDrop-<first 4>` (password `pinchdrop-<code>`): it adds a Wi-Fi profile, connects, then finds the huddle there (discovery, or the hotspot's fixed address `192.168.137.1:47700`). Leaving deletes the profile and reconnects to the Wi-Fi it was on.
 - **Host: "Team can't see it? Share a hotspot":** turns on Windows' Mobile Hotspot with that name and password (the laptop must be online). The previous hotspot name and password are put back when it's turned off or the huddle ends.
 
-Free huddles hold up to 4 laptops (`FREE_MAX_LAPTOPS`); more need PinchDrop Pro on the host.
+Huddle is a **Pro** feature: starting or joining a huddle needs PinchDrop Pro or the 7-day trial on that laptop (checked in Rust, `license::need("huddle")`). Seeing huddles nearby is free. A huddle holds up to 30 laptops (`MAX_LAPTOPS`).
 
 ## Wire format
 - WebSocket over TCP, on a random port per laptop.

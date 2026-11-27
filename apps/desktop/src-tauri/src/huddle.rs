@@ -12,7 +12,7 @@
 //!   (shared through a forwarder only teammates can reach). Everything is kept on a team shelf
 //!   that's wiped when you leave.
 //!
-//! Free for up to 4 laptops; more needs Pro on the host.
+//! A Pro feature: starting or joining a huddle needs PinchDrop Pro (or the trial).
 
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
@@ -44,7 +44,8 @@ const HOTSPOT_HOST_IP: &str = "192.168.137.1";
 const CODE_CHARS: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const MAGIC: &[u8; 4] = b"PDH1";
 /// Free huddles: up to this many laptops (counting the host).
-pub const FREE_MAX_LAPTOPS: usize = 4;
+/// Huddle is a Pro feature; this only keeps a runaway huddle in check.
+pub const MAX_LAPTOPS: usize = 30;
 const CHUNK: usize = 256 * 1024;
 const MAX_DROP_BYTES: u64 = 500 * 1024 * 1024;
 const COLORS: [&str; 8] = [
@@ -275,7 +276,7 @@ pub fn view() -> HuddleView {
                     host: h.host,
                 }),
                 members,
-                max_free: FREE_MAX_LAPTOPS,
+                max_free: MAX_LAPTOPS,
                 code: Some(h.code.clone()).filter(|c| !c.is_empty()),
                 hotspot: HOTSPOT_HOST.lock().map(|x| x.is_some()).unwrap_or(false),
                 on_hotspot: JOINED_WIFI.lock().map(|x| x.is_some()).unwrap_or(false),
@@ -291,7 +292,7 @@ pub fn view() -> HuddleView {
             code: None,
             hotspot: false,
             on_hotspot: false,
-            max_free: FREE_MAX_LAPTOPS,
+            max_free: MAX_LAPTOPS,
         },
     }
 }
@@ -1053,11 +1054,16 @@ async fn ask_host(name: &str, code: &str) -> Result<(), String> {
     if !host {
         return Err("This laptop isn't the huddle's host.".into());
     }
-    if count >= FREE_MAX_LAPTOPS && !crate::license::is_pro() {
+    if !crate::license::is_pro() {
+        return Err(
+            "This huddle's host no longer has PinchDrop Pro, so it can't take new people.".into(),
+        );
+    }
+    if count >= MAX_LAPTOPS {
         if let Some(a) = app() {
             let _ = a.emit("huddle-full", json!({ "name": name }));
         }
-        return Err(format!("This huddle is full: free huddles are up to {FREE_MAX_LAPTOPS} laptops. The host can make it bigger with PinchDrop Pro."));
+        return Err(format!("This huddle is full ({MAX_LAPTOPS} laptops)."));
     }
     let req = rand_hex(4);
     let (tx, rx) = oneshot::channel();

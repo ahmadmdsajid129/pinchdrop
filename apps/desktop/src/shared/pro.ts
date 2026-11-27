@@ -34,7 +34,7 @@ export const PRO_FEATURES: Record<string, { title: string; line: string }> = {
   map: { title: 'Find my phones', line: 'See where your phones are, and where they were last seen.' },
   otp: { title: 'Codes copied for you', line: 'One-time codes from texts land on your PC clipboard.' },
   large: { title: `Sends over ${FREE_LIMIT_TEXT}`, line: 'Send whole projects, films and backups in one go.' },
-  huddle: { title: 'Bigger huddles', line: 'Huddles with more than 4 laptops (free huddles are up to 4).' },
+  huddle: { title: 'Huddle', line: 'Your team\'s laptops in one click: drop code, files and your running app onto a teammate\'s face. No internet needed.' },
   themes: { title: 'Pill Studio', line: '11 designed pill themes, festival drops, an evening theme, shapes, a clock and shareable looks.' },
   sounds: { title: 'Sound packs', line: 'Arcade, Sci-fi, Nature, Mechanical, Lo-fi and Glass, for messages, texts and calls, per phone.' },
   gestures: { title: 'Gesture Studio', line: 'Your hand drives your PC: slides, music, volume, mic mute and more, with ready-made packs.' },

@@ -138,6 +138,6 @@ Once a certificate or Trusted Signing account exists, the build signs automatica
 
 **Why it's new:** Live Share and Tuple are for remote pairing and need accounts; LocalSend and AirDrop move plain files and don't understand code; GitHub needs a push and internet; ngrok needs internet. As far as we know, nothing gives a table of laptops "drag onto a face" sharing that understands code changes and running apps, offline.
 
-**Business:** free for up to 4 laptops per huddle, which spreads it through hackathons and college clubs. Paid "Huddle for Teams" for bigger teams and organisers. Sponsoring hackathons puts it in front of thousands of developers.
+**Business:** Pro-only (decided 27 Nov 2026); the 7-day trial lets a whole team try it for a hackathon weekend. Paid "Huddle for Teams" for bigger teams and organisers. Sponsoring hackathons puts it in front of thousands of developers.
 
 **What we already have:** local discovery and pairing, PC ↔ PC links, transfers with progress, the pill (it becomes the face strip). To build: the huddle join flow, the clipboard drop, git-aware "changed files" sending with Accept, the localhost relay, the team shelf, hotspot fallback.

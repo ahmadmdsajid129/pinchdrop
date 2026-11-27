@@ -82,6 +82,13 @@ export function HuddlePage() {
 // ---------------------------------------------------------------- not in a huddle
 
 function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
+  const pro = usePro();
+  /** Huddle is a Pro feature: without Pro the buttons open the upgrade prompt. */
+  const needPro = () => {
+    if (pro.active) return false;
+    askUpgrade('huddle');
+    return true;
+  };
   const [found, setFound] = useState<FoundHuddle[] | null>(null);
   const [joining, setJoining] = useState<{ hid: string; code: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -108,6 +115,7 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
   }, []);
 
   async function start() {
+    if (needPro()) return;
     setBusy(true);
     try {
       await huddleApi.start();
@@ -119,6 +127,7 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
   }
 
   async function joinByCode() {
+    if (needPro()) return;
     setJoining({ hid: '__code', code: null });
     setVia(null);
     try {
@@ -132,6 +141,7 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
   }
 
   async function join(f: FoundHuddle) {
+    if (needPro()) return;
     setJoining({ hid: f.hid, code: null });
     try {
       await huddleApi.join(f.ip, f.port);
@@ -155,14 +165,14 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
         fields={[
           { k: 'Needs', v: 'Same Wi-Fi or a hotspot' },
           { k: 'Internet', v: 'Not needed' },
-          { k: 'Seats', v: 'Up to 4 free, more with Pro' },
+          { k: 'Plan', v: pro.active ? (pro.plan === 'trial' ? 'Pro trial' : 'Pro') : 'Needs Pro' },
         ]}
         stubValue={String(found?.length ?? 0).padStart(2, '0')}
         stubLabel={found?.length === 1 ? 'huddle nearby' : 'huddles nearby'}
         stamp="TEAM"
         action={
           <button type="button" className="pd-pass-btn" disabled={busy} onClick={() => void start()}>
-            <Users size={16} aria-hidden="true" /> Start a huddle
+            {pro.active ? <Users size={16} aria-hidden="true" /> : <Crown size={16} aria-hidden="true" />} {pro.active ? 'Start a huddle' : 'Unlock Huddle'}
           </button>
         }
       />
@@ -245,7 +255,6 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
 
 function InHuddle({ say }: { say: (ok: boolean, t: string) => void }) {
   const h = useHuddle();
-  const pro = usePro();
   const inbox = useHuddleInbox();
   const shelf = useHuddleShelf();
   const [address, setAddress] = useState('localhost:3000');
@@ -308,13 +317,8 @@ function InHuddle({ say }: { say: (ok: boolean, t: string) => void }) {
           <span className="text-[12px] text-muted">Drag files, folders or a project folder from Explorer onto someone. Or copy code and press Paste on their face.</span>
           <span className="flex-1" />
           <span className="text-[12px] text-muted">
-            {pro.active ? `${laptops} laptop${laptops === 1 ? '' : 's'}` : `${laptops} of ${h.maxFree} laptops${laptops >= h.maxFree ? ' (full)' : ''}`}
+            {`${laptops} laptop${laptops === 1 ? '' : 's'}`}
           </span>
-          {!pro.active && laptops >= h.maxFree && (
-            <button type="button" onClick={() => askUpgrade('huddle')} className="text-[12px] font-semibold text-[#D97706] inline-flex items-center gap-1">
-              <Crown size={13} /> Bigger huddles
-            </button>
-          )}
         </div>
         <ul className="m-0 p-0 list-none grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">
           <li data-huddle-member={ALL} data-huddle-name="everyone" className="pd-huddle-face rounded-[20px] border-2 border-dashed border-line p-4 flex flex-col items-center gap-2 text-center bg-bg2">
