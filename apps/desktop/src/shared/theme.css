@@ -292,3 +292,23 @@ html {
 .pd-face-hot { transform: scale(1.04); border-color: rgb(var(--primary)) !important; border-style: solid !important; background-color: rgb(var(--primary) / 0.08) !important; }
 /* v2 · Huddle: a teammate's face on the pill under a file being dragged in */
 .pd-pill-face-hot { transform: scale(1.35); box-shadow: 0 0 0 3px rgb(var(--primary)); z-index: 20; }
+
+/* Sidebar: rows get tighter as the window gets shorter, so Pro, the phone and the profile at the
+   bottom always stay on screen (the links scroll if it's shorter still). */
+.pd-side-item { height: 40px; }
+.pd-side-links { scrollbar-width: none; }
+.pd-side-links::-webkit-scrollbar { display: none; }
+@media (max-height: 860px) {
+  .pd-side { padding-top: 14px; padding-bottom: 12px; }
+  .pd-side-logo { padding-bottom: 12px; }
+  .pd-side-item { height: 35px; }
+  .pd-side-links { gap: 2px; }
+  .pd-side-phone { padding: 8px 10px; }
+  .pd-side-profile { padding-top: 6px; padding-bottom: 6px; }
+}
+@media (max-height: 720px) {
+  .pd-side { padding-top: 10px; padding-bottom: 8px; gap: 2px; }
+  .pd-side-logo { padding-bottom: 6px; }
+  .pd-side-item { height: 31px; font-size: 13px; }
+  .pd-side-phone { padding: 6px 10px; }
+}

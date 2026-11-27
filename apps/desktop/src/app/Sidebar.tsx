@@ -1,10 +1,11 @@
-import { Bell, Clock, FolderOpen, Hand, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users, LifeBuoy, Crown, Palette, UsersRound } from 'lucide-react';
+import { Bell, Clock, FolderOpen, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users, LifeBuoy, Crown, Palette, UsersRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { usePro } from '../shared/pro';
 import { ProTag, proSummary } from './Pro';
 import { useApp } from './context';
 import type { Route } from './context';
 import { Battery } from '../shared/Battery';
+import { Logo } from '../shared/Logo';
 import { HoverTip } from './ui';
 import { useConnectedPhones } from './PhoneChips';
 
@@ -38,21 +39,20 @@ export function Sidebar() {
   const active = (r: Route) => route === r || (r === 'devices' && route === 'pair');
 
   return (
-    <nav aria-label="Main" className="w-[248px] h-full shrink-0 bg-bg2 border-r border-surface2 px-3.5 py-5 flex flex-col gap-1.5 overflow-visible relative z-20 [@media(max-height:640px)]:py-3 [@media(max-height:640px)]:gap-0.5 max-[860px]:w-[72px] max-[860px]:px-2.5">
-      <div className="flex items-center gap-2.5 px-2.5 pb-5 shrink-0 [@media(max-height:640px)]:pb-2 max-[860px]:px-1.5">
-        <span className="w-8 h-8 rounded-[10px] bg-primary flex items-center justify-center text-white">
-          <Hand size={18} aria-hidden="true" />
-        </span>
+    <nav aria-label="Main" className="pd-side w-[248px] h-full min-h-0 shrink-0 bg-bg2 border-r border-surface2 px-3.5 py-5 flex flex-col gap-1.5 overflow-visible relative z-20 max-[860px]:w-[72px] max-[860px]:px-2.5">
+      <div className="pd-side-logo flex items-center gap-2.5 px-2.5 pb-5 shrink-0 max-[860px]:px-1.5">
+        <Logo size={32} className="shrink-0" />
         <span className="font-display font-bold text-[17px] max-[860px]:hidden">PinchDrop</span>
       </div>
 
+      <div className="pd-side-links flex-1 min-h-0 flex flex-col gap-1 overflow-y-auto overflow-x-hidden -mx-1 px-1 max-[860px]:overflow-visible">
       {NAV.map((n) => (
         <button
           key={n.route}
           type="button"
           onClick={() => go(n.route)}
           aria-current={active(n.route) ? 'page' : undefined}
-          className={`group relative flex items-center gap-3 h-[42px] shrink-0 px-3 rounded-xl text-[14px] text-left [@media(max-height:640px)]:h-[36px] max-[860px]:justify-center max-[860px]:px-0 max-[860px]:relative ${
+          className={`pd-side-item group relative flex items-center gap-3 shrink-0 px-3 rounded-xl text-[14px] text-left max-[860px]:justify-center max-[860px]:px-0 max-[860px]:relative ${
             active(n.route) ? 'bg-surface2 text-text font-semibold' : 'text-soft hover:bg-surface hover:text-text'
           }`}
         >
@@ -67,15 +67,16 @@ export function Sidebar() {
           )}
         </button>
       ))}
+      </div>
 
-      <div className="flex-1 min-h-2" />
+      <div className="h-px shrink-0 bg-line/70 mx-2 my-1" />
 
       {/* v2 Pro: plan at a glance (trial countdown, or an invitation once it's over) */}
       <button
         type="button"
         onClick={() => go('pro')}
         aria-current={route === 'pro' ? 'page' : undefined}
-        className={`group relative shrink-0 flex items-center gap-2.5 h-[42px] px-3 rounded-xl text-left text-[13px] max-[860px]:justify-center max-[860px]:px-0 ${
+        className={`pd-side-item group relative shrink-0 flex items-center gap-2.5 px-3 rounded-xl text-left text-[13px] max-[860px]:justify-center max-[860px]:px-0 ${
           route === 'pro' ? 'bg-surface2 font-semibold' : 'hover:bg-surface'
         }`}
       >
@@ -124,7 +125,7 @@ export function Sidebar() {
       <button
         type="button"
         onClick={() => go(phone.state === 'none' ? 'pair' : 'devices')}
-        className="group relative p-3 shrink-0 rounded-[14px] bg-surface border border-line flex items-center gap-2.5 text-left hover:border-primary/60 [@media(max-height:640px)]:p-2 max-[860px]:justify-center max-[860px]:p-2"
+        className="pd-side-phone group relative p-3 shrink-0 rounded-[14px] bg-surface border border-line flex items-center gap-2.5 text-left hover:border-primary/60 max-[860px]:justify-center max-[860px]:p-2"
       >
         <Smartphone size={16} aria-hidden="true" className="hidden max-[860px]:block text-soft" />
         <span
@@ -152,7 +153,7 @@ export function Sidebar() {
         type="button"
         onClick={() => go('profile')}
         aria-current={route === 'profile' ? 'page' : undefined}
-        className={`group relative flex items-center gap-2.5 px-3 py-2.5 shrink-0 rounded-xl text-left [@media(max-height:640px)]:py-1.5 max-[860px]:justify-center max-[860px]:px-0 ${route === 'profile' ? 'bg-surface2' : 'hover:bg-surface'}`}
+        className={`pd-side-profile group relative flex items-center gap-2.5 px-3 py-2.5 shrink-0 rounded-xl text-left max-[860px]:justify-center max-[860px]:px-0 ${route === 'profile' ? 'bg-surface2' : 'hover:bg-surface'}`}
       >
         <span
           className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[13px] text-[#0B1020] shrink-0"
