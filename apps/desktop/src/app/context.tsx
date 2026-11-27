@@ -4,8 +4,8 @@ import { api, onEvent, usePhone, useSettings } from '../shared/api';
 import type { DeepPartial, PathInfo, PhoneStatus, Settings } from '../shared/types';
 import { proApi } from '../shared/pro';
 
-export type Route = 'onboarding' | 'home' | 'send' | 'transfers' | 'messages' | 'contacts' | 'notifications' | 'map' | 'files' | 'devices' | 'pair' | 'settings' | 'profile' | 'guide' | 'pro' | 'studio' | 'huddle';
-const ROUTES: Route[] = ['onboarding', 'home', 'send', 'transfers', 'messages', 'contacts', 'notifications', 'map', 'files', 'devices', 'pair', 'settings', 'profile', 'guide', 'pro', 'studio', 'huddle'];
+export type Route = 'onboarding' | 'home' | 'send' | 'transfers' | 'messages' | 'contacts' | 'notifications' | 'map' | 'files' | 'devices' | 'pair' | 'settings' | 'profile' | 'guide' | 'pro' | 'studio' | 'huddle' | 'gestures';
+const ROUTES: Route[] = ['onboarding', 'home', 'send', 'transfers', 'messages', 'contacts', 'notifications', 'map', 'files', 'devices', 'pair', 'settings', 'profile', 'guide', 'pro', 'studio', 'huddle', 'gestures'];
 
 export interface QueueItem {
   id: string;

@@ -1,4 +1,4 @@
-import { Bell, Clock, FolderOpen, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users, LifeBuoy, Crown, Palette, UsersRound } from 'lucide-react';
+import { Bell, Clock, FolderOpen, Hand, Home, MapPin, MessageSquare, SlidersHorizontal, Smartphone, Upload, Users, LifeBuoy, Crown, Palette, UsersRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { usePro } from '../shared/pro';
 import { ProTag, proSummary } from './Pro';
@@ -21,6 +21,7 @@ const NAV: { route: Route; label: string; icon: ReactNode }[] = [
   { route: 'devices', label: 'Devices', icon: <Smartphone size={18} aria-hidden="true" /> },
   { route: 'huddle', label: 'Huddle', icon: <UsersRound size={18} aria-hidden="true" /> },
   { route: 'studio', label: 'Pill Studio', icon: <Palette size={18} aria-hidden="true" /> },
+  { route: 'gestures', label: 'Gesture Studio', icon: <Hand size={18} aria-hidden="true" /> },
   { route: 'settings', label: 'Settings', icon: <SlidersHorizontal size={18} aria-hidden="true" /> },
   { route: 'guide', label: 'How to use', icon: <LifeBuoy size={18} aria-hidden="true" /> },
 ];

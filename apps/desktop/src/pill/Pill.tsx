@@ -10,6 +10,7 @@ import { CallIsland } from './CallIsland';
 import { InfoIsland, type Info } from './InfoIsland';
 import { NowPlaying, PlayingBars } from './NowPlaying';
 import { usePro } from '../shared/pro';
+import { runGestureAction } from '../shared/gestureMap';
 import { huddleApi, initials, useHuddle, type HuddleView } from '../shared/huddle';
 import { DEFAULT_PILL_STYLE, ThemeLayer, shellLook, shellRadius, themeNow, type PillMood, type PillShape, type PillThemeId } from '../shared/pillThemes';
 import { PhotoStrip } from './PhotoStrip';
@@ -354,6 +355,12 @@ export function Pill() {
         }
         if (liftRef.current && g === 'thumbs_up') {
           void api.liftCatch(liftRef.current.id).catch(() => undefined);
+          return;
+        }
+        // Pro · Gesture Studio: the user's own mapping comes before the built-in music controls.
+        const mapped = proOnRef.current ? settingsRef.current?.gestures.map?.[g] : undefined;
+        if (mapped && !liftRef.current) {
+          void runGestureAction(mapped);
           return;
         }
         // Music on the shown phone: palm = play / pause, swipe = next / previous.

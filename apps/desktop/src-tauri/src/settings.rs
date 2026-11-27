@@ -91,6 +91,9 @@ pub struct GestureSettings {
     pub sounds: bool,
     /// When the Island opens: "auto" starts the camera right away, "button" waits for Start gestures.
     pub island_camera: String,
+    /// v2 Pro · Gesture Studio: gesture → action ("palm_hold" → "play_pause"…). Empty = the
+    /// built-in behaviour (music on the phone).
+    pub map: std::collections::BTreeMap<String, String>,
 }
 
 impl Default for GestureSettings {
@@ -104,6 +107,7 @@ impl Default for GestureSettings {
             show_hand_ring: true,
             sounds: true,
             island_camera: "auto".into(),
+            map: Default::default(),
         }
     }
 }

@@ -181,8 +181,8 @@ export function Home() {
           <p className="m-0 text-[13px] text-muted leading-relaxed">
             Click the pill (or press Ctrl + Shift + Space) → select a file or folder → pinch in front of your webcam → open your hand over your phone.
           </p>
-          <button type="button" className="self-start text-[13px] font-semibold text-accent hover:underline" onClick={() => go('guide')}>
-            See all gestures
+          <button type="button" className="self-start text-[13px] font-semibold text-accent hover:underline" onClick={() => go('gestures')}>
+            Gesture Studio: make your own
           </button>
         </Card>
 

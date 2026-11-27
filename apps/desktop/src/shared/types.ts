@@ -24,6 +24,8 @@ export interface GestureSettings {
   cameraMode: 'on_click' | 'on_select';
   /** When the Island opens: start the camera right away, or wait for Start gestures. */
   islandCamera: 'auto' | 'button';
+  /** v2 Pro · Gesture Studio: gesture → PC action. */
+  map?: Record<string, string>;
   sensitivity: number;
   catchSecs: number;
   showHandRing: boolean;

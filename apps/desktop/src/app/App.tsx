@@ -10,6 +10,7 @@ import { Upload } from 'lucide-react';
 import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
 import { useApp } from './context';
 import { Sidebar } from './Sidebar';
+import { GestureStudioPage } from './GestureStudio';
 import { Onboarding } from './screens/Onboarding';
 import { Home } from './screens/Home';
 import { Send } from './screens/Send';
@@ -122,6 +123,7 @@ export function App() {
     pro: <ProPage />,
     studio: <StudioPage />,
     huddle: <HuddlePage />,
+    gestures: <GestureStudioPage />,
     files: <ProGate feature="files"><PhoneFiles /></ProGate>,
     map: <ProGate feature="map"><MapScreen /></ProGate>,
     onboarding: null,

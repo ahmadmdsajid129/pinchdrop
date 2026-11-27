@@ -9,6 +9,7 @@ mod clip;
 mod deeplink;
 mod explorer;
 mod fs_info;
+mod gesture_actions;
 mod grab;
 mod hotspot;
 mod huddle;
@@ -588,6 +589,13 @@ fn gesture_error(app: AppHandle, message: String, fatal: bool) {
     if let Some(g) = app.try_state::<grab::Grab>() {
         g.report_error(&app, &message, fatal);
     }
+}
+
+/// v2 Pro · Gesture Studio: a gesture presses one of the listed keys (next slide, play/pause…).
+#[tauri::command]
+fn gesture_action(action: String) -> Result<(), String> {
+    license::need("gestures")?;
+    gesture_actions::run(&action)
 }
 
 /// Shows the overlay window for a send animation (the pill then tells it what to play).
@@ -1559,6 +1567,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             deeplink::take_pending_key,
+            gesture_action,
             deeplink::link_key_waiting,
             get_settings,
             update_settings,
