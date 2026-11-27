@@ -7,3 +7,8 @@
   Sleep 500
   Delete "$INSTDIR\pinchdrop-desktop.exe"
 !macroend
+
+; The pinchdrop:// link PinchDrop registers for itself (the website's "Open in PinchDrop" button).
+!macro NSIS_HOOK_POSTUNINSTALL
+  DeleteRegKey HKCU "Software\Classes\pinchdrop"
+!macroend

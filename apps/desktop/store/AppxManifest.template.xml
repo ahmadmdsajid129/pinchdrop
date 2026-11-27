@@ -31,6 +31,12 @@
         <desktop:Extension Category="windows.startupTask" Executable="PinchDrop.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="PinchDropStartup" Enabled="true" DisplayName="PinchDrop" />
         </desktop:Extension>
+        <!-- pinchdrop:// links: the website's "Open in PinchDrop" button after buying Pro. -->
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="pinchdrop">
+            <uap:DisplayName>PinchDrop</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
       </Extensions>
     </Application>
   </Applications>
