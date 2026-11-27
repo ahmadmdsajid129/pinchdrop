@@ -116,8 +116,12 @@ struct Member {
     tx: Option<mpsc::UnboundedSender<Vec<u8>>>,
     /// My address as this member sees it (for shared localhost links).
     my_ip: Option<IpAddr>,
-    /// This laptop opened the connection to them, so it's the one that redials after a drop-out.
+    /// This laptop opened the connection to them (it redials first after a drop-out).
     dial: bool,
+    /// Which connection is current: a stale one closing must not knock out a fresh one.
+    conn: u64,
+    /// They're the huddle's host (lets people in, announces the huddle).
+    host: bool,
 }
 
 struct Huddle {
@@ -148,6 +152,7 @@ pub struct MemberView {
     pub name: String,
     pub color: String,
     pub online: bool,
+    pub host: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -246,6 +251,7 @@ fn member_view(id: &str, m: &Member) -> MemberView {
         name: m.name.clone(),
         color: m.color.clone(),
         online: m.tx.is_some(),
+        host: m.host,
     }
 }
 
@@ -266,6 +272,7 @@ pub fn view() -> HuddleView {
                     name: h.my_name.clone(),
                     color: h.my_color.clone(),
                     online: true,
+                    host: h.host,
                 }),
                 members,
                 max_free: FREE_MAX_LAPTOPS,
@@ -674,6 +681,10 @@ pub async fn join(app: AppHandle, ip: String, port: u16) -> Result<HuddleView, S
     let (done_tx, done_rx) = oneshot::channel::<Result<(), String>>();
     let done = Mutex::new(Some(done_tx));
     let host_ip = ip.clone();
+    let conn = next_conn();
+    // The host's member id (from the welcome); messages on this connection come from them.
+    let host_id: std::sync::Arc<Mutex<Option<String>>> = Default::default();
+    let host_id_r = host_id.clone();
     let tx = run_channel(
         ws,
         keys,
@@ -683,6 +694,13 @@ pub async fn join(app: AppHandle, ip: String, port: u16) -> Result<HuddleView, S
         ),
         move |v, tx| match v["t"].as_str() {
             Some("welcome") => {
+                if let Ok(mut h) = host_id_r.lock() {
+                    *h = v["members"].as_array().and_then(|l| {
+                        l.iter()
+                            .find(|m| m["host"].as_bool() == Some(true))
+                            .and_then(|m| m["id"].as_str().map(String::from))
+                    });
+                }
                 let ok = on_welcome(&v, tx, &host_ip, port, my_ip);
                 if let Some(d) = done.lock().ok().and_then(|mut d| d.take()) {
                     let _ = d.send(ok);
@@ -700,29 +718,13 @@ pub async fn join(app: AppHandle, ip: String, port: u16) -> Result<HuddleView, S
                 if let Some(d) = done.lock().ok().and_then(|mut d| d.take()) {
                     let _ = d.send(Err("The huddle closed the connection.".into()));
                 }
-                let host = STATE.lock().ok().and_then(|g| {
-                    g.as_ref().and_then(|h| {
-                        h.members
-                            .iter()
-                            .find(|(_, m)| m.ip == host_ip && m.port == port)
-                            .map(|(id, _)| id.clone())
-                    })
-                });
-                if let Some(id) = host {
-                    member_closed(&id);
+                if let Some(id) = host_id_r.lock().ok().and_then(|h| h.clone()) {
+                    member_closed(&id, conn);
                 }
                 false
             }
             _ => {
-                let from = STATE.lock().ok().and_then(|g| {
-                    g.as_ref().and_then(|h| {
-                        h.members
-                            .iter()
-                            .find(|(_, m)| m.ip == host_ip && m.port == port)
-                            .map(|(id, _)| id.clone())
-                    })
-                });
-                if let Some(from) = from {
+                if let Some(from) = host_id_r.lock().ok().and_then(|h| h.clone()) {
                     on_member_msg(&from, v, tx);
                 }
                 true
@@ -736,14 +738,16 @@ pub async fn join(app: AppHandle, ip: String, port: u16) -> Result<HuddleView, S
             // The connection to the host is this member's link to it.
             if let Ok(mut g) = STATE.lock() {
                 if let Some(h) = g.as_mut() {
-                    if let Some(m) = h
-                        .members
-                        .values_mut()
-                        .find(|m| m.ip == ip && m.port == port)
-                    {
+                    let hid = host_id
+                        .lock()
+                        .ok()
+                        .and_then(|x| x.clone())
+                        .unwrap_or_default();
+                    if let Some(m) = h.members.get_mut(&hid) {
                         m.tx = Some(tx);
                         m.my_ip = my_ip;
                         m.dial = true;
+                        m.conn = conn;
                     }
                 }
             }
@@ -819,6 +823,8 @@ fn on_welcome(
                 my_ip: if is_host { my_ip } else { None },
                 // A newcomer dials everyone already in.
                 dial: true,
+                conn: 0,
+                host: is_host,
             },
         );
     }
@@ -835,6 +841,11 @@ fn on_welcome(
 }
 
 static SERVER_PORT: LazyLock<Mutex<Option<u16>>> = LazyLock::new(Default::default);
+static CONN_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+fn next_conn() -> u64 {
+    CONN_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
 
 /// Connects to a member and proves we belong. True when connected.
 async fn dial_member(id: String, ip: String, port: u16) -> bool {
@@ -871,13 +882,14 @@ async fn dial_member(id: String, ip: String, port: u16) -> bool {
     let p = proof(&key, &hid, &me, &keys.bind);
     let hello = json!({ "t": "member", "hid": hid, "id": me, "name": name, "color": color, "port": my_port, "proof": p });
     let peer = id.clone();
+    let conn = next_conn();
     let tx = run_channel(
         ws,
         keys,
         Some(serde_json::to_vec(&hello).unwrap_or_default()),
         move |v, tx| {
             if v["t"] == "_closed" {
-                member_closed(&peer);
+                member_closed(&peer, conn);
                 return false;
             }
             on_member_msg(&peer, v, tx);
@@ -891,6 +903,7 @@ async fn dial_member(id: String, ip: String, port: u16) -> bool {
             m.tx = Some(tx);
             m.my_ip = my_ip;
             m.dial = true;
+            m.conn = conn;
             ok = true;
         }
     }
@@ -914,6 +927,7 @@ async fn accept_conn(tcp: TcpStream, addr: SocketAddr) {
     };
     let code = keys.code.clone();
     let bind = keys.bind;
+    let conn = next_conn();
     // The first sealed message says who it is; handled inside the reader.
     let who: std::sync::Arc<Mutex<Option<String>>> = Default::default();
     let who_r = who.clone();
@@ -923,7 +937,7 @@ async fn accept_conn(tcp: TcpStream, addr: SocketAddr) {
         match (current, v["t"].as_str()) {
             (_, Some("_closed")) => {
                 if let Some(id) = who_r.lock().ok().and_then(|w| w.clone()) {
-                    member_closed(&id);
+                    member_closed(&id, conn);
                 }
                 false
             }
@@ -942,7 +956,7 @@ async fn accept_conn(tcp: TcpStream, addr: SocketAddr) {
                 tokio::spawn(async move {
                     match ask_host(&name, &code).await {
                         Ok(()) => {
-                            admit(&name, &ip, port, &tx, my_ip, &who);
+                            admit(&name, &ip, port, &tx, my_ip, &who, conn);
                         }
                         Err(why) => send_json(&tx, json!({ "t": "denied", "why": why })),
                     }
@@ -974,9 +988,17 @@ async fn accept_conn(tcp: TcpStream, addr: SocketAddr) {
                             tx: None,
                             my_ip,
                             dial: false,
+                            conn,
+                            host: false,
                         });
                         m.tx = Some(tx.clone());
                         m.my_ip = my_ip;
+                        m.conn = conn;
+                        // They may have moved (new Wi-Fi, new address): remember where they are now.
+                        m.ip = peer_ip.clone();
+                        if let Some(p) = v["port"].as_u64().filter(|p| *p > 0) {
+                            m.port = p as u16;
+                        }
                     }
                 }
                 if let Ok(mut w) = who_r.lock() {
@@ -1051,6 +1073,7 @@ fn admit(
     tx: &mpsc::UnboundedSender<Vec<u8>>,
     my_ip: Option<IpAddr>,
     who: &Mutex<Option<String>>,
+    conn: u64,
 ) -> Option<String> {
     let id = rand_hex(4);
     let mut g = STATE.lock().ok()?;
@@ -1081,6 +1104,8 @@ fn admit(
             tx: Some(tx.clone()),
             my_ip,
             dial: false,
+            conn,
+            host: false,
         },
     );
     let note =
@@ -1105,7 +1130,7 @@ fn admit(
 /// How long a dropped-out teammate stays (greyed out) while their laptop tries to come back.
 const RECONNECT_FOR: Duration = Duration::from_secs(120);
 
-fn member_closed(id: &str) {
+fn member_closed(id: &str, conn: u64) {
     // Their connection dropped (Wi-Fi blip, sleep, moved). Keep them, greyed out, and try again;
     // only "bye" (they left) or 2 minutes without them removes them.
     let dial = {
@@ -1113,8 +1138,8 @@ fn member_closed(id: &str) {
         let Some(m) = g.as_mut().and_then(|h| h.members.get_mut(id)) else {
             return;
         };
-        if m.tx.is_none() {
-            return; // already handling it
+        if m.conn != conn || m.tx.is_none() {
+            return; // an older connection, or already handling it
         }
         m.tx = None;
         m.dial
@@ -1123,7 +1148,9 @@ fn member_closed(id: &str) {
     let id = id.to_string();
     tokio::spawn(async move {
         let since = Instant::now();
-        let mut wait = 2u64;
+        // Both sides redial (whoever moved to a new address can still reach the other); the one
+        // that dialed before goes first.
+        let mut wait = if dial { 2u64 } else { 4 };
         loop {
             tokio::time::sleep(Duration::from_secs(wait)).await;
             let info = STATE.lock().ok().and_then(|g| {
@@ -1140,15 +1167,10 @@ fn member_closed(id: &str) {
                 return; // they came back (or we reached them)
             }
             if since.elapsed() > RECONNECT_FOR {
-                if let Ok(mut g) = STATE.lock() {
-                    if let Some(h) = g.as_mut() {
-                        h.members.remove(&id);
-                    }
-                }
-                emit_view();
+                member_removed(&id);
                 return;
             }
-            if dial && dial_member(id.clone(), ip, port).await {
+            if port > 0 && dial_member(id.clone(), ip, port).await {
                 return;
             }
             wait = (wait * 2).min(15);
@@ -1156,6 +1178,60 @@ fn member_closed(id: &str) {
     });
 }
 
+/// Someone left (or stayed away too long). If it was the host, the huddle picks a new one.
+fn member_removed(id: &str) {
+    let was_host = STATE
+        .lock()
+        .ok()
+        .and_then(|mut g| g.as_mut().and_then(|h| h.members.remove(id)))
+        .map(|m| m.host)
+        .unwrap_or(false);
+    if was_host {
+        elect_host();
+    }
+    emit_view();
+}
+
+/// The rule every laptop applies on its own, so they all agree without talking:
+/// the lowest member id among those still in the huddle.
+fn choose_host<'a>(me: &'a str, others: impl Iterator<Item = &'a String>) -> &'a str {
+    others
+        .map(String::as_str)
+        .chain(std::iter::once(me))
+        .min()
+        .unwrap_or(me)
+}
+
+/// The host is gone: pick the new one (maybe this laptop).
+fn elect_host() {
+    let became = {
+        let Ok(mut g) = STATE.lock() else { return };
+        let Some(h) = g.as_mut() else { return };
+        if h.host || h.members.values().any(|m| m.host) {
+            return; // there's still a host
+        }
+        let new = choose_host(&h.me, h.members.keys()).to_string();
+        if new == h.me {
+            h.host = true;
+            advertise(h);
+            true
+        } else {
+            if let Some(m) = h.members.get_mut(&new) {
+                m.host = true;
+            }
+            false
+        }
+    };
+    if became {
+        if let Some(a) = app() {
+            notify(
+                a,
+                "You're the host now",
+                "The host left, so this laptop lets new teammates in.",
+            );
+        }
+    }
+}
 fn stop_server() {
     if let Ok(mut s) = SERVER.lock() {
         if let Some(srv) = s.take() {
@@ -1345,20 +1421,15 @@ fn on_member_msg(from: &str, v: Value, tx: &mpsc::UnboundedSender<Vec<u8>>) {
                             tx: None,
                             my_ip: None,
                             dial: false,
+                            conn: 0,
+                            host: false,
                         });
                     }
                 }
             }
             emit_view();
         }
-        "bye" => {
-            if let Ok(mut g) = STATE.lock() {
-                if let Some(h) = g.as_mut() {
-                    h.members.remove(from);
-                }
-            }
-            emit_view();
-        }
+        "bye" => member_removed(from),
         "text" => {
             let text: String = v["text"]
                 .as_str()
@@ -2297,6 +2368,23 @@ mod tests {
         assert!(v.contains(&("gone.rs".into(), "D".into())));
         assert!(v.contains(&("b2.ts".into(), "M".into())));
         assert!(v.contains(&("b.ts".into(), "D".into())));
+    }
+
+    #[test]
+    fn everyone_picks_the_same_new_host() {
+        let ids = ["7c1e".to_string(), "0a9f".to_string(), "b220".to_string()];
+        // Seen from each laptop (its own id + the others), the answer is the same.
+        for (i, me) in ids.iter().enumerate() {
+            let others: Vec<String> = ids
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| *j != i)
+                .map(|(_, x)| x.clone())
+                .collect();
+            assert_eq!(choose_host(me, others.iter()), "0a9f");
+        }
+        let none: Vec<String> = vec![];
+        assert_eq!(choose_host("solo", none.iter()), "solo");
     }
 
     #[test]
