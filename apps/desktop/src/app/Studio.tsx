@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { Bird, Check, Crown, Droplet, MessageSquare, Music2, Phone, PhoneOff, Play, Plane, Smartphone, Sparkles, Upload } from 'lucide-react';
+import { Bird, Check, ClipboardPaste, Copy, Crown, Droplet, MessageSquare, Music2, Phone, PhoneOff, Play, Plane, Smartphone, Sparkles, Upload } from 'lucide-react';
 import { api } from '../shared/api';
 import {
   DEFAULT_PILL_STYLE,
@@ -10,6 +10,10 @@ import {
   ThemeLayer,
   shellLook,
   shellRadius,
+  festivalOn,
+  parseStyleCode,
+  styleCode,
+  themeMeta,
   type PillMood,
   type PillShape,
   type PillStyle,
@@ -18,7 +22,8 @@ import {
 import { askUpgrade, usePro } from '../shared/pro';
 import { Battery } from '../shared/Battery';
 import { useApp } from './context';
-import { Button, Card, PageTitle, Segmented, Toggle } from './ui';
+import { Button, Card, PageTitle, Segmented, Select, Toggle } from './ui';
+import { ALERTS, RINGS, SOUND_PACKS, DEFAULT_PHONE_SOUNDS } from '../shared/sound';
 import { ProTag } from './Pro';
 
 /** The pill as it will look, drawn with the same theme pieces as the real one. */
@@ -187,7 +192,7 @@ export function StudioPage() {
   const [expanded, setExpanded] = useState(false);
   const [wall, setWall] = useState<keyof typeof WALLPAPERS>('dusk');
 
-  const needsPro = (s: PillStyle) => s.theme !== 'classic' || s.shape !== 'pill' || s.clock || s.fx !== 'default';
+  const needsPro = (s: PillStyle) => s.theme !== 'classic' || s.shape !== 'pill' || s.clock || s.fx !== 'default' || !!s.edge || !!s.night || !!s.festive;
   const choose = (patch: Partial<PillStyle>) => {
     const next = { ...shown, ...patch };
     if (needsPro(next) && !pro.active) {
@@ -266,7 +271,7 @@ export function StudioPage() {
       {/* Themes */}
       <div className="font-semibold text-[15px]">Themes</div>
       <ul className="m-0 p-0 list-none grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
-        {THEMES.map((t) => {
+        {THEMES.filter((t) => !t.festival).map((t) => {
           const on = shown.theme === t.id;
           return (
             <li key={t.id}>
@@ -295,6 +300,8 @@ export function StudioPage() {
           );
         })}
       </ul>
+
+      <FestivalSection shown={shown} choose={choose} pro={pro.active} />
 
       {/* Send & receive animations */}
       <div className="flex items-center gap-2">
@@ -382,6 +389,36 @@ export function StudioPage() {
           <Toggle label="Clock on the pill" checked={shown.clock} onChange={(v) => choose({ clock: v })} />
         </div>
       </Card>
+      <Card className="p-5 flex flex-col gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex-1 min-w-[220px]">
+            <div className="font-semibold text-[14px] flex items-center gap-2">Evening theme {!pro.active && <ProTag />}</div>
+            <div className="text-[12.5px] text-muted">From 7 pm to 7 am the pill wears a second theme, then switches back in the morning.</div>
+          </div>
+          <Select<string>
+            label="Evening theme"
+            value={shown.night || ''}
+            onChange={(v) => choose({ night: v as PillThemeId | '' })}
+            options={[{ value: '', label: 'Off' }, ...THEMES.filter((t) => !t.festival).map((t) => ({ value: t.id, label: t.name }))]}
+          />
+        </div>
+        <div className="h-px bg-line" />
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex-1 min-w-[220px]">
+            <div className="font-semibold text-[14px] flex items-center gap-2">Edge lighting {!pro.active && <ProTag />}</div>
+            <div className="text-[12.5px] text-muted">The edges of your screen glow when a call rings (green) or a message (blue) or text (amber) arrives.</div>
+          </div>
+          <Button size="sm" onClick={() => void api.edgeGlow('call')}>
+            <Play size={14} aria-hidden="true" /> Preview
+          </Button>
+          <Toggle label="Edge lighting" checked={!!shown.edge} onChange={(v) => choose({ edge: v })} />
+        </div>
+      </Card>
+
+      <SoundPacks pro={pro.active} />
+
+      <ShareLook shown={shown} onApply={(s) => choose(s)} />
+
       <p className="m-0 text-[13px] text-muted">
         Changes show on your pill straight away. Every theme reacts to what's happening: try "Call ringing", "Music" and "Sending" above.
       </p>
@@ -463,5 +500,162 @@ function FxThumb({ pack }: { pack: FxPack }) {
     <span className="pd-fx-lift absolute left-1/2 bottom-2 -translate-x-1/2 text-white">
       <Sparkles size={22} aria-hidden="true" />
     </span>
+  );
+}
+
+/** Festival drops: the festival themes, and switching them on by themselves. */
+function FestivalSection({ shown, choose, pro }: { shown: PillStyle; choose: (p: Partial<PillStyle>) => void; pro: boolean }) {
+  const now = festivalOn();
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="font-semibold text-[15px]">Festival drops</span>
+        {!pro && <ProTag />}
+        {now && <span className="text-[12px] font-semibold px-2.5 h-6 inline-flex items-center rounded-full bg-[#F2A20C]/15 text-[#9A6200]">{themeMeta(now).name} is on now</span>}
+        <span className="flex-1" />
+        <span className="text-[13px] text-muted">Switch on by themselves</span>
+        <Toggle label="Festival drops switch on by themselves" checked={!!shown.festive} onChange={(v) => choose({ festive: v })} />
+      </div>
+      <ul className="m-0 p-0 list-none grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+        {THEMES.filter((t) => t.festival).map((t) => {
+          const on = shown.theme === t.id;
+          return (
+            <li key={t.id}>
+              <button
+                type="button"
+                aria-pressed={on}
+                onClick={() => choose({ theme: t.id as PillThemeId })}
+                className={`w-full text-left rounded-[18px] border-2 p-2.5 flex flex-col gap-2 bg-surface transition-colors ${on ? 'border-primary' : 'border-transparent hover:border-line'}`}
+              >
+                <div className="h-[72px] rounded-xl flex items-center justify-center overflow-hidden" style={{ background: WALLPAPERS.night }}>
+                  <PreviewPill style={{ theme: t.id, shape: 'pill', clock: false, fx: 'default' }} mood="idle" expanded={false} scale={0.72} />
+                </div>
+                <div className="px-1 font-semibold text-[14px]">{t.name}</div>
+                <div className="px-1 text-[12px] text-muted leading-snug">{t.tagline}</div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="m-0 text-[12.5px] text-muted">
+        With "Switch on by themselves", the pill dresses up for a few days around Diwali, Holi, both Eids and Christmas, then goes back to your theme.
+      </p>
+    </section>
+  );
+}
+
+/** Sound packs: one click sets the message, text and ring sounds for every phone. */
+function SoundPacks({ pro }: { pro: boolean }) {
+  const { settings, update } = useApp();
+  const all = settings.phone?.sounds ?? {};
+  const cur = { ...DEFAULT_PHONE_SOUNDS, ...(all.default ?? {}) };
+  const use = (id: string) => {
+    const pack = SOUND_PACKS.find((p) => p.id === id);
+    if (!pack) return;
+    if (pack.pro && !pro) {
+      askUpgrade('sounds');
+      return;
+    }
+    const next: Record<string, typeof pack.sounds> = { default: pack.sounds };
+    for (const k of Object.keys(all)) next[k] = pack.sounds;
+    void update({ phone: { sounds: next } });
+  };
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-[15px]">Sound packs</span>
+        {!pro && <ProTag />}
+      </div>
+      <ul className="m-0 p-0 list-none grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-3">
+        {SOUND_PACKS.map((p) => {
+          const on = cur.message === p.sounds.message && cur.sms === p.sounds.sms && cur.call === p.sounds.call;
+          return (
+            <li key={p.id} className={`rounded-[18px] border-2 p-4 flex flex-col gap-2.5 bg-surface ${on ? 'border-primary' : 'border-transparent'}`}>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-[15px]">{p.name}</span>
+                {p.pro && !pro && <ProTag />}
+                <span className="flex-1" />
+                {on && (
+                  <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+                    <Check size={14} strokeWidth={3} aria-hidden="true" />
+                  </span>
+                )}
+              </div>
+              <div className="text-[12.5px] text-muted leading-snug min-h-[34px]">{p.line}</div>
+              <div className="flex gap-1.5">
+                <Button size="sm" className="flex-1 !px-2" onClick={() => ALERTS[p.sounds.message]?.play()} aria-label={`${p.name}: message sound`}>
+                  <MessageSquare size={14} aria-hidden="true" />
+                </Button>
+                <Button size="sm" className="flex-1 !px-2" onClick={() => ALERTS[p.sounds.sms]?.play()} aria-label={`${p.name}: text sound`}>
+                  <Smartphone size={14} aria-hidden="true" />
+                </Button>
+                <Button size="sm" className="flex-1 !px-2" onClick={() => RINGS[p.sounds.call]?.play()} aria-label={`${p.name}: ring`}>
+                  <Phone size={14} aria-hidden="true" />
+                </Button>
+                <Button size="sm" variant={on ? 'secondary' : 'primary'} disabled={on} onClick={() => use(p.id)}>
+                  {on ? 'In use' : 'Use'}
+                </Button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="m-0 -mt-1 text-[12.5px] text-muted">Mix and match per phone in Settings → Your phone → Sounds.</p>
+    </section>
+  );
+}
+
+/** Share a look as a short code, or paste a friend's. */
+function ShareLook({ shown, onApply }: { shown: PillStyle; onApply: (s: PillStyle) => void }) {
+  const code = styleCode(shown);
+  const [copied, setCopied] = useState(false);
+  const [paste, setPaste] = useState('');
+  const [bad, setBad] = useState(false);
+  return (
+    <Card className="p-5 flex flex-col gap-3">
+      <div className="font-semibold text-[14px]">Share your look</div>
+      <div className="text-[12.5px] text-muted">Send this code to a friend; they paste it here and get your theme, shape, clock, animation and lighting.</div>
+      <div className="flex gap-2 flex-wrap">
+        <code className="flex-1 min-w-[240px] h-10 px-3.5 rounded-xl bg-bg2 border border-line text-[12.5px] font-mono flex items-center overflow-hidden text-ellipsis whitespace-nowrap">{code}</code>
+        <Button
+          onClick={() =>
+            void navigator.clipboard.writeText(code).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1500);
+            })
+          }
+        >
+          {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />} {copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+      <form
+        className="flex gap-2 flex-wrap"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const s = parseStyleCode(paste);
+          setBad(!s);
+          if (s) {
+            onApply(s);
+            setPaste('');
+          }
+        }}
+      >
+        <input
+          value={paste}
+          onChange={(e) => {
+            setPaste(e.target.value);
+            setBad(false);
+          }}
+          placeholder="Paste a look code (PDS1-…)"
+          aria-label="Look code"
+          spellCheck={false}
+          className="flex-1 min-w-[240px] h-10 px-3.5 rounded-xl bg-bg2 border border-line text-[13px] font-mono outline-none focus:border-primary"
+        />
+        <Button type="submit" variant="primary" disabled={!paste.trim()}>
+          <ClipboardPaste size={16} aria-hidden="true" /> Use this look
+        </Button>
+      </form>
+      {bad && <div role="status" className="text-[13px] text-danger">That isn't a PinchDrop look code.</div>}
+    </Card>
   );
 }

@@ -39,6 +39,12 @@ pub struct PillStyle {
     /// Send / receive animation pack: "default" | "plane" | "portal" | "comet". The phone plays
     /// the matching arrival.
     pub fx: String,
+    /// Pro: the screen's edges glow for calls and messages.
+    pub edge: bool,
+    /// Pro: a second theme for the evening (19:00–07:00); "" = off.
+    pub night: String,
+    /// Pro: switch to the festival theme around Diwali, Holi, Eid and Christmas.
+    pub festive: bool,
 }
 
 impl Default for PillStyle {
@@ -48,6 +54,9 @@ impl Default for PillStyle {
             shape: "pill".into(),
             clock: false,
             fx: "default".into(),
+            edge: false,
+            night: String::new(),
+            festive: false,
         }
     }
 }

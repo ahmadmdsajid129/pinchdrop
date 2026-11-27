@@ -11,12 +11,12 @@ import { InfoIsland, type Info } from './InfoIsland';
 import { NowPlaying, PlayingBars } from './NowPlaying';
 import { usePro } from '../shared/pro';
 import { huddleApi, initials, useHuddle, type HuddleView } from '../shared/huddle';
-import { DEFAULT_PILL_STYLE, ThemeLayer, shellLook, shellRadius, type PillMood, type PillShape, type PillThemeId } from '../shared/pillThemes';
+import { DEFAULT_PILL_STYLE, ThemeLayer, shellLook, shellRadius, themeNow, type PillMood, type PillShape, type PillThemeId } from '../shared/pillThemes';
 import { PhotoStrip } from './PhotoStrip';
 import { PhonesIsland } from './PhonesIsland';
 import { CameraRow } from './CameraRow';
 import { Battery } from '../shared/Battery';
-import { sound, playAlert, startRing, stopRing, DEFAULT_PHONE_SOUNDS } from '../shared/sound';
+import { sound, playAlert, startRing, stopRing, DEFAULT_PHONE_SOUNDS, freeSounds } from '../shared/sound';
 import type { HoldView, LiftView, NotifView, PhoneLive, PhoneStatus, SessionView, Settings, TransferView } from '../shared/types';
 
 /** Transparent margin around the pill so its shadow isn't clipped. */
@@ -51,6 +51,12 @@ export function Pill() {
   const { settings, update } = useSettings();
   const phone = usePhone();
   const pro = usePro();
+  // The evening theme and Festival drops depend on the time: look again every minute.
+  const [, setMinute] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setMinute((m) => m + 1), 60_000);
+    return () => window.clearInterval(t);
+  }, []);
   const huddle = useHuddle();
   /** v2 Pro: the send animation pack (Classic lift-off without Pro). */
   const packRef = useRef<string>('default');
@@ -98,15 +104,26 @@ export function Pill() {
   // v2: sounds per phone (Settings → Your phone → Sounds).
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const proOnRef = useRef(false);
+  proOnRef.current = pro.active;
   const soundsFor = (deviceId: string | undefined) => {
     const ph = settingsRef.current?.phone;
-    return { ...DEFAULT_PHONE_SOUNDS, ...(ph?.sounds?.default ?? {}), ...((deviceId && ph?.sounds?.[deviceId]) || {}) };
+    // Pro sound packs fall back to the free sounds without Pro.
+    return freeSounds({ ...DEFAULT_PHONE_SOUNDS, ...(ph?.sounds?.default ?? {}), ...((deviceId && ph?.sounds?.[deviceId]) || {}) }, proOnRef.current);
   };
   const ringingDevice = ringingLive?.deviceId ?? null;
   useEffect(() => {
     if (!ringingDevice || settingsRef.current?.phone?.soundsOn === false) return;
     startRing(soundsFor(ringingDevice).call);
     return () => stopRing();
+  }, [ringingDevice]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Pro edge lighting: the screen's edges glow while a call rings (every 1.8 s).
+  const edgeOn = () => proOnRef.current && settingsRef.current?.pill.style?.edge === true;
+  useEffect(() => {
+    if (!ringingDevice || !edgeOn()) return;
+    void api.edgeGlow('call');
+    const t = window.setInterval(() => void api.edgeGlow('call'), 1800);
+    return () => window.clearInterval(t);
   }, [ringingDevice]); // eslint-disable-line react-hooks/exhaustive-deps
   const ringingRef = useRef(false);
   const mediaRef = useRef<{ deviceId: string } | null>(null);
@@ -354,6 +371,7 @@ export function Pill() {
           const s = soundsFor(n.deviceId);
           playAlert(n.kind === 'sms' ? s.sms : s.message);
         }
+        if (edgeOn()) void api.edgeGlow(n.kind === 'sms' ? 'sms' : 'message');
         // Something more important is on the Island: the notification waits in the app's list.
         if (holdRef.current || liftRef.current) return;
         setBanner((cur) => {
@@ -612,7 +630,7 @@ export function Pill() {
   const collapsed = !expanded;
   // v2 · Pill Studio: the chosen look (designed themes, shapes and the clock need Pro).
   const style = { ...DEFAULT_PILL_STYLE, ...(settings.pill.style ?? {}) };
-  const theme: PillThemeId = pro.active ? style.theme : 'classic';
+  const theme: PillThemeId = pro.active ? themeNow(style) : 'classic';
   const shape: PillShape = pro.active ? style.shape : 'pill';
   const look = shellLook(theme);
   const mood: PillMood = ringing ? 'ring' : hold || lift || liveTransfer ? 'busy' : live.media?.playing ? 'music' : 'idle';
