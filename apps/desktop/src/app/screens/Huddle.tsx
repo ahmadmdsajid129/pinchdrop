@@ -19,6 +19,7 @@ import {
 } from '../../shared/huddle';
 import { pickFolder } from '../pickers';
 import { Button, Card, PageTitle } from '../ui';
+import { Pass } from '../Pass';
 
 const ALL = '__all';
 const err = (e: unknown) => String(e instanceof Error ? e.message : e);
@@ -143,30 +144,28 @@ function Lobby({ say }: { say: (ok: boolean, t: string) => void }) {
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-[22px] p-7 text-white bg-[linear-gradient(135deg,#0B1437_0%,#1E3A8A_55%,#0EA5E9_120%)]">
-        <div aria-hidden="true" className="absolute -right-10 -top-10 w-72 h-72 rounded-full bg-[#38BDF8]/25 blur-3xl" />
-        <div className="relative flex items-center gap-6 flex-wrap">
-          <div className="flex-[1_1_340px]">
-            <div className="text-[12px] font-bold tracking-wider text-white/70">FOR HACKATHONS AND TEAMS</div>
-            <h2 className="m-0 mt-1 font-display text-[26px] font-semibold leading-tight">Your team's laptops, connected in one click.</h2>
-            <p className="m-0 mt-2 text-[14px] text-white/80 leading-relaxed max-w-[520px]">
-              Drag code, your project's changes or your running app onto a teammate's face. No WhatsApp, no push and pull, no internet needed.
-            </p>
-            <div className="mt-4 flex gap-2.5 flex-wrap">
-              <Button variant="primary" size="lg" disabled={busy} onClick={() => void start()} className="!bg-white !text-[#1E3A8A]">
-                <Users size={18} aria-hidden="true" /> Start a huddle
-              </Button>
-            </div>
-          </div>
-          <div className="flex -space-x-3" aria-hidden="true">
-            {['#0A84FF', '#FF9F0A', '#30D158', '#BF5AF2'].map((c, i) => (
-              <span key={c} className="w-14 h-14 rounded-full border-4 border-[#1E3A8A] flex items-center justify-center font-bold" style={{ background: c }}>
-                {['A', 'R', 'S', 'K'][i]}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Pass
+        tone="blue"
+        eyebrow="PinchDrop · Huddle pass"
+        serial="For hackathons and teams"
+        title="Your team's laptops, connected in one click."
+        subtitle="Drag code, your project's changes or your running app onto a teammate's face. No WhatsApp, no push and pull, no internet needed."
+        from={{ k: 'From', v: 'Your laptop' }}
+        to={{ k: 'To', v: 'Your whole team' }}
+        fields={[
+          { k: 'Needs', v: 'Same Wi-Fi or a hotspot' },
+          { k: 'Internet', v: 'Not needed' },
+          { k: 'Seats', v: 'Up to 4 free, more with Pro' },
+        ]}
+        stubValue={String(found?.length ?? 0).padStart(2, '0')}
+        stubLabel={found?.length === 1 ? 'huddle nearby' : 'huddles nearby'}
+        stamp="TEAM"
+        action={
+          <button type="button" className="pd-pass-btn" disabled={busy} onClick={() => void start()}>
+            <Users size={16} aria-hidden="true" /> Start a huddle
+          </button>
+        }
+      />
 
       <Card className="p-5 flex flex-col gap-3">
         <div className="flex items-center gap-2">

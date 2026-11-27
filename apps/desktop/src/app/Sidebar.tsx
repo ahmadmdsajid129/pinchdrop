@@ -80,7 +80,7 @@ export function Sidebar() {
           route === 'pro' ? 'bg-surface2 font-semibold' : 'hover:bg-surface'
         }`}
       >
-        <span className="w-6 h-6 shrink-0 rounded-lg bg-gradient-to-br from-[#F59E0B] to-[#F97316] text-white flex items-center justify-center">
+        <span className="w-6 h-6 shrink-0 rounded-lg pd-pro-chip flex items-center justify-center">
           <Crown size={14} aria-hidden="true" />
         </span>
         <span className="flex-1 min-w-0 truncate max-[860px]:hidden">

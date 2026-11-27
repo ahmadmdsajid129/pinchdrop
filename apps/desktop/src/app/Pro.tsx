@@ -6,6 +6,7 @@ import type { ProStatus } from '../shared/pro';
 import { Button, Card, PageTitle } from './ui';
 import { useApp } from './context';
 import { onEvent } from '../shared/api';
+import { Pass } from './Pass';
 
 function openBuy() {
   if (!BUY_URL) return;
@@ -28,7 +29,7 @@ export function proSummary(s: ProStatus): string {
 /** The small "PRO" tag next to locked things. */
 export function ProTag({ className = '' }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center h-[18px] px-1.5 rounded-md bg-gradient-to-r from-[#F59E0B] to-[#F97316] text-white text-[10px] font-bold tracking-wide ${className}`}>
+    <span className={`inline-flex items-center h-[18px] px-1.5 rounded-md pd-pro-chip text-[10px] font-bold tracking-wide ${className}`}>
       PRO
     </span>
   );
@@ -42,7 +43,7 @@ function FeatureList({ highlight }: { highlight?: string }) {
         const on = k === highlight;
         return (
           <li key={k} className={`flex gap-3 p-3.5 rounded-2xl border ${on ? 'border-[#F59E0B] bg-[#F59E0B]/[0.08]' : 'border-line bg-surface'}`}>
-            <span className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#F97316] text-white flex items-center justify-center">
+            <span className="w-7 h-7 shrink-0 rounded-full pd-pro-chip flex items-center justify-center">
               <Check size={15} strokeWidth={3} aria-hidden="true" />
             </span>
             <div className="min-w-0">
@@ -130,41 +131,45 @@ function KeyBox({ s }: { s: ProStatus }) {
   );
 }
 
-/** The header card: plan, trial countdown, buy. */
+/** The header card: the Pro pass (plan, trial countdown, buy). */
 function PlanCard({ s }: { s: ProStatus }) {
-  const pct = s.plan === 'trial' ? Math.max(0, Math.min(1, s.trialDaysLeft / 7)) : s.plan === 'pro' ? 1 : 0;
+  const { settings } = useApp();
+  const days = s.plan === 'trial' ? s.trialDaysLeft : s.plan === 'pro' && s.expires ? Math.max(0, Math.ceil((s.expires * 1000 - Date.now()) / 86400000)) : 0;
+  const title = s.plan === 'pro' ? "You're Pro. Thank you." : s.plan === 'trial' ? 'Your Pro trial is on.' : 'Your trial has ended.';
+  const sub =
+    s.plan === 'pro'
+      ? 'Every Pro feature is on, on this PC and every phone you connect to it.'
+      : s.plan === 'trial'
+        ? 'Every Pro feature is on during your trial. Keep them with a licence key.'
+        : 'Free still sends files both ways with one phone. Pro brings back everything else.';
+  const plan = s.plan === 'pro' ? (s.kind === 'lifetime' ? 'Lifetime' : s.kind === 'year' ? 'Yearly' : s.kind === 'month' ? 'Monthly' : 'Pro') : s.plan === 'trial' ? `${TRIAL_DAYS_TEXT} trial` : 'Free';
+  const valid = s.plan === 'pro' ? (s.expires ? `Renews by ${fmtDate(s.expires)}` : 'Forever') : s.plan === 'trial' ? `${days} day${days === 1 ? '' : 's'} more` : 'Ended';
   return (
-    <section className="relative overflow-hidden rounded-[22px] p-6 text-white bg-[linear-gradient(135deg,#1E1B4B_0%,#4C1D95_45%,#9A3412_100%)]">
-      <div aria-hidden="true" className="absolute -top-16 -right-10 w-64 h-64 rounded-full bg-[#F59E0B]/30 blur-3xl" />
-      <div aria-hidden="true" className="absolute -bottom-20 left-10 w-72 h-72 rounded-full bg-[#22D3EE]/20 blur-3xl" />
-      <div className="relative flex items-center gap-5 flex-wrap">
-        <span className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center">
-          <Crown size={30} aria-hidden="true" />
-        </span>
-        <div className="flex-1 min-w-[240px]">
-          <div className="text-[12px] font-bold tracking-wider text-white/70">PINCHDROP PRO</div>
-          <div className="font-display text-[24px] font-semibold">{proSummary(s)}</div>
-          <div className="text-[13.5px] text-white/75">
-            {s.plan === 'pro'
-              ? 'Thank you for supporting PinchDrop. Every Pro feature is on.'
-              : s.plan === 'trial'
-                ? 'Every Pro feature is on during your trial. Keep them with a licence key.'
-                : 'Your trial has ended. Free still sends files both ways with one phone.'}
-          </div>
-          {s.plan !== 'free' && (
-            <div className="mt-3 h-1.5 rounded-full bg-white/20 overflow-hidden max-w-[360px]">
-              <div className="h-full bg-white rounded-full origin-left transition-transform duration-500" style={{ transform: `scaleX(${pct})` }} />
-            </div>
-          )}
-        </div>
-        {s.plan !== 'pro' && BUY_URL && (
-          <Button variant="primary" size="lg" onClick={openBuy} className="!bg-white !text-[#4C1D95]">
-            <Sparkles size={18} aria-hidden="true" /> Get Pro
-          </Button>
-        )}
-      </div>
-      {s.problem && <div className="relative mt-3 text-[13px] text-[#FDE68A]">{s.problem}</div>}
-    </section>
+    <Pass
+      eyebrow="PinchDrop · Pro pass"
+      serial={s.plan === 'pro' ? 'Admit one PC + phones' : 'Admit one PC'}
+      title={title}
+      subtitle={sub}
+      from={{ k: 'From', v: settings.profile.pcName || 'This PC' }}
+      to={{ k: 'To', v: 'Every phone' }}
+      fields={[
+        { k: 'Plan', v: plan },
+        { k: 'Valid', v: valid },
+        { k: 'Holder', v: s.licensee || settings.profile.pcName || 'You' },
+      ]}
+      punches={s.plan === 'trial' ? { total: 7, left: Math.min(7, days) } : undefined}
+      stubValue={s.plan === 'pro' && !s.expires ? '∞' : String(days).padStart(2, '0')}
+      stubLabel={s.plan === 'pro' && !s.expires ? 'for life' : s.plan === 'free' ? 'days left' : days === 1 ? 'day left' : 'days left'}
+      stamp={s.plan === 'pro' ? 'PRO' : s.plan === 'trial' ? 'TRIAL' : 'FREE'}
+      action={
+        s.plan !== 'pro' && BUY_URL ? (
+          <button type="button" className="pd-pass-btn" onClick={openBuy}>
+            <Sparkles size={16} aria-hidden="true" /> Get Pro
+          </button>
+        ) : undefined
+      }
+      footer={s.problem ?? undefined}
+    />
   );
 }
 
@@ -198,7 +203,7 @@ export function ProGate({ feature, children }: { feature: string; children: Reac
   const f = PRO_FEATURES[feature];
   return (
     <section className="flex flex-col items-center text-center gap-4 py-16 px-6 rounded-[22px] bg-surface border border-line">
-      <span className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#F59E0B] to-[#F97316] text-white flex items-center justify-center">
+      <span className="w-16 h-16 rounded-2xl pd-pro-chip flex items-center justify-center">
         <Lock size={30} aria-hidden="true" />
       </span>
       <div className="font-display text-[24px] font-semibold">{f?.title ?? 'This feature'} is part of Pro</div>
@@ -239,13 +244,11 @@ export function UpgradeDialog() {
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[560px] max-h-full overflow-y-auto rounded-[24px] bg-bg shadow-[0_30px_80px_rgba(0,0,0,0.35)] animate-[pd-pop_160ms_ease-out]"
       >
-        <div className="relative overflow-hidden p-6 text-white bg-[linear-gradient(135deg,#1E1B4B_0%,#4C1D95_45%,#9A3412_100%)]">
-          <button type="button" aria-label="Close" onClick={() => setFeature(null)} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center">
+        <div className="relative p-4 pb-0">
+          <Pass compact eyebrow="PinchDrop · Pro feature" serial="Admit one PC" title={`${f?.title ?? 'This'} is part of Pro`} subtitle={f?.line} stamp="PRO" />
+          <button type="button" aria-label="Close" onClick={() => setFeature(null)} className="absolute top-6 right-6 z-10 w-8 h-8 rounded-full bg-black/10 hover:bg-black/20 flex items-center justify-center text-[#17140E]">
             <X size={16} />
           </button>
-          <Crown size={30} aria-hidden="true" />
-          <h2 id="pd-up-title" className="m-0 mt-2 font-display text-[22px] font-semibold">{f?.title ?? 'This'} is a Pro feature</h2>
-          <p className="m-0 mt-1 text-[14px] text-white/80">{f?.line}</p>
         </div>
         <div className="p-6 flex flex-col gap-4">
           <div className="text-[13px] text-muted">

@@ -312,3 +312,125 @@ html {
   .pd-side-item { height: 31px; font-size: 13px; }
   .pd-side-phone { padding: 6px 10px; }
 }
+
+/* ---------------------------------------------------------------- The pass (Pro, Huddle, upgrade)
+   A printed ticket rather than a gradient: warm paper, ink, one accent colour, a perforated tear
+   line with punched notches, a stub with a stamp. */
+.pd-pass {
+  --paper: #FBF6EA; --ink: #17140E; --ink2: #6B6152; --rule: rgba(23, 20, 14, 0.14);
+  --accent: #F2A20C; --accent-ink: #7A4B00; --notch: rgb(var(--bg));
+  --rx: 0deg; --ry: 0deg; --gx: 50%;
+  position: relative; container-type: inline-size;
+  color: var(--ink); border-radius: 22px;
+  transform: perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 300ms cubic-bezier(0.2, 0, 0, 1);
+  animation: pd-pass-in 620ms cubic-bezier(0.2, 0.9, 0.1, 1) both;
+  filter: drop-shadow(0 1px 0 rgba(23, 20, 14, 0.06)) drop-shadow(0 14px 30px rgba(23, 20, 14, 0.10));
+}
+.pd-pass-blue { --accent: #0A66F0; --accent-ink: #0A3E8F; }
+.pd-pass-green { --accent: #12A150; --accent-ink: #0B5E2F; }
+[data-theme='dark'] .pd-pass {
+  --paper: #1F1C16; --ink: #F4EEDF; --ink2: #B3A893; --rule: rgba(244, 238, 223, 0.14);
+  --accent: #FFC53D; --accent-ink: #FFD978;
+  filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.45));
+}
+[data-theme='dark'] .pd-pass-blue { --accent: #5AA2FF; --accent-ink: #9CC6FF; }
+[data-theme='dark'] .pd-pass-green { --accent: #3DD68C; --accent-ink: #8BE8B8; }
+.pd-pass-body {
+  position: relative; display: flex; border-radius: 22px; overflow: hidden;
+  background-color: var(--paper);
+  /* a fine dot grid printed on the paper */
+  background-image: radial-gradient(var(--rule) 0.9px, transparent 1.1px);
+  background-size: 14px 14px;
+}
+/* a thin light line that follows the pointer across the paper */
+.pd-pass-body::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 300ms;
+  background: linear-gradient(105deg, transparent calc(var(--gx) - 12%), rgba(255, 255, 255, 0.35) var(--gx), transparent calc(var(--gx) + 12%));
+  mix-blend-mode: soft-light;
+}
+.pd-pass:hover .pd-pass-body::after { opacity: 1; }
+.pd-pass-main { flex: 1; min-width: 0; padding: 22px 26px 20px; display: flex; flex-direction: column; gap: 6px; }
+.pd-pass-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pd-pass-eyebrow, .pd-pass-serial, .pd-pass-fields dt, .pd-pass-end span, .pd-pass-biglabel {
+  font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink2);
+}
+.pd-pass-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); }
+.pd-pass-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.pd-pass-title { font-family: Inter, "Segoe UI", sans-serif; font-weight: 700; font-size: 27px; line-height: 1.12; letter-spacing: -0.02em; margin-top: 4px; }
+.pd-pass-sub { font-size: 13.5px; line-height: 1.5; color: var(--ink2); max-width: 560px; }
+.pd-pass-route { display: flex; align-items: flex-end; gap: 10px; margin-top: 8px; }
+.pd-pass-end { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pd-pass-end b { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-pass-end-r { text-align: right; }
+.pd-pass-arc { flex: 1; min-width: 80px; max-width: 280px; height: 36px; color: var(--ink2); overflow: visible; }
+.pd-pass-node { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; }
+.pd-pass-drop { fill: var(--accent); }
+.pd-pass-fields { display: flex; flex-wrap: wrap; gap: 6px 26px; margin: 10px 0 0; padding-top: 12px; border-top: 1px dashed var(--rule); }
+.pd-pass-fields div { display: flex; flex-direction: column; gap: 2px; }
+.pd-pass-fields dd { margin: 0; font-size: 13.5px; font-weight: 650; }
+.pd-pass-punches { display: flex; gap: 7px; margin-top: 10px; }
+.pd-pass-punches span { width: 14px; height: 14px; border-radius: 99px; border: 1.5px solid var(--ink2); opacity: 0.45; }
+.pd-pass-punches span.on { background: var(--accent); border-color: var(--accent); opacity: 1; animation: pd-pass-punch 420ms cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.pd-pass-footer { margin-top: 8px; font-size: 12.5px; color: var(--accent-ink); font-weight: 600; }
+
+/* the stub, behind a perforated tear line with half-circle notches top and bottom */
+.pd-pass-stub {
+  position: relative; width: 200px; flex-shrink: 0; padding: 18px 18px 18px 22px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center;
+  border-left: 2px dashed var(--rule);
+}
+.pd-pass-stub::before, .pd-pass-stub::after {
+  content: ""; position: absolute; left: -12px; width: 22px; height: 22px; border-radius: 99px; background: var(--notch);
+}
+.pd-pass-stub::before { top: -11px; }
+.pd-pass-stub::after { bottom: -11px; }
+.pd-pass-big { font-family: Inter, "Segoe UI", sans-serif; font-weight: 800; font-size: 54px; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.pd-pass-action { margin-top: 12px; width: 100%; display: flex; justify-content: center; }
+.pd-pass-action > * { width: 100%; }
+.pd-pass-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 999px;
+  background: var(--ink); color: var(--paper); font-weight: 700; font-size: 14px; border: 0; cursor: pointer;
+  transition: transform 150ms, box-shadow 150ms;
+}
+.pd-pass-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 0 -2px var(--accent); }
+.pd-pass-btn:active { transform: translateY(1px); box-shadow: none; }
+.pd-pass-stamp { position: absolute; top: 10px; right: 10px; width: 66px; height: 66px; color: var(--accent); opacity: 0.9; transform: rotate(-14deg); animation: pd-pass-stamp 520ms 380ms cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.pd-pass-stamp svg { width: 100%; height: 100%; }
+.pd-pass-stamp-spin { animation: pd-pass-spin 28s linear infinite; }
+.pd-pass-stamp span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", Consolas, monospace; font-weight: 800; font-size: 11px; letter-spacing: 0.08em; }
+.pd-pass-stub .pd-pass-big { margin-top: 26px; }
+
+/* narrow: the stub moves under the ticket and the tear line turns sideways */
+@container (max-width: 560px) {
+  .pd-pass-body { flex-direction: column; }
+  .pd-pass-stub { width: auto; border-left: 0; border-top: 2px dashed var(--rule); flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: flex-start; padding: 16px 22px; text-align: left; }
+  .pd-pass-stub::before, .pd-pass-stub::after { top: -12px; bottom: auto; }
+  .pd-pass-stub::before { left: -11px; }
+  .pd-pass-stub::after { left: auto; right: -11px; }
+  .pd-pass-stub .pd-pass-big { margin-top: 0; font-size: 40px; }
+  .pd-pass-stamp { position: relative; top: auto; right: auto; width: 54px; height: 54px; }
+  .pd-pass-action { margin: 0 0 0 auto; width: auto; }
+}
+.pd-pass-compact .pd-pass-main { padding: 18px 22px 16px; }
+.pd-pass-compact .pd-pass-title { font-size: 22px; }
+
+@keyframes pd-pass-in {
+  from { opacity: 0; transform: perspective(1400px) translateY(14px) rotateX(8deg); }
+  to { opacity: 1; transform: perspective(1400px) rotateX(var(--rx)) rotateY(var(--ry)); }
+}
+@keyframes pd-pass-stamp {
+  from { opacity: 0; transform: rotate(-40deg) scale(1.9); }
+  70% { opacity: 1; transform: rotate(-10deg) scale(0.94); }
+  to { opacity: 0.9; transform: rotate(-14deg) scale(1); }
+}
+@keyframes pd-pass-spin { to { transform: rotate(360deg); } }
+@keyframes pd-pass-punch { from { transform: scale(0); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .pd-pass, .pd-pass-stamp, .pd-pass-punches span.on { animation: none; }
+}
+
+/* Pro marks: one flat amber with ink, no gradients */
+.pd-pro-chip { background: #F2A20C; color: #17140E; }
+[data-theme='dark'] .pd-pro-chip { background: #FFC53D; }
+.pd-pass-btn:disabled { opacity: 0.55; cursor: default; transform: none; box-shadow: none; }
