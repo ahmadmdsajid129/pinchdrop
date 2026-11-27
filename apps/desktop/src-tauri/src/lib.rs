@@ -6,6 +6,7 @@
 
 mod browser;
 mod clip;
+mod deeplink;
 mod explorer;
 mod fs_info;
 mod grab;
@@ -316,6 +317,15 @@ fn fit_to_screen(win: &WebviewWindow) {
     let x = wa.position.x + (wa.size.width as i32 - w as i32) / 2;
     let y = wa.position.y + (wa.size.height as i32 - h as i32) / 2;
     let _ = win.set_position(tauri::PhysicalPosition::new(x, y));
+}
+
+/// A `pinchdrop://activate?key=…` link: show the Pro page with the key filled in.
+fn open_with_key(app: &AppHandle, key: String) {
+    deeplink::set_pending(key);
+    open_main_at(app, "pro");
+    if let Some(win) = main_window(app) {
+        let _ = win.emit("pro-key", ());
+    }
 }
 
 fn open_main_at(app: &AppHandle, route: &str) {
@@ -1410,6 +1420,11 @@ pub fn run() {
                 send_from_shell(app.clone(), device, files);
                 return;
             }
+            // The website's "Open in PinchDrop" button after buying Pro.
+            if let Some(key) = deeplink::key_from_args(&args) {
+                open_with_key(app, key);
+                return;
+            }
             open_main_at(app, "home");
         }))
         .plugin(tauri_plugin_autostart::init(
@@ -1471,6 +1486,10 @@ pub fn run() {
             let argv: Vec<String> = std::env::args().collect();
             if let Some((device, files)) = sendto::parse_args(&argv) {
                 send_from_shell(handle.clone(), device, files);
+            }
+            deeplink::register();
+            if let Some(key) = deeplink::key_from_args(&argv) {
+                open_with_key(&handle, key);
             }
             link::phone_live::spawn_clipboard_watch(handle.clone());
             allow_camera_in_webviews(&handle);
@@ -1539,6 +1558,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            deeplink::take_pending_key,
             get_settings,
             update_settings,
             get_pro,

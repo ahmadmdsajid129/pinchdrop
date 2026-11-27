@@ -5,6 +5,7 @@ import { BUY_URL, PRO_FEATURES, PRO_LIST, TRIAL_DAYS_TEXT, proApi, usePro } from
 import type { ProStatus } from '../shared/pro';
 import { Button, Card, PageTitle } from './ui';
 import { useApp } from './context';
+import { onEvent } from '../shared/api';
 
 function openBuy() {
   if (!BUY_URL) return;
@@ -60,6 +61,20 @@ function KeyBox({ s }: { s: ProStatus }) {
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // "Open in PinchDrop" on the website's thank-you page fills the key in; the buyer presses Activate.
+  useEffect(() => {
+    const take = () =>
+      void proApi.takeLinkKey().then((k) => {
+        if (!k) return;
+        setKey(k);
+        setMsg({ ok: true, text: 'Your key from the website is filled in. Press Activate to turn on Pro.' });
+        setTimeout(() => document.getElementById('pd-key-go')?.focus(), 80);
+      });
+    take();
+    let off: (() => void) | undefined;
+    void onEvent('pro-key', take).then((u) => (off = u));
+    return () => off?.();
+  }, []);
   async function activate() {
     setBusy(true);
     setMsg(null);
@@ -100,7 +115,7 @@ function KeyBox({ s }: { s: ProStatus }) {
           spellCheck={false}
           className="flex-1 min-w-[260px] h-10 px-3.5 rounded-xl bg-bg2 border border-line text-[13px] font-mono outline-none focus:border-primary"
         />
-        <Button variant="primary" type="submit" disabled={busy || !key.trim()}>
+        <Button id="pd-key-go" variant="primary" type="submit" disabled={busy || !key.trim()}>
           <KeyRound size={16} aria-hidden="true" /> {busy ? 'Checking…' : 'Activate'}
         </Button>
       </div>

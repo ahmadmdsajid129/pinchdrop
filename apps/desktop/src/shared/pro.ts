@@ -54,6 +54,8 @@ export const proApi = {
   get: (): Promise<ProStatus> => (inTauriPro ? call<ProStatus>('get_pro') : Promise.resolve(MOCK)),
   activate: (key: string): Promise<ProStatus> => call<ProStatus>('activate_license', { key }),
   remove: (): Promise<ProStatus> => call<ProStatus>('remove_license'),
+  /** The key from the website's "Open in PinchDrop" link, once. */
+  takeLinkKey: (): Promise<string | null> => (inTauriPro ? call<string | null>('take_pending_key') : Promise.resolve(null)),
 };
 
 /** Live Pro status. Re-checked every 10 minutes (the trial ends by the clock) and on any change. */
