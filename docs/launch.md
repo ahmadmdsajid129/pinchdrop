@@ -16,24 +16,25 @@ Your private keys live in `%USERPROFILE%\.pinchdrop\` (never in the repo). **Bac
 1. On GitHub: **pinchdrop repo → Settings → Pages → Source: GitHub Actions**.
 2. That's all. Every push that changes `site/` publishes **https://ahmadmdsajid129.github.io/pinchdrop/**. The app's **Get Pro** button opens its Pro section.
 
-## 2. Payments (Lemon Squeezy, free; they take a cut per sale)
-1. Sign up at lemonsqueezy.com and create a store. Add your payout details (bank account).
-2. Create one product, **PinchDrop Pro**, with 3 variants:
-   - **Lifetime**: single payment, $29
-   - **Yearly**: subscription, $19 / year
-   - **Monthly**: subscription, $2.99 / month
-3. In the product, turn on **License keys** with an **activation limit of 2** (two PCs per key). Leave the length unlimited: subscriptions keep their key active while paid.
-4. **Send me:**
-   - the 3 checkout links (product → Share)
-   - your **Store ID** (Settings → Stores)
-   - the 3 **variant IDs** (each variant's ID number)
+## 2. Payments (Dodo Payments, free; they take about 4% + $0.40 per sale)
+Lemon Squeezy no longer takes new sellers. Dodo Payments is the replacement: it's the merchant of record (handles taxes and invoices worldwide), pays out to your Indian bank account, and emails each buyer a licence key.
+1. Sign up at **dodopayments.com**.
+   - **Website:** `https://ahmadmdsajid129.github.io/pinchdrop/`. It must be live first (step 1). It has pricing, Privacy, Terms and Refunds pages, which reviewers look for.
+   - Complete verification (PAN, bank account).
+2. Create **3 products**:
+   - **PinchDrop Pro Lifetime**: one-time payment, $29
+   - **PinchDrop Pro Yearly**: subscription, $19 / year
+   - **PinchDrop Pro Monthly**: subscription, $2.99 / month
+3. On each product, add a **License Key** entitlement:
+   - **Activations limit:** 2
+   - **License length:** no expiration (subscription keys follow the subscription)
+4. On each product, set the **return / redirect URL** to `https://ahmadmdsajid129.github.io/pinchdrop/thanks.html`. Buyers then see their key straight after paying.
+5. **Send me:** the 3 checkout or payment links and the 3 **product IDs** (`pdt_…`). I put the links on the Buy page and the IDs in the licence service.
 
-   I put the links on the Buy page (`site/config.js`) and the IDs in the licence service.
-
-Buyers get their licence key by email from Lemon Squeezy automatically. They paste it in **PinchDrop → Pro → Activate**.
+Buyers paste the emailed key in **PinchDrop → Pro → Activate**.
 
 ## 3. Licence service (Cloudflare Workers, free)
-This is what turns a Lemon Squeezy key into a PinchDrop key that works offline. The code is in `cloud/licence-worker`.
+This turns a Dodo key into a PinchDrop key that works offline. The code is in `cloud/licence-worker`, and its flows are tested in `test-flows.mjs`.
 1. Sign up at cloudflare.com (free plan). When asked for a **workers.dev subdomain**, choose `ahmadmdsajid129`. Then the app's address `https://pinchdrop-licence.ahmadmdsajid129.workers.dev/redeem` is already right. If you pick another name, send it to me.
 2. In a terminal:
    ```powershell
@@ -42,7 +43,7 @@ This is what turns a Lemon Squeezy key into a PinchDrop key that works offline. 
    npx wrangler secret put PD_SIGNING_KEY
    ```
    When it asks, paste the text **between** the `BEGIN` and `END` lines of `%USERPROFILE%\.pinchdrop\license-signing-key.pem`.
-3. After I've added your Lemon Squeezy IDs to `wrangler.toml`, run `npx wrangler deploy`.
+3. After I've added your Dodo product IDs to `wrangler.toml`, run `npx wrangler deploy`.
 
 ## 4. Automatic updates (GitHub Releases, free)
 1. **repo → Settings → Secrets and variables → Actions → New repository secret**, twice:
