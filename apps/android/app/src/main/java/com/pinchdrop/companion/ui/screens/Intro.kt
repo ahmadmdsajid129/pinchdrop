@@ -91,19 +91,24 @@ fun WelcomeScreen(onStart: () -> Unit) {
         }
         HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth()) { i ->
             val s = slides[i]
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) { s.art() }
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    s.title, color = c.text, fontSize = 28.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
-                    lineHeight = 34.sp, modifier = Modifier.semantics { heading() },
-                )
-                Spacer(Modifier.height(10.dp))
-                Text(s.body, color = c.muted, fontSize = 16.sp, textAlign = TextAlign.Center, lineHeight = 23.sp)
+            // Small phones and big text: the picture shrinks so the words always fit.
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val compact = maxHeight < 420.dp
+                val artH = (maxHeight * 0.48f).coerceIn(110.dp, 260.dp)
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Box(Modifier.fillMaxWidth().height(artH), contentAlignment = Alignment.Center) { s.art() }
+                    Spacer(Modifier.height(if (compact) 12.dp else 24.dp))
+                    Text(
+                        s.title, color = c.text, fontSize = if (compact) 22.sp else 28.sp, fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center, lineHeight = if (compact) 28.sp else 34.sp, modifier = Modifier.semantics { heading() },
+                    )
+                    Spacer(Modifier.height(if (compact) 6.dp else 10.dp))
+                    Text(s.body, color = c.muted, fontSize = if (compact) 14.sp else 16.sp, textAlign = TextAlign.Center, lineHeight = if (compact) 20.sp else 23.sp)
+                }
             }
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalArrangement = Arrangement.Center) {
@@ -290,7 +295,7 @@ fun GuideScreen(onDone: () -> Unit, onBack: (() -> Unit)?, onboarding: Boolean) 
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.fillMaxWidth().height(200.dp)) { PcToPhoneArt() }
+            Box(Modifier.fillMaxWidth().height(if (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 700) 130.dp else 200.dp)) { PcToPhoneArt() }
             Text("On this phone", color = c.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             phoneGuide.forEachIndexed { i, s -> GuideCard(i + 1, s) }
             Text("On your PC", color = c.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))

@@ -137,7 +137,9 @@ private fun ScanStep(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
-                Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(22.dp)).background(Color.Black)
+                // Smaller on short screens so the instructions stay in view.
+                Modifier.fillMaxWidth().height(if (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 700) 200.dp else 280.dp)
+                    .clip(RoundedCornerShape(22.dp)).background(Color.Black)
                     .border(2.dp, c.line, RoundedCornerShape(22.dp)),
                 contentAlignment = Alignment.Center,
             ) {

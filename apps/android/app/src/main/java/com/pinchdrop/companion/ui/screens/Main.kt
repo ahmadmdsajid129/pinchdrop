@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -209,12 +210,13 @@ fun ReceivedScreen() {
             Text("Received", color = c.text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Scrolls sideways on narrow phones / big text instead of squashing the labels.
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ReceivedFilter.entries.forEach { f ->
                     FilterChip(
                         selected = filter == f,
                         onClick = { filter = f },
-                        label = { Text(f.label) },
+                        label = { Text(f.label, maxLines = 1, softWrap = false) },
                         modifier = Modifier.heightIn(min = 40.dp),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = c.primary, selectedLabelColor = Color.White,
