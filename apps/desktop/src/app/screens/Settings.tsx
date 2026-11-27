@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { api, useDevices } from '../../shared/api';
 import { ALERTS, DEFAULT_PHONE_SOUNDS, RINGS, playAlert } from '../../shared/sound';
 import { useApp } from '../context';
+import { checkForUpdate, installUpdate, useUpdate } from '../../shared/updates';
 import { Button, Card, PageTitle, Radio, Row, Segmented, Select, Toggle } from '../ui';
 import { CameraPreview, listCameras, requestCameraAccess } from '../CameraPreview';
 import type { Camera } from '../CameraPreview';
@@ -203,7 +204,7 @@ export function SettingsScreen() {
       </Section>
 
       <Section id="about" title="About & updates">
-        <Row title={`PinchDrop ${info?.version ?? ''}`} description="Pinch it on your PC, drop it on your phone" />
+        <UpdateRow version={info?.version ?? ''} />
         <Row title="Preview with a demo phone" description="Shows a pretend phone (marked DEMO) when no real phone is paired">
           <Toggle label="Demo phone" checked={settings.demoPhone} onChange={(v) => void update({ demoPhone: v })} />
         </Row>
@@ -281,5 +282,37 @@ function PhoneSoundRows() {
         );
       })}
     </>
+  );
+}
+
+/** About & updates: the version, and updates from GitHub Releases. */
+function UpdateRow({ version }: { version: string }) {
+  const u = useUpdate();
+  const desc =
+    u.stage === 'checking'
+      ? 'Checking…'
+      : u.stage === 'none'
+        ? "You're up to date."
+        : u.stage === 'available'
+          ? `Version ${u.info.version} is ready to install.`
+          : u.stage === 'downloading'
+            ? `Downloading ${u.info.version}… ${u.pct}%`
+            : u.stage === 'ready'
+              ? 'Installed. Restarting…'
+              : u.stage === 'error'
+                ? `Couldn't check: ${u.message}`
+                : 'Pinch it on your PC, drop it on your phone';
+  return (
+    <Row title={`PinchDrop ${version}`} description={desc}>
+      {u.stage === 'available' ? (
+        <Button size="sm" variant="primary" onClick={() => void installUpdate()}>
+          Update and restart
+        </Button>
+      ) : (
+        <Button size="sm" disabled={u.stage === 'checking' || u.stage === 'downloading'} onClick={() => void checkForUpdate()}>
+          Check for updates
+        </Button>
+      )}
+    </Row>
   );
 }

@@ -66,8 +66,16 @@
       "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost https://tile.openstreetmap.org; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFEMTg0MzMyQTYyNzBCQ0YKUldUUEN5ZW1Na01ZclEyaVNrU3EwMnFPbXRWUzNvZW1wRnV4RDNheTk0UVhFbVdGSVhQVExZb3QK",
+      "endpoints": ["https://github.com/ahmadmdsajid129/pinchdrop/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis"],
     "category": "Utility",
     "copyright": "Copyright © 2026 PinchDrop Contributors",

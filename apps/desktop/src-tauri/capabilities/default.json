@@ -12,6 +12,9 @@
     "core:menu:default",
     "dialog:allow-open",
     "dialog:allow-ask",
-    "dialog:allow-message"
+    "dialog:allow-message",
+    "updater:default",
+    "process:allow-restart",
+    "opener:default"
   ]
 }

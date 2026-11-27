@@ -4,6 +4,7 @@ import { ProGate, ProPage, UpgradeDialog } from './Pro';
 import { StudioPage } from './Studio';
 import { HuddleJoinDialog, HuddlePage } from './screens/Huddle';
 import { huddleApi } from '../shared/huddle';
+import { installUpdate, startUpdateChecks, useUpdate } from '../shared/updates';
 import { PageTitle } from './ui';
 import { Upload } from 'lucide-react';
 import { api, inTauri, useReducedMotion, useTheme } from '../shared/api';
@@ -140,6 +141,7 @@ export function App() {
       </main>
       <UpgradeDialog />
       <HuddleJoinDialog />
+      <UpdateBanner />
       {dragOver && (
         <div className="fixed inset-0 z-50 bg-bg/90 flex items-center justify-center pointer-events-none animate-[pd-fade_120ms_ease-out]">
           <div className="rounded-3xl border-2 border-dashed border-primary px-16 py-12 flex flex-col items-center gap-3 bg-surface">
@@ -170,5 +172,39 @@ function GuidePage() {
       </section>
       <Guide />
     </>
+  );
+}
+
+let updateChecksStarted = false;
+
+/** A new version is out: a small card at the bottom of the window. */
+function UpdateBanner() {
+  const u = useUpdate();
+  const [hidden, setHidden] = useState<string | null>(null);
+  useEffect(() => {
+    if (!updateChecksStarted) {
+      updateChecksStarted = true;
+      startUpdateChecks();
+    }
+  }, []);
+  if (u.stage !== 'available' && u.stage !== 'downloading') return null;
+  if (hidden === u.info.version && u.stage === 'available') return null;
+  return (
+    <div role="status" className="fixed bottom-5 right-5 z-50 w-[320px] p-4 rounded-2xl bg-surface border border-line shadow-[0_12px_40px_rgba(0,0,0,0.18)] flex flex-col gap-2 animate-[pd-pop_160ms_ease-out]">
+      <div className="font-semibold text-[14px]">PinchDrop {u.info.version} is ready</div>
+      <div className="text-[12.5px] text-muted">
+        {u.stage === 'downloading' ? `Downloading… ${u.pct}%` : 'New features and fixes. It installs in a few seconds and PinchDrop restarts.'}
+      </div>
+      {u.stage === 'available' && (
+        <div className="flex gap-2 justify-end">
+          <button type="button" className="h-8 px-3 rounded-full text-[13px] font-semibold text-soft hover:text-text" onClick={() => setHidden(u.info.version)}>
+            Later
+          </button>
+          <button type="button" className="h-8 px-4 rounded-full bg-primary text-white text-[13px] font-semibold" onClick={() => void installUpdate()}>
+            Update now
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

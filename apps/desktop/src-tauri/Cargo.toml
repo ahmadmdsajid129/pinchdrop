@@ -35,6 +35,8 @@ base64 = "0.22"
 hex = "0.4"
 # v2 Pro: checks licence keys (Ed25519). Already used by rustls, nothing new downloaded.
 ring = "0.17"
+# v2 Pro: activate Lemon Squeezy licence keys online (already used by the updater).
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
 urlencoding = "2"
 mdns-sd = "0.13"
 if-addrs = "0.13"
@@ -43,6 +45,8 @@ qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 trash = "5"
 # v1.1: thumbnails for the floating card (already used by Tauri, nothing new downloaded)
 png = "0.18"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_UI_Shell", "Win32_Foundation"] }
@@ -77,6 +81,8 @@ webview2-com = "0.39"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+# Microsoft Store build: the Store installs updates, so the app doesn't update itself.
+store = []
 
 [profile.release]
 opt-level = "s"
