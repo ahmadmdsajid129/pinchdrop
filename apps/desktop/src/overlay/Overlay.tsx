@@ -23,6 +23,7 @@ import {
 } from '@pinchdrop/gesture-core';
 import { formatBytes, inTauri, onEvent } from '../shared/api';
 import { SendFx } from './SendFx';
+import { EdgeGlow } from './EdgeGlow';
 import type { SendFxEvent } from './SendFx';
 import { sound } from '../shared/sound';
 
@@ -730,6 +731,7 @@ export function Overlay() {
   return (
     <div className="fixed inset-0 pointer-events-none select-none overflow-hidden">
       <SendFx ev={fx} onDone={() => setFx(null)} />
+      <EdgeGlow />
 
       {/* Never shown: the camera feeds MediaPipe directly. */}
       <video ref={videoRef} className="hidden" muted playsInline />

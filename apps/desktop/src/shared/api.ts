@@ -158,6 +158,14 @@ export const api = {
     window.setTimeout(() => void emitTo('overlay', 'send-fx', detail), 140);
   },
 
+  /** Pro edge lighting: the screen's edges glow once (calls repeat it while ringing). */
+  edgeGlow: async (kind: 'call' | 'message' | 'sms') => {
+    if (!inTauri) return;
+    await invoke<void>('overlay_flash', { ms: 1700 });
+    const { emitTo } = await import('@tauri-apps/api/event');
+    window.setTimeout(() => void emitTo('overlay', 'edge-glow', { kind, at: Date.now() }), 100);
+  },
+
   /** The look of a send (thumbnail, folder…) for its lift-off animation. */
   transferPreview: (id: string): Promise<ItemPreviewData | null> =>
     inTauri ? invoke<ItemPreviewData | null>('transfer_preview', { id }).catch(() => null) : Promise.resolve(null),
