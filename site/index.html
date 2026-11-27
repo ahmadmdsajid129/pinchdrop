@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PinchDrop · Pinch it on your PC. Drop it on your phone.</title>
+<meta name="description" content="Move files, photos and links between your Windows PC and Android phone with a hand gesture. Calls, messages and notifications from your phone, on your PC. No cloud, no account." />
+<link rel="icon" href="icon.png" />
+<style>
+  :root { --ink: #0B1020; --soft: #4B5563; --muted: #6B7280; --line: #E5E7EB; --bg: #F5F5F7; --primary: #0071E3; --gold: #F59E0B; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif; color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  nav { display: flex; align-items: center; gap: 12px; padding: 18px 0; }
+  nav .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
+  nav .logo img { width: 32px; height: 32px; border-radius: 9px; }
+  nav .sp { flex: 1; }
+  nav a.link { text-decoration: none; color: var(--soft); font-weight: 600; font-size: 14px; padding: 8px 12px; border-radius: 999px; }
+  nav a.link:hover { background: #fff; color: var(--ink); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 22px; border-radius: 999px; font-weight: 650; font-size: 15px; text-decoration: none; border: 0; cursor: pointer; transition: transform .12s, filter .12s; }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.light { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+  header.hero { padding: 40px 0 64px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; background: rgba(0,113,227,.1); color: #0058B0; font-weight: 650; font-size: 13px; }
+  h1 { font-size: clamp(36px, 5vw, 58px); line-height: 1.04; letter-spacing: -0.025em; margin: 16px 0; }
+  h1 .grad { background: linear-gradient(90deg, #0071E3, #22D3EE); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 18px; line-height: 1.6; color: var(--soft); max-width: 520px; margin: 0 0 24px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .small { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  /* the hero animation (CSS only) */
+  .stage { position: relative; height: 320px; }
+  .glow { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0,113,227,.16), transparent 70%); border-radius: 40px; }
+  .laptop { position: absolute; left: 4%; bottom: 40px; }
+  .screen { width: 250px; height: 160px; border-radius: 14px; border: 8px solid #1F2937; background: #fff; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 18px; }
+  .screen i { border-radius: 10px; background: #EEF2F7; }
+  .screen i.sel { background: rgba(0,113,227,.15); outline: 3px solid var(--primary); }
+  .base { width: 290px; height: 12px; margin-left: -20px; border-radius: 0 0 12px 12px; background: #1F2937; }
+  .phone { position: absolute; right: 6%; bottom: 34px; width: 98px; height: 186px; border-radius: 24px; border: 7px solid #1F2937; background: #fff; display: grid; place-items: center; animation: glowp 3.2s ease-out infinite; }
+  .tick { width: 46px; height: 46px; border-radius: 50%; background: #30D158; color: #fff; display: grid; place-items: center; font-size: 26px; font-weight: 800; animation: land 3.2s ease-out infinite; }
+  .file { position: absolute; left: 30%; top: 96px; width: 58px; height: 70px; border-radius: 14px; background: linear-gradient(135deg, #0071E3, #22D3EE); box-shadow: 0 12px 28px rgba(0,113,227,.35); animation: fly 3.2s cubic-bezier(.45,0,.25,1) infinite; }
+  @keyframes fly { 0%,12% { transform: translate(0,0) rotate(0); opacity: 1; } 22% { transform: translate(0,-30px) rotate(-6deg); } 55% { transform: translate(140px,-110px) rotate(8deg) scale(.9); } 82% { transform: translate(270px,10px) scale(.62); opacity: 1; } 90%,100% { transform: translate(270px,20px) scale(.5); opacity: 0; } }
+  @keyframes land { 0%,80% { transform: scale(.4); opacity: 0; } 88% { transform: scale(1.15); opacity: 1; } 96% { transform: scale(1); opacity: 1; } 100% { opacity: 0; } }
+  @keyframes glowp { 0%,78% { box-shadow: 0 0 0 0 rgba(0,113,227,0); } 88% { box-shadow: 0 0 0 12px rgba(0,113,227,.18); } 100% { box-shadow: 0 0 0 0 rgba(0,113,227,0); } }
+  @media (prefers-reduced-motion: reduce) { .file, .tick, .phone { animation: none; } }
+  section { padding: 56px 0; }
+  h2 { font-size: 34px; letter-spacing: -0.02em; margin: 0 0 10px; }
+  .sub { color: var(--soft); margin: 0 0 28px; font-size: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: #fff; border-radius: 22px; padding: 24px; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.05); }
+  .card h3 { margin: 10px 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--soft); line-height: 1.55; font-size: 14.5px; }
+  .ico { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; background: rgba(0,113,227,.1); }
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch; }
+  .plan { position: relative; background: #fff; border-radius: 24px; padding: 28px; display: flex; flex-direction: column; gap: 10px; border: 2px solid transparent; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.05); }
+  .plan.best { border-color: var(--gold); }
+  .plan .tag { position: absolute; top: -12px; left: 24px; background: var(--gold); color: #fff; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 999px; }
+  .plan .name { font-weight: 700; font-size: 15px; color: var(--soft); }
+  .plan .price { font-size: 34px; font-weight: 750; letter-spacing: -0.02em; }
+  .plan .what { color: var(--soft); font-size: 14px; line-height: 1.5; flex: 1; }
+  .feat { columns: 2; column-gap: 32px; padding: 0; margin: 0; list-style: none; }
+  .feat li { break-inside: avoid; padding: 10px 0 10px 32px; position: relative; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .feat li::before { content: "✓"; position: absolute; left: 0; top: 9px; width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #F59E0B, #F97316); color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center; }
+  .free { margin-top: 18px; color: var(--soft); font-size: 14px; }
+  .steps { counter-reset: s; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .steps .card::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; }
+  footer { padding: 40px 0 60px; color: var(--muted); font-size: 13px; display: flex; gap: 16px; flex-wrap: wrap; }
+  @media (max-width: 860px) { header.hero, .grid3, .plans, .steps { grid-template-columns: 1fr; } .feat { columns: 1; } .stage { height: 280px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="logo" href="#"><img src="icon.png" alt="" />PinchDrop</a>
+    <span class="sp"></span>
+    <a class="link" href="#features">Features</a>
+    <a class="link" href="#pro">Pro</a>
+    <a class="link" href="#download">Download</a>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <span class="chip">✋ Move things with your hands</span>
+      <h1>Pinch it on your PC.<br /><span class="grad">Drop it on your phone.</span></h1>
+      <p class="lead">Files, photos and links fly between your Windows PC and Android phone with a gesture the webcam sees. And your phone's calls, messages and notifications show up right on your PC.</p>
+      <div class="row">
+        <a class="btn primary" href="#download">Download free</a>
+        <a class="btn light" href="#pro">See Pro</a>
+      </div>
+      <p class="small">Works on your own Wi-Fi · no cloud · no account</p>
+    </div>
+    <div class="stage" aria-hidden="true">
+      <div class="glow"></div>
+      <div class="laptop"><div class="screen"><i></i><i class="sel"></i><i></i><i></i><i></i><i></i></div><div class="base"></div></div>
+      <div class="phone"><div class="tick">✓</div></div>
+      <div class="file"></div>
+    </div>
+  </header>
+
+  <section id="features">
+    <h2>Three moves. That's all.</h2>
+    <p class="sub">Select something, pinch in front of the webcam, open your hand over your phone.</p>
+    <div class="steps">
+      <div class="card"><h3>Select</h3><p>Click a file, folder, photo or link on your PC, like you always do.</p></div>
+      <div class="card"><h3>Pinch</h3><p>Pinch your thumb and index in front of the webcam. It lifts with your hand.</p></div>
+      <div class="card"><h3>Open your hand</h3><p>Open your hand over the phone. It lands in the Gallery or Downloads.</p></div>
+    </div>
+    <div class="grid3" style="margin-top:16px">
+      <div class="card"><div class="ico">📞</div><h3>Your phone, on your PC</h3><p>Calls, messages, WhatsApp and Instagram notifications, battery, music, recent photos.</p></div>
+      <div class="card"><div class="ico">👥</div><h3>Huddle</h3><p>Your team's laptops in one click: drop code, project changes or your running app onto a teammate's face.</p></div>
+      <div class="card"><div class="ico">🔒</div><h3>Private by design</h3><p>Everything stays on your Wi-Fi. Camera frames are never saved or sent. No account.</p></div>
+    </div>
+  </section>
+
+  <section id="pro">
+    <h2>PinchDrop Pro</h2>
+    <p class="sub">Every Pro feature is free for 7 days in the app. Keep them with a licence.</p>
+    <div class="plans">
+      <div class="plan best">
+        <span class="tag">Best value</span>
+        <div class="name">Lifetime</div>
+        <div class="price" data-price="lifetime"></div>
+        <div class="what">Pay once, Pro forever. Every future theme and animation included.</div>
+        <a class="btn primary" data-buy="lifetime" href="#">Get Lifetime</a>
+      </div>
+      <div class="plan">
+        <div class="name">Yearly</div>
+        <div class="price" data-price="yearly"></div>
+        <div class="what">All of Pro, renewed each year. Cancel any time.</div>
+        <a class="btn light" data-buy="yearly" href="#">Get Yearly</a>
+      </div>
+      <div class="plan">
+        <div class="name">Monthly</div>
+        <div class="price" data-price="monthly"></div>
+        <div class="what">Try Pro month by month.</div>
+        <a class="btn light" data-buy="monthly" href="#">Get Monthly</a>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <ul class="feat">
+        <li>Pill Studio: Aurora, Liquid Glass, Neon Tokyo, Cassette, shapes, clock</li>
+        <li>8 send &amp; receive animations with sounds and vibration</li>
+        <li>More than one phone, and phone → phone drag</li>
+        <li>Reply to messages from your PC</li>
+        <li>Answer calls with a click or your palm</li>
+        <li>Phone files: browse and drop into folders</li>
+        <li>Now Playing, photo strip, codes copied for you</li>
+        <li>Find my phones map</li>
+        <li>Sends over 2 GB</li>
+        <li>Huddles with more than 4 laptops</li>
+      </ul>
+      <p class="free">Always free: sending files, photos, folders and links both ways, pinch and drop, one phone, notifications, reading messages, seeing who's calling.</p>
+    </div>
+    <p class="small">After you buy, your licence key arrives by email. Paste it in PinchDrop → Pro → Activate. One key works on 2 PCs (remove it from one to move it).</p>
+  </section>
+
+  <section id="download">
+    <h2>Download</h2>
+    <p class="sub">Install on your PC and your phone, then scan the QR code once to pair them.</p>
+    <div class="row">
+      <a class="btn primary" data-link="windows" href="#">⊞ Windows 10 / 11</a>
+      <a class="btn light" data-link="android" href="#">Android APK</a>
+      <a class="btn light" data-link="play" href="#">Google Play</a>
+    </div>
+    <p class="small">Windows may say it doesn't know the publisher the first time: click "More info" → "Run anyway". The Microsoft Store version doesn't show this.</p>
+  </section>
+
+  <footer>
+    <span>© PinchDrop</span>
+    <a href="privacy.html">Privacy</a>
+    <a data-link="support" href="#">Support</a>
+    <a href="https://github.com/ahmadmdsajid129/pinchdrop">Source</a>
+  </footer>
+</div>
+<script src="config.js"></script>
+<script>
+  const c = window.PINCHDROP || {};
+  document.querySelectorAll('[data-price]').forEach((el) => (el.textContent = (c.prices || {})[el.dataset.price] || ''));
+  document.querySelectorAll('[data-buy]').forEach((el) => {
+    const url = (c.checkout || {})[el.dataset.buy];
+    if (url) el.href = url;
+    else { el.setAttribute('aria-disabled', 'true'); el.textContent = 'Available soon'; }
+  });
+  document.querySelectorAll('[data-link]').forEach((el) => {
+    const url = c[el.dataset.link];
+    if (url) el.href = url;
+    else el.style.display = 'none';
+  });
+</script>
+</body>
+</html>
