@@ -7,7 +7,8 @@
 <link rel="icon" href="icon.png" />
 <meta name="robots" content="noindex" />
 <meta name="referrer" content="no-referrer" />
-<link rel="stylesheet" href="site.css" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+<link rel="stylesheet" href="site.css?v=3" />
 <style>
   body { min-height: 100vh; display: grid; place-items: center; padding: 40px 18px; background: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(255, 197, 61, 0.16), transparent 70%), var(--night); }
   .ty { width: min(620px, 100%); text-align: center; }
@@ -48,26 +49,6 @@
   </ol>
   <p class="fine">We also emailed you the key. Keep that email. · <a href="./">Back to PinchDrop</a></p>
 </main>
-<script>
-  // Dodo Payments sends buyers here with ?license_key=… (several keys are comma-separated).
-  // Only key-shaped text is shown, and as text, never as HTML.
-  const keys = (new URLSearchParams(location.search).get('license_key') || '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter((k) => /^[A-Za-z0-9._=-]{6,200}$/.test(k));
-  if (keys.length) {
-    document.getElementById('has-key').hidden = false;
-    document.getElementById('key').textContent = keys.join('\n');
-    document.getElementById('open').href = 'pinchdrop://activate?key=' + encodeURIComponent(keys[0]);
-    document.getElementById('copy').onclick = async () => {
-      await navigator.clipboard.writeText(keys[0]);
-      document.getElementById('copy').textContent = 'Copied ✓';
-    };
-    // Keep the key out of the address bar and browser history once it's on screen.
-    history.replaceState(null, '', location.pathname);
-  } else {
-    document.getElementById('no-key').hidden = false;
-  }
-</script>
+<script src="thanks.js?v=3"></script>
 </body>
 </html>

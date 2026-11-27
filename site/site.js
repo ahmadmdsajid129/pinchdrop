@@ -253,7 +253,7 @@
       ctx.globalAlpha = s.life * 0.9;
       ctx.fillStyle = s.big ? '#FFF3C4' : '#FFC53D';
       ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r * s.life, 0, Math.PI * 2);
+      ctx.arc(s.x, s.y, Math.max(0.1, s.r * s.life), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -261,6 +261,7 @@
     for (let i = rings.length - 1; i >= 0; i--) {
       const r = rings[i];
       const p = (now - r.t0) / 900;
+      if (p < 0) continue; // the second ring starts a moment later
       if (p >= 1) {
         rings.splice(i, 1);
         continue;
