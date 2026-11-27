@@ -112,8 +112,11 @@ pub fn show(title: &str, body: &str) {
             let doc = XmlDocument::new()?;
             doc.LoadXml(&HSTRING::from(xml))?;
             let toast = ToastNotification::CreateToastNotification(&doc)?;
-            ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(APP_ID))?
-                .Show(&toast)
+            // Installed with the NSIS installer: our app id. Microsoft Store version: the
+            // package's own identity (no id needed).
+            ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(APP_ID))
+                .and_then(|n| n.Show(&toast))
+                .or_else(|_| ToastNotificationManager::CreateToastNotifier()?.Show(&toast))
         })();
         if let Err(e) = r {
             eprintln!("PinchDrop: toast failed: {e}");

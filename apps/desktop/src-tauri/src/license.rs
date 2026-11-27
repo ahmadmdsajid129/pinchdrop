@@ -7,6 +7,11 @@
 //! payload: {"v":1,"id":"…","name":"…","plan":"lifetime"|"year"|"month","issued":unix,"expires":unix|null}
 //! ```
 //!
+//! Keys bought on the PinchDrop website come from Lemon Squeezy (emailed to the buyer). Pasting
+//! one here asks the PinchDrop licence service (a small Cloudflare Worker, `cloud/licence-worker`)
+//! to check it with Lemon Squeezy and send back a signed PD1 key, which then works offline.
+//! Yearly / monthly keys are refreshed in the background while the subscription runs.
+//!
 //! The app holds only the public key, so it can check a key but never make one. Keys are made
 //! with `tools/issue-license.mjs` (`pnpm license`) and the private key, which lives outside the repository.
 //! The key and the trial start date are kept in `license.json` in the settings folder.
@@ -21,6 +26,11 @@ use serde::{Deserialize, Serialize};
 /// Ed25519 public key that checks licence keys (the matching private key is not in the repo).
 const PUBLIC_KEY_HEX: &str = "4696cacafcf53605bcd5ebe84fa07d9860ce1f4d059d6fd832f57a62c87873ec";
 
+/// The licence service (cloud/licence-worker). Set when the Worker is deployed (docs/launch.md).
+pub const REDEEM_URL: &str = "https://pinchdrop-licence.ahmadmdsajid129.workers.dev/redeem";
+/// Lemon Squeezy's licence API (public; frees this PC's seat when the key is removed).
+const LS_DEACTIVATE: &str = "https://api.lemonsqueezy.com/v1/licenses/deactivate";
+
 /// New installs (and existing ones, the first time they run v2) get Pro free for this long.
 pub const TRIAL_DAYS: u64 = 7;
 /// Free sends up to this size; bigger needs Pro.
@@ -34,6 +44,9 @@ const DAY: u64 = 86_400;
 struct LicenseFile {
     key: Option<String>,
     trial_started: u64,
+    /// A Lemon Squeezy key this PC activated, and its activation (to refresh / free the seat).
+    ls_key: Option<String>,
+    ls_instance: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -191,6 +204,80 @@ pub fn need(feature: &str) -> Result<(), String> {
     }
 }
 
+/// A key typed by the user: a PD1 key works straight away; anything else is treated as a key
+/// bought on the website and checked online.
+pub async fn activate_any(key: &str) -> Result<ProStatus, String> {
+    let k: String = key.split_whitespace().collect();
+    if k.starts_with("PD1-") {
+        return activate(&k);
+    }
+    if k.len() < 16 {
+        return Err("That isn't a PinchDrop licence key. Check that it was copied in full.".into());
+    }
+    let (pd1, instance) = redeem(&k, None).await?;
+    let st = activate(&pd1)?;
+    if let Ok(mut g) = STATE.lock() {
+        if let Some(s) = g.as_mut() {
+            s.file.ls_key = Some(k);
+            s.file.ls_instance = instance;
+            save(&s.path, &s.file);
+        }
+    }
+    Ok(st)
+}
+
+/// Asks the licence service for a signed key. Returns (PD1 key, activation id).
+async fn redeem(ls_key: &str, instance: Option<&str>) -> Result<(String, Option<String>), String> {
+    let machine = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "PC".into());
+    let body = serde_json::json!({ "licenseKey": ls_key, "instanceId": instance, "instanceName": format!("PinchDrop on {machine}") });
+    let resp = reqwest::Client::new()
+        .post(REDEEM_URL)
+        .timeout(std::time::Duration::from_secs(20))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|_| {
+            "Couldn't reach the PinchDrop licence service. Check your internet and try again."
+                .to_string()
+        })?;
+    let v: serde_json::Value = resp.json().await.map_err(|_| {
+        "The licence service sent something unexpected. Try again in a minute.".to_string()
+    })?;
+    if let Some(e) = v["error"].as_str() {
+        return Err(e.to_string());
+    }
+    let key = v["key"]
+        .as_str()
+        .ok_or("The licence service didn't send a key.")?
+        .to_string();
+    Ok((key, v["instanceId"].as_str().map(String::from)))
+}
+
+/// A yearly / monthly key: get a fresh PD1 key when it's within 10 days of running out (the
+/// subscription renews on Lemon Squeezy's side). Quietly does nothing offline.
+pub async fn refresh() {
+    let (ls, inst, expires) = {
+        let Ok(g) = STATE.lock() else { return };
+        let Some(s) = g.as_ref() else { return };
+        let exp = s
+            .file
+            .key
+            .as_deref()
+            .and_then(|k| verify(k).ok())
+            .and_then(|p| p.expires);
+        (s.file.ls_key.clone(), s.file.ls_instance.clone(), exp)
+    };
+    let (Some(ls), Some(exp)) = (ls, expires) else {
+        return;
+    };
+    if exp > now() + 10 * DAY {
+        return;
+    }
+    if let Ok((pd1, _)) = redeem(&ls, inst.as_deref()).await {
+        let _ = activate(&pd1);
+    }
+}
+
 /// Saves a key after checking it.
 pub fn activate(key: &str) -> Result<ProStatus, String> {
     let p = verify(key)?;
@@ -204,14 +291,30 @@ pub fn activate(key: &str) -> Result<ProStatus, String> {
     Ok(status_of(&st.file, now()))
 }
 
-/// Removes the key from this PC (e.g. to move it to another one).
-pub fn remove() -> ProStatus {
-    if let Ok(mut g) = STATE.lock() {
-        if let Some(st) = g.as_mut() {
+/// Removes the key from this PC (e.g. to move it to another one). A website key's seat is freed
+/// so it can be used on the new PC.
+pub async fn remove() -> ProStatus {
+    let seat = STATE.lock().ok().and_then(|mut g| {
+        g.as_mut().map(|st| {
             st.file.key = None;
+            let seat = (st.file.ls_key.take(), st.file.ls_instance.take());
             save(&st.path, &st.file);
-            return status_of(&st.file, now());
-        }
+            seat
+        })
+    });
+    if let Some((Some(k), Some(i))) = seat {
+        let _ = reqwest::Client::new()
+            .post(LS_DEACTIVATE)
+            .timeout(std::time::Duration::from_secs(15))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(format!(
+                "license_key={}&instance_id={}",
+                urlencoding::encode(&k),
+                urlencoding::encode(&i)
+            ))
+            .send()
+            .await;
     }
     status()
 }
@@ -279,6 +382,7 @@ mod tests {
         let f = LicenseFile {
             key: Some(REAL_EXPIRED_KEY.into()),
             trial_started: 0,
+            ..Default::default()
         };
         let s = status_of(&f, now());
         assert!(!s.active);
@@ -291,6 +395,7 @@ mod tests {
         let f = LicenseFile {
             key: None,
             trial_started: day0,
+            ..Default::default()
         };
         let s = status_of(&f, day0 + 60);
         assert_eq!(

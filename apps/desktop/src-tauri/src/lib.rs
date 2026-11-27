@@ -1138,6 +1138,8 @@ fn quit_app(app: AppHandle) {
 #[serde(rename_all = "camelCase")]
 struct AppInfo {
     version: String,
+    /// The Microsoft Store version (updates come from the Store).
+    store: bool,
     config_dir: String,
     /// SHA-256 of this PC's link certificate; phones pin it.
     fingerprint: Option<String>,
@@ -1254,15 +1256,15 @@ fn get_pro() -> license::ProStatus {
 }
 
 #[tauri::command]
-fn activate_license(app: AppHandle, key: String) -> Result<license::ProStatus, String> {
-    let s = license::activate(&key)?;
+async fn activate_license(app: AppHandle, key: String) -> Result<license::ProStatus, String> {
+    let s = license::activate_any(&key).await?;
     let _ = app.emit("pro-changed", &s);
     Ok(s)
 }
 
 #[tauri::command]
-fn remove_license(app: AppHandle) -> license::ProStatus {
-    let s = license::remove();
+async fn remove_license(app: AppHandle) -> license::ProStatus {
+    let s = license::remove().await;
     let _ = app.emit("pro-changed", &s);
     s
 }
@@ -1271,6 +1273,7 @@ fn remove_license(app: AppHandle) -> license::ProStatus {
 fn get_app_info(app: AppHandle, state: State<AppState>) -> AppInfo {
     AppInfo {
         version: app.package_info().version.to_string(),
+        store: cfg!(feature = "store"),
         config_dir: state.config_dir.to_string_lossy().into_owned(),
         fingerprint: link_of(&app).map(|l| l.identity.fingerprint.clone()),
     }
@@ -1413,6 +1416,7 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             Some(vec!["--autostart"]),
         ))
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -1424,6 +1428,20 @@ pub fn run() {
             let loaded = settings::load(&settings_path);
             let first_run = !loaded.onboarded;
             license::init(&config_dir);
+            // HTTPS for the licence service and updates uses the same crypto as the link.
+            let _ = rustls::crypto::ring::default_provider().install_default();
+            // Subscriptions: refresh the key shortly after start and twice a day.
+            tauri::async_runtime::spawn(async {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                    license::refresh().await;
+                    tokio::time::sleep(std::time::Duration::from_secs(12 * 3600)).await;
+                }
+            });
+            // Updates from GitHub Releases (the Store version is updated by the Store).
+            #[cfg(not(feature = "store"))]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
             huddle::init(app.handle());
             app.manage(AppState {
                 settings: Mutex::new(loaded),

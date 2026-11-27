@@ -17,7 +17,7 @@ export interface ProStatus {
 }
 
 /** Where people buy a key. Empty until the payment page exists; then the Buy button appears. */
-export const BUY_URL = '';
+export const BUY_URL = 'https://ahmadmdsajid129.github.io/pinchdrop/#pro';
 
 /** The trial length and free send limit live in Rust (license.rs); these are the words for them. */
 export const TRIAL_DAYS_TEXT = '7 days';
