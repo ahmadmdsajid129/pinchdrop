@@ -13,7 +13,9 @@
   h1 { margin: 6px 0; font-size: 28px; }
   p { color: #4B5563; line-height: 1.6; }
   .key { margin: 18px 0 10px; padding: 14px; border-radius: 14px; background: #F3F4F6; font-family: Consolas, monospace; font-size: 15px; word-break: break-all; }
-  button { height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: #0071E3; color: #fff; font-weight: 650; font-size: 15px; cursor: pointer; }
+  button, .open { display: inline-flex; align-items: center; height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: #0071E3; color: #fff; font-weight: 650; font-size: 15px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  button.alt { background: #E5E7EB; color: #0B1020; }
+  .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   ol { text-align: left; color: #374151; line-height: 1.7; }
   .muted { font-size: 13px; color: #6B7280; }
 </style>
@@ -25,7 +27,11 @@
   <p>Thank you for supporting PinchDrop.</p>
   <div id="has-key" hidden>
     <div class="key" id="key"></div>
-    <button id="copy" type="button">Copy key</button>
+    <div class="row">
+      <a class="open" id="open" href="#">Open in PinchDrop</a>
+      <button class="alt" id="copy" type="button">Copy key</button>
+    </div>
+    <p class="muted">“Open in PinchDrop” fills the key in on your PC; press <b>Activate</b> there. If nothing opens, install PinchDrop first or copy the key.</p>
   </div>
   <p id="no-key" hidden>Your licence key is on its way to your email. It usually arrives within a minute (check spam too).</p>
   <ol>
@@ -41,6 +47,7 @@
   if (keys.length) {
     document.getElementById('has-key').hidden = false;
     document.getElementById('key').textContent = keys.join('\n');
+    document.getElementById('open').href = 'pinchdrop://activate?key=' + encodeURIComponent(keys[0]);
     document.getElementById('copy').onclick = async () => {
       await navigator.clipboard.writeText(keys[0]);
       document.getElementById('copy').textContent = 'Copied ✓';
