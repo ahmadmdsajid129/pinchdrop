@@ -70,9 +70,11 @@ function KeyBox({ s }: { s: ProStatus }) {
         setMsg({ ok: true, text: 'Your key from the website is filled in. Press Activate to turn on Pro.' });
         setTimeout(() => document.getElementById('pd-key-go')?.focus(), 80);
       });
-    take();
     let off: (() => void) | undefined;
-    void onEvent('pro-key', take).then((u) => (off = u));
+    void onEvent('pro-key', take).then((u) => {
+      off = u;
+      take();
+    });
     return () => off?.();
   }, []);
   async function activate() {

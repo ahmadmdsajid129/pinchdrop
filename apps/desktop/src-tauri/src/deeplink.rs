@@ -39,6 +39,12 @@ pub fn set_pending(key: String) {
     }
 }
 
+/// A link's key is waiting (the window opened from a link before its page had loaded).
+#[tauri::command]
+pub fn link_key_waiting() -> bool {
+    PENDING.lock().map(|g| g.is_some()).unwrap_or(false)
+}
+
 /// The key from the last link, once.
 #[tauri::command]
 pub fn take_pending_key() -> Option<String> {

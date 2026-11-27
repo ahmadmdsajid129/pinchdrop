@@ -1559,6 +1559,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             deeplink::take_pending_key,
+            deeplink::link_key_waiting,
             get_settings,
             update_settings,
             get_pro,

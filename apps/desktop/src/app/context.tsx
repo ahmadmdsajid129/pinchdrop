@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import { api, onEvent, usePhone, useSettings } from '../shared/api';
 import type { DeepPartial, PathInfo, PhoneStatus, Settings } from '../shared/types';
+import { proApi } from '../shared/pro';
 
 export type Route = 'onboarding' | 'home' | 'send' | 'transfers' | 'messages' | 'contacts' | 'notifications' | 'map' | 'files' | 'devices' | 'pair' | 'settings' | 'profile' | 'guide' | 'pro' | 'studio' | 'huddle';
 const ROUTES: Route[] = ['onboarding', 'home', 'send', 'transfers', 'messages', 'contacts', 'notifications', 'map', 'files', 'devices', 'pair', 'settings', 'profile', 'guide', 'pro', 'studio', 'huddle'];
@@ -56,7 +57,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Rust (tray, pill, second launch) asks the window to show a screen.
   useEffect(() => {
     let off: (() => void) | undefined;
-    void onEvent<string>('navigate', (r) => ROUTES.includes(r as Route) && go(r as Route)).then((u) => (off = u));
+    void onEvent<string>('navigate', (r) => ROUTES.includes(r as Route) && go(r as Route)).then((u) => {
+      off = u;
+      // Started by the website's "Open in PinchDrop" link: its navigate can come before this
+      // listener, so look for a waiting key once listening, and again while the app starts up.
+      for (const ms of [0, 1500, 4000]) {
+        setTimeout(() => void proApi.linkKeyWaiting().then((w) => w && go('pro')), ms);
+      }
+    });
     const onHash = () => setRoute(routeFromHash());
     window.addEventListener('hashchange', onHash);
     return () => {
