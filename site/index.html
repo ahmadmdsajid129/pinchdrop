@@ -13,7 +13,7 @@
 <meta property="og:image" content="icon.png" />
 <link rel="icon" href="icon.png" />
 <link rel="preload" href="fonts/inter-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="stylesheet" href="site.css?v=3" />
+<link rel="stylesheet" href="site.css?v=4" />
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -26,6 +26,7 @@
   <div class="nav-links">
     <a href="#how">How it works</a>
     <a href="#features">Features</a>
+    <a href="#students">Students</a>
     <a href="#pro">Pro</a>
     <a href="#faq">FAQ</a>
   </div>
@@ -134,7 +135,7 @@
         <span class="face" style="--c:#30D158;--a:180deg">S</span><span class="face" style="--c:#BF5AF2;--a:270deg">K</span>
         <span class="hop">app.zip</span>
       </div>
-      <h3>Huddle</h3>
+      <h3>Huddle <span class="pro-tag">PRO</span></h3>
       <p>Your team's laptops in one click. Drag code, project changes or a running app onto a teammate's face. No internet needed.</p>
     </article>
 
@@ -165,6 +166,62 @@
       <p>Everything goes straight between your own devices, encrypted. Camera frames are checked in memory and thrown away. No account, ever.</p>
     </article>
   </div>
+</section>
+
+<!-- ============================================================ STUDENTS (Huddle) -->
+<section class="students" id="students">
+  <div class="st-head">
+    <div class="reveal">
+      <p class="kicker">Huddle · for college students</p>
+      <h2>Hackathon tonight?<br /><span class="accent">Your whole team, one click.</span></h2>
+      <p class="sub">Every laptop at the table shows up as a face. Drag your code, your project's changes or your running app onto a teammate, or onto "Everyone". It works on college Wi-Fi, on one laptop's hotspot, and with no internet at all.</p>
+      <div class="cta" style="margin-top:28px">
+        <a class="btn btn-amber" href="#download">Try it free for 7 days</a>
+        <a class="btn btn-ghost" href="#pro">See Pro</a>
+      </div>
+    </div>
+    <div class="table-demo reveal" aria-hidden="true">
+      <div class="tbl"></div>
+      <span class="seat" style="--x:50%;--y:4%;--c:#0A84FF">A<i>Aarav</i></span>
+      <span class="seat" style="--x:94%;--y:50%;--c:#FF9F0A">R<i>Riya</i></span>
+      <span class="seat" style="--x:50%;--y:96%;--c:#30D158">S<i>Sam</i></span>
+      <span class="seat" style="--x:6%;--y:50%;--c:#BF5AF2">K<i>Kabir</i></span>
+      <span class="fly f1">api.py</span>
+      <span class="fly f2">3 changes</span>
+      <span class="fly f3">localhost:3000</span>
+      <span class="hub">HUDDLE</span>
+    </div>
+  </div>
+
+  <div class="uses">
+    <article class="use reveal"><span class="u-ico">⚡</span><h3>Hackathons</h3><p>Send the files you changed, not a zip of everything. No push, pull or merge mess at 3 am: teammates see the changes and pick theirs or yours.</p></article>
+    <article class="use reveal"><span class="u-ico">🖥️</span><h3>College labs</h3><p>No pen drive, no emailing yourself, no logging into WhatsApp Web on a lab PC. Drop your work onto your own laptop and walk out.</p></article>
+    <article class="use reveal"><span class="u-ico">📚</span><h3>Group projects</h3><p>The report, the slides, the dataset: drop it on "Everyone" once and the whole group has it, full quality, in seconds.</p></article>
+    <article class="use reveal"><span class="u-ico">🎤</span><h3>Demo day</h3><p>Share your running app with the team or the judges' laptop: they open it on their screen while it runs on yours.</p></article>
+  </div>
+
+  <div class="versus reveal">
+    <div class="vs-col old">
+      <p class="vs-tag">The usual way</p>
+      <ol>
+        <li>WhatsApp the file to yourself</li>
+        <li>Download it on the other laptop</li>
+        <li>Find it, rename it, unzip it</li>
+        <li>Forward it to the group, compressed</li>
+      </ol>
+      <p class="vs-time">≈ 2 minutes, every time</p>
+    </div>
+    <div class="vs-mid">vs</div>
+    <div class="vs-col new">
+      <p class="vs-tag">With Huddle</p>
+      <ol>
+        <li>Drag it onto a face</li>
+      </ol>
+      <p class="vs-time">≈ 2 seconds</p>
+      <p class="vs-note">Full quality · encrypted · nothing uploaded</p>
+    </div>
+  </div>
+  <p class="fine center">Huddle is part of PinchDrop Pro. Every laptop in the huddle needs Pro or the free 7-day trial, so a hackathon weekend fits inside the trial.</p>
 </section>
 
 <!-- ============================================================ NUMBERS -->
@@ -226,7 +283,8 @@
       <li>Reply to messages and answer calls from your PC</li>
       <li>Phone files, Now Playing, photo strip, codes copied for you</li>
       <li>Find my phones map</li>
-      <li>Sends over 2 GB, and huddles with more than 4 laptops</li>
+      <li>Huddle: your team's laptops in one click, for hackathons, labs and group projects</li>
+      <li>Sends over 2 GB</li>
     </ul>
     <p class="free">Always free: sending files, photos, folders and links both ways, pinch and drop, one phone, notifications, reading messages, seeing who's calling.</p>
   </div>
@@ -241,6 +299,7 @@
     <details class="reveal"><summary>Is the camera recording me?</summary><p>No. The webcam turns on only while you're grabbing something (when you click the pill or press Ctrl + Shift + Space). Each frame is checked in memory for your hand and thrown away. Nothing is saved or sent.</p></details>
     <details class="reveal"><summary>Which devices does it work with?</summary><p>Windows 10 and 11 PCs with any webcam, and Android phones (Android 8 and newer). Your PC and phone need to be on the same Wi-Fi, or one can share a hotspot.</p></details>
     <details class="reveal"><summary>Can I use it without gestures?</summary><p>Yes. Everything also works with clicks: drag files onto the PinchDrop window, use Send to → PinchDrop in File Explorer, or press Send on the pill.</p></details>
+    <details class="reveal"><summary>Does everyone in a huddle need Pro?</summary><p>Yes: Huddle is a Pro feature, so each laptop needs Pro or the free 7-day trial. New installs get the trial automatically, which covers a hackathon weekend or a project sprint.</p></details>
     <details class="reveal"><summary>How does the licence work?</summary><p>One key works on 2 PCs, with all the phones you connect to them. Moving to a new PC? Remove the key in PinchDrop → Pro and enter it on the new one.</p></details>
     <details class="reveal"><summary>What if I don't like Pro?</summary><p>Ask for a refund within 14 days and you get your money back, no questions asked. Your files and settings stay as they are.</p></details>
   </div>
@@ -273,7 +332,7 @@
   <a href="https://github.com/ahmadmdsajid129/pinchdrop">Source</a>
 </footer>
 
-<script src="config.js?v=3"></script>
-<script src="site.js?v=3"></script>
+<script src="config.js?v=4"></script>
+<script src="site.js?v=4"></script>
 </body>
 </html>
