@@ -159,6 +159,8 @@ The Play version leaves out SMS, call history, all-files access and background l
 ## Checklist
 
 - [ ] 0. Backed up `C:\Users\HP\.pinchdrop\` (pen drive + private cloud) and GitHub recovery codes
+- [ ] 0. Turned on **2-factor sign-in** for GitHub, Dodo, Cloudflare, Partner Center and Play Console
+- [ ] 0. Decided about making the code private (see `docs/security-report.md` → "One decision for you")
 - [ ] 2. Dodo account verified
 - [ ] 2. Test products made → sent me links + IDs
 - [ ] 3. Cloudflare: signed up, `wrangler login`, `secret put PD_SIGNING_KEY`, `deploy`
