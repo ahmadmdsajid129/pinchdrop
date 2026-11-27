@@ -1,15 +1,17 @@
-# PinchDrop licence service: turns a Lemon Squeezy licence key into a signed PinchDrop key.
+# PinchDrop licence service: turns a Dodo Payments licence key into a signed PinchDrop key.
 # Free Cloudflare Workers plan. Deploy: see docs/launch.md.
 name = "pinchdrop-licence"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
 [vars]
-# From Lemon Squeezy (Settings → Stores, and each product's variant ids). See docs/launch.md.
-LS_STORE_ID = ""
-LS_VARIANT_LIFETIME = ""
-LS_VARIANT_YEARLY = ""
-LS_VARIANT_MONTHLY = ""
+# Dodo Payments product ids (Dodo dashboard → Products → each product's id, "pdt_…").
+DODO_PRODUCT_LIFETIME = ""
+DODO_PRODUCT_YEARLY = ""
+DODO_PRODUCT_MONTHLY = ""
+# Live payments. For a test run use "https://test.dodopayments.com".
+DODO_BASE = "https://live.dodopayments.com"
 
-# Secret (never here): PD_SIGNING_KEY = the base64 body of %USERPROFILE%\.pinchdrop\license-signing-key.pem
+# Secret (never here): PD_SIGNING_KEY = the text between the BEGIN/END lines of
+# %USERPROFILE%\.pinchdrop\license-signing-key.pem
 #   npx wrangler secret put PD_SIGNING_KEY

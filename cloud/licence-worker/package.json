@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
-    "test": "node test.mjs"
+    "test": "node test.mjs && node test-flows.mjs"
   }
 }
