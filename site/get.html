@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<title>Get PinchDrop</title>
+<meta name="description" content="Download PinchDrop for your Windows PC and your Android phone." />
+<link rel="icon" href="icon.png" />
+<link rel="stylesheet" href="site.css?v=5" />
+<style>
+  body { min-height: 100vh; display: grid; place-items: center; padding: 40px 18px; background: radial-gradient(ellipse 60% 45% at 50% 15%, rgba(10, 102, 240, 0.25), transparent 70%), var(--night); }
+  .get { width: min(560px, 100%); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .get h1 { margin: 8px 0 0; font-size: clamp(34px, 8vw, 54px); letter-spacing: -0.045em; line-height: 1.02; }
+  .get > p { margin: 0; color: var(--mist); font-size: 17px; }
+  .choices { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  .choice { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 22px; background: var(--night2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); text-align: left; text-decoration: none; transition: transform 250ms var(--ease), box-shadow 250ms; }
+  .choice:hover { transform: translateY(-3px); box-shadow: inset 0 0 0 1px rgba(255, 197, 61, 0.4); }
+  .choice.main { background: var(--amber); color: var(--ink); box-shadow: 0 16px 40px -12px rgba(255, 197, 61, 0.55); }
+  .choice .ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; background: rgba(255, 255, 255, 0.08); flex-shrink: 0; }
+  .choice.main .ic { background: rgba(21, 19, 15, 0.1); }
+  .choice b { display: block; font-size: 17px; }
+  .choice span span { display: block; font-size: 13px; opacity: 0.7; }
+  .choice .go { margin-left: auto; font-size: 20px; }
+  .steps { margin-top: 18px; color: var(--mist); font-size: 14.5px; line-height: 1.8; text-align: left; }
+  .steps b { color: var(--snow); }
+</style>
+</head>
+<body>
+<main class="get">
+  <svg viewBox="48 48 928 928" width="72" height="72" aria-hidden="true"><rect x="48" y="48" width="928" height="928" rx="236" fill="#0A66F0"/><g fill="none" stroke="#fff" stroke-width="88" stroke-linecap="round"><path d="M300 196 C 330 300 390 372 466 404"/><path d="M724 196 C 694 300 634 372 558 404"/></g><path d="M512 486 C 512 486 382 630 382 724 A 130 130 0 0 0 642 724 C 642 630 512 486 512 486 Z" fill="#FFC53D"/></svg>
+  <h1 id="title">Get PinchDrop</h1>
+  <p id="lede">It works in pairs: one app on your PC, one on your phone.</p>
+
+  <div class="choices">
+    <a class="choice" id="android" data-link="android" href="#">
+      <span class="ic">🤖</span><span><b>Android phone</b><span>The PinchDrop app (APK), Android 8 and newer</span></span><span class="go">↓</span>
+    </a>
+    <a class="choice" id="play" data-link="play" href="#">
+      <span class="ic">▶</span><span><b>Google Play</b><span>The Play Store version</span></span><span class="go">→</span>
+    </a>
+    <a class="choice" id="windows" data-link="windows" href="#">
+      <span class="ic">⊞</span><span><b>Windows PC</b><span>Windows 10 and 11</span></span><span class="go">↓</span>
+    </a>
+  </div>
+
+  <ol class="steps">
+    <li>Install PinchDrop on <b>both</b> your PC and your phone.</li>
+    <li>On the PC: <b>Devices → Pair a new phone</b>. On the phone: <b>Pair with PC</b>, then scan.</li>
+    <li>Same Wi-Fi, no account. Pinch on the PC, drop on the phone.</li>
+  </ol>
+  <p class="fine"><a href="./">More about PinchDrop</a></p>
+</main>
+<script src="config.js?v=5"></script>
+<script src="get.js?v=5"></script>
+</body>
+</html>
