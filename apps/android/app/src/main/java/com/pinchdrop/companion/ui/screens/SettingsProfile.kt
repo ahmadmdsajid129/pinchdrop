@@ -1,6 +1,7 @@
 package com.pinchdrop.companion.ui.screens
 
 import android.content.pm.PackageManager
+import com.pinchdrop.companion.ui.GetPcAppCard
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -122,6 +123,7 @@ fun SettingsScreen(
             )
             NavRow(if (pc.paired) "Pair another PC" else "Pair with PC", onClick = onPair, last = true)
         }
+        GetPcAppCard(Modifier.padding(top = 10.dp), title = if (pc.paired) "PinchDrop on another PC" else "Get PinchDrop for your PC")
 
         SectionLabel("Catching")
         PdCard {

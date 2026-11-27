@@ -1,6 +1,7 @@
 package com.pinchdrop.companion.ui.screens
 
 import android.Manifest
+import com.pinchdrop.companion.ui.GetPcAppCard
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -207,6 +208,8 @@ private fun ScanStep(
                 }
                 Text("Picking from the list works without the camera — you'll compare a 6-digit code instead.", color = c.muted, fontSize = 12.sp)
             }
+
+            GetPcAppCard(title = "No PinchDrop on your PC yet?")
 
             PdCard {
                 ToggleRow(

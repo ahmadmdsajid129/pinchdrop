@@ -1,6 +1,7 @@
 package com.pinchdrop.companion.ui.screens
 
 import com.pinchdrop.companion.transfer.History
+import com.pinchdrop.companion.ui.GetPcAppCard
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.items
@@ -145,6 +146,7 @@ fun HomeScreen(
                     Text("No PC paired yet", color = c.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     Text("Install PinchDrop for Windows, open Devices → Pair a new phone, then scan its QR code here.", color = c.muted, fontSize = 14.sp, lineHeight = 20.sp)
                     PrimaryButton("Pair with PC", onClick = onPair, modifier = Modifier.fillMaxWidth())
+                    GetPcAppCard(title = "Not on your PC yet?")
                 }
             }
         }
