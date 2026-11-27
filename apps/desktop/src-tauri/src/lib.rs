@@ -11,6 +11,7 @@ mod explorer;
 mod fs_info;
 mod gesture_actions;
 mod grab;
+mod guard;
 mod hotspot;
 mod huddle;
 mod license;
@@ -1421,6 +1422,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Before any window opens: no debugger on the app's pages in release builds.
+    guard::block_webview_debugging();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             // v2: Explorer → Send to → PinchDrop · <phone> starts a second copy with the files.
@@ -1457,6 +1460,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async {
                 loop {
                     tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                    license::touch();
                     license::refresh().await;
                     tokio::time::sleep(std::time::Duration::from_secs(12 * 3600)).await;
                 }

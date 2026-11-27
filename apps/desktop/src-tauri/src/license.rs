@@ -23,6 +23,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
+use crate::guard;
+
 /// Ed25519 public key that checks licence keys (the matching private key is not in the repo).
 const PUBLIC_KEY_HEX: &str = "4696cacafcf53605bcd5ebe84fa07d9860ce1f4d059d6fd832f57a62c87873ec";
 
@@ -47,6 +49,8 @@ struct LicenseFile {
     /// A key bought on the website (Dodo Payments) this PC activated, and its activation (to refresh / free the seat).
     ls_key: Option<String>,
     ls_instance: Option<String>,
+    /// The trial start and latest time seen, sealed to this PC (also kept in the registry).
+    anchor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -59,6 +63,9 @@ pub struct Payload {
     pub issued: u64,
     #[serde(default)]
     pub expires: Option<u64>,
+    /// The PC this key was issued to (keys from the licence service); none = any PC.
+    #[serde(default)]
+    pub m: Option<String>,
 }
 
 /// What the app shows in Settings → PinchDrop Pro and uses to unlock features.
@@ -80,6 +87,8 @@ pub struct ProStatus {
 struct State {
     path: PathBuf,
     file: LicenseFile,
+    /// The latest time the app has seen (the clock is never believed to go back past it).
+    seen: u64,
 }
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
@@ -91,21 +100,63 @@ fn now() -> u64 {
         .unwrap_or(0)
 }
 
-/// Loads `license.json`; on the very first run it starts the trial.
+/// Loads `license.json` and the registry copy of the trial anchor; on the very first run it
+/// starts the trial. See `guard` for what's checked.
 pub fn init(config_dir: &Path) {
     let path = config_dir.join("license.json");
     let mut file: LicenseFile = std::fs::read_to_string(&path)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default();
-    if file.trial_started == 0 {
-        file.trial_started = now();
-        save(&path, &file);
-    }
+    let found = [
+        guard::unseal(file.anchor.as_deref().unwrap_or("")),
+        guard::unseal(&guard::read_registry()),
+    ];
+    let a = guard::combine(&found, file.trial_started, now());
+    file.trial_started = a.trial_started;
+    let sealed = guard::seal(a);
+    file.anchor = Some(sealed.clone());
+    save(&path, &file);
+    guard::write_registry(&sealed);
     if let Ok(mut g) = STATE.lock() {
-        *g = Some(State { path, file });
+        *g = Some(State {
+            path,
+            file,
+            seen: a.last_seen,
+        });
     }
 }
+
+/// The time to judge the trial and keys by: now, or the latest time seen if the clock went back.
+fn clock() -> u64 {
+    let seen = STATE
+        .lock()
+        .ok()
+        .and_then(|g| g.as_ref().map(|s| s.seen))
+        .unwrap_or(0);
+    now().max(seen)
+}
+
+/// Remembers that the app ran at this time (called at start and twice a day).
+pub fn touch() {
+    let Ok(mut g) = STATE.lock() else { return };
+    let Some(st) = g.as_mut() else { return };
+    st.seen = st.seen.max(now());
+    let sealed = guard::seal(guard::Anchor {
+        trial_started: st.file.trial_started,
+        last_seen: st.seen,
+    });
+    st.file.anchor = Some(sealed.clone());
+    save(&st.path, &st.file);
+    guard::write_registry(&sealed);
+}
+
+/// A key made for another PC (copied from someone's licence file).
+fn other_pc(p: &Payload) -> bool {
+    p.m.as_deref().is_some_and(|m| m != guard::machine_hash())
+}
+
+const OTHER_PC: &str = "This key was activated on another PC. Enter your own licence key on this PC (from the email you got when you bought Pro).";
 
 fn save(path: &Path, file: &LicenseFile) {
     if let Ok(s) = serde_json::to_string_pretty(file) {
@@ -153,6 +204,7 @@ fn status_of(file: &LicenseFile, at: u64) -> ProStatus {
     let mut problem = None;
     if let Some(key) = &file.key {
         match verify(key) {
+            Ok(p) if other_pc(&p) => problem = Some(OTHER_PC.into()),
             Ok(p) if !expired(&p, at) => {
                 return ProStatus {
                     plan: "pro".into(),
@@ -186,7 +238,7 @@ pub fn status() -> ProStatus {
         .ok()
         .and_then(|g| g.as_ref().map(|s| s.file.clone()))
         .unwrap_or_default();
-    status_of(&file, now())
+    status_of(&file, clock())
 }
 
 /// Pro (a key or the trial) is on.
@@ -240,6 +292,8 @@ async fn redeem(
         "instanceName": format!("PinchDrop on {machine}"),
         "plan": current.map(|p| p.plan.clone()),
         "name": current.map(|p| p.name.clone()),
+        // The key that comes back works on this PC only.
+        "machine": guard::machine_hash(),
     });
     let resp = reqwest::Client::new()
         .post(REDEEM_URL)
@@ -277,7 +331,7 @@ pub async fn refresh() {
         return;
     };
     let Some(exp) = cur.expires else { return }; // lifetime: nothing to renew
-    if exp > now() + 10 * DAY {
+    if exp > clock() + 10 * DAY {
         return;
     }
     if let Ok((pd1, _)) = redeem(&ls, inst.as_deref(), Some(&cur)).await {
@@ -288,14 +342,18 @@ pub async fn refresh() {
 /// Saves a key after checking it.
 pub fn activate(key: &str) -> Result<ProStatus, String> {
     let p = verify(key)?;
-    if expired(&p, now()) {
+    if other_pc(&p) {
+        return Err(OTHER_PC.into());
+    }
+    if expired(&p, clock()) {
         return Err("This licence key has run out. Renew it to keep Pro.".into());
     }
     let mut g = STATE.lock().map_err(|_| "Busy, try again")?;
     let st = g.as_mut().ok_or("Not ready yet, try again")?;
     st.file.key = Some(key.split_whitespace().collect());
     save(&st.path, &st.file);
-    Ok(status_of(&st.file, now()))
+    let at = now().max(st.seen);
+    Ok(status_of(&st.file, at))
 }
 
 /// Removes the key from this PC (e.g. to move it to another one). A website key's seat is freed
@@ -324,6 +382,27 @@ pub async fn remove() -> ProStatus {
 mod tests {
     use super::*;
     use ring::signature::KeyPair;
+
+    #[test]
+    fn a_key_for_another_pc_is_refused() {
+        let mine = Payload {
+            v: 1,
+            id: "a".into(),
+            name: String::new(),
+            plan: "lifetime".into(),
+            issued: 0,
+            expires: None,
+            m: Some(guard::machine_hash()),
+        };
+        assert!(!other_pc(&mine));
+        let theirs = Payload {
+            m: Some("0".repeat(32)),
+            ..mine.clone()
+        };
+        assert!(other_pc(&theirs));
+        let any = Payload { m: None, ..mine };
+        assert!(!other_pc(&any), "keys made by hand (no PC) work anywhere");
+    }
 
     fn make(payload: &str) -> (String, String) {
         let rng = ring::rand::SystemRandom::new();
@@ -418,6 +497,7 @@ mod tests {
             plan: "year".into(),
             issued: 0,
             expires: Some(1000),
+            m: None,
         };
         assert!(!expired(&p, 1000 + GRACE_SECS));
         assert!(expired(&p, 1001 + GRACE_SECS));

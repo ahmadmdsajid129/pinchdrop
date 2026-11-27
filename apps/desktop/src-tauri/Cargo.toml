@@ -62,6 +62,8 @@ windows = { version = "0.62", features = [
     "Win32_System_Variant",
     "Win32_System_SystemInformation",
     "Win32_System_Power",
+    # Pro: the trial anchor and the machine fingerprint (guard.rs).
+    "Win32_System_Registry",
     "Win32_System_Threading",
     "Win32_UI_Accessibility",
     "Win32_UI_Shell",
@@ -83,6 +85,8 @@ default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 # Microsoft Store build: the Store installs updates, so the app doesn't update itself.
 store = []
+# Internal test builds only: keeps WebView2 remote debugging (release builds block it).
+qa = []
 
 [profile.release]
 opt-level = "s"
