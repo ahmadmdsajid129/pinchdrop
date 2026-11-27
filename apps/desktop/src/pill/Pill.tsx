@@ -409,6 +409,52 @@ export function Pill() {
     });
     setExpanded(true);
   }, []);
+
+  // v2 Huddle: files dragged from Explorer onto a teammate's face on the pill go to them.
+  const huddleOn = huddle.active && huddle.members.length > 0;
+  useEffect(() => {
+    if (!inTauri || !huddleOn) return;
+    let off: (() => void) | undefined;
+    let alive = true;
+    const faceAt = (pos?: { x: number; y: number }) => {
+      if (!pos) return null;
+      const k = window.devicePixelRatio || 1;
+      return (document.elementFromPoint(pos.x / k, pos.y / k)?.closest('[data-huddle-member]') as HTMLElement | null) ?? null;
+    };
+    const light = (el: HTMLElement | null) =>
+      document.querySelectorAll('[data-huddle-member]').forEach((f) => f.classList.toggle('pd-pill-face-hot', f === el));
+    void import('@tauri-apps/api/webview').then(({ getCurrentWebview }) =>
+      getCurrentWebview()
+        .onDragDropEvent((e) => {
+          const p = e.payload as { type: string; paths?: string[]; position?: { x: number; y: number } };
+          if (p.type === 'enter' || p.type === 'over') light(faceAt(p.position));
+          else if (p.type === 'leave') light(null);
+          else if (p.type === 'drop') {
+            const face = faceAt(p.position);
+            light(null);
+            const id = face?.dataset.huddleMember;
+            const name = face?.dataset.huddleName ?? 'them';
+            if (!id || !p.paths?.length) {
+              showInfo({ kind: 'huddle', from: 'Drop it on a face', text: "Let go over a teammate's face to send it to them" });
+              return;
+            }
+            showInfo({ kind: 'huddle', from: `Sending to ${name}…`, text: `${p.paths.length} item${p.paths.length === 1 ? '' : 's'}` });
+            void huddleApi
+              .sendPaths(id, p.paths)
+              .then((t) => showInfo({ kind: 'huddle', from: t, text: 'It lands in their Downloads, PinchDrop folder' }))
+              .catch((err) => showInfo({ kind: 'huddle', from: name, text: String(err instanceof Error ? err.message : err) }));
+          }
+        })
+        .then((u) => {
+          if (alive) off = u;
+          else u();
+        }),
+    );
+    return () => {
+      alive = false;
+      off?.();
+    };
+  }, [huddleOn, showInfo]);
   useEffect(() => {
     if (!info || hovered) return;
     const t = window.setTimeout(() => {
@@ -841,7 +887,9 @@ function PillButton({
           <button
             key={m.id}
             type="button"
-            title={`Send your clipboard to ${m.name}`}
+            data-huddle-member={m.id}
+            data-huddle-name={m.name}
+            title={`Click: send your clipboard to ${m.name} · or drop files on ${m.name}`}
             aria-label={`Send your clipboard to ${m.name}`}
             onClick={(e) => {
               e.stopPropagation();

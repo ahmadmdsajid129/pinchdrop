@@ -332,7 +332,10 @@ function InHuddle({ say }: { say: (ok: boolean, t: string) => void }) {
               <span className={m.online ? '' : 'grayscale opacity-60'}>
                 <Face m={m} />
               </span>
-              <div className="font-semibold text-[14px] truncate max-w-full">{m.name}</div>
+              <div className="font-semibold text-[14px] truncate max-w-full">
+                {m.name}
+                {m.host && <span className="text-muted font-normal"> · host</span>}
+              </div>
               {!m.online && <div className="text-[11.5px] text-warn -mt-1">Reconnecting…</div>}
               <div className="flex gap-1.5">
                 <Button size="sm" disabled={!m.online} onClick={() => void run(huddleApi.sendClipboard(m.id))}>

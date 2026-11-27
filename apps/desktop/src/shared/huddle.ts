@@ -8,6 +8,8 @@ export interface HuddleMember {
   name: string;
   color: string;
   online: boolean;
+  /** Lets new teammates in (passes to someone else if they leave). */
+  host: boolean;
 }
 
 export interface HuddleView {
