@@ -38,3 +38,8 @@ local.properties
 .kotlin/
 *.jks
 *.keystore
+
+# Microsoft Store build output
+apps/desktop/store/layout/
+apps/desktop/store/Assets/
+*.msix
