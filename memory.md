@@ -33,6 +33,9 @@
 
 | ID | Date | Decision | Rationale | Alternatives Considered | ADR Link |
 |---|---|---|---|---|---|
+| **DEC-0028** | 2026-11-27 | Pro is protected by a sealed trial anchor (licence file + registry, HMAC bound to the MachineGuid), a latest-seen clock, PC-bound keys from the licence service, and no WebView debugging in release builds | Closes the easy cracks found in the pre-launch review (trial reset, clock rollback, key sharing, debugger). Patching the exe remains possible; a public repo remains the biggest gap. | Online check on every start (needs internet, breaks offline use); obfuscators (fragile, little gain). | [docs/security-report.md](docs/security-report.md) |
+| **DEC-0027** | 2026-11-27 | Payments through Dodo Payments; the website return page offers `pinchdrop://activate?key=` which only fills the key in (the user presses Activate) | Lemon Squeezy closed to new sellers; a link that activated by itself would let any web page change the licence. | Lemon Squeezy (closed), Gumroad (weaker India payouts), auto-activating deep link (unsafe). | [docs/launch.md](docs/launch.md) |
+| **DEC-0026** | 2026-11-27 | Pro banners are "passes" (printed-ticket design: paper, ink, one accent, perforation, stamp), reused on the Pro page, Huddle, the upgrade prompt and the website pricing | Founder wanted no generic gradients; a ticket fits "admit one PC" licences and stays consistent across app and site. | Gradient banners (rejected as generic). | [apps/desktop/src/app/Pass.tsx](apps/desktop/src/app/Pass.tsx) |
 | **DEC-0001** | 2026-11-24 | Tauri 2 + React 18 for Desktop Shell | Small installer (<60MB), safe Rust file ops, native WebView2 GPU acceleration for MediaPipe. | Python desktop (PyQt/Electron) — rejected due to massive bundle size and Python runtime friction. | [ADR-0001](docs/adr/0001-tauri-desktop-shell.md) |
 | **DEC-0002** | 2026-11-24 | PC is Server, Phone is Client | Eliminates inbound connection blocks on Android and respects OS background execution limits. | Phone as server — rejected due to aggressive OS socket teardown. | [ADR-0002](docs/adr/0002-pc-server-phone-client.md) |
 | **DEC-0003** | 2026-11-24 | Stage Tray & Grab → Catch Architecture | Webcam cannot see inside the phone. Bridge physical reality using Android Share Target / Tiles + PC ARMED state. | Direct camera OCR/vision of phone screen — physically impossible with laptop webcam angle. | [ADR-0003](docs/adr/0003-stage-tray-architecture.md) |
@@ -106,6 +109,7 @@
 3. **Google Photos Original Quality Handover:** Does the Android Share Sheet provide the original raw file or a downsampled version from Google Photos cloud cache? (Recommendation: Validate with real Android device in Stage 7).
 4. **Offline Voice Rename Engine:** For Stage 1.1 voice rename, should we bundle `whisper.cpp` as a sidecar or leverage Windows Speech Recognition APIs? (Recommendation: Test whisper.cpp sidecar for privacy and cross-version consistency).
 5. **Distribution Priority:** Windows Direct Download (MSI/NSIS) vs. Microsoft Store submission first. (Recommendation: Direct NSIS installer first for rapid beta iteration).
+7. **Public source code vs. Pro:** the repo is public, so anyone can build an unlocked copy. Recommendation: private code repo + a small public repo for the website and release downloads (founder to decide).
 6. **Commercial Licensing Strategy:** Dual-license (AGPLv3 for open core + Commercial for Pro) vs. Source-Available. (Recommendation: Clarify before Stage 12).
 
 ---
