@@ -1,5 +1,7 @@
-// The PinchDrop website's settings. Paste your Lemon Squeezy checkout links here (Lemon Squeezy →
-// Products → a product → Share → copy the checkout link). Empty = that button stays disabled.
+// The PinchDrop website's settings. Paste your Dodo Payments checkout links here (Dodo dashboard →
+// Products → a product → Share / payment link). Empty = that button stays disabled.
+// In Dodo, set each product's return / redirect URL to:
+//   https://ahmadmdsajid129.github.io/pinchdrop/thanks.html
 window.PINCHDROP = {
   checkout: {
     lifetime: '',

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Thank you · PinchDrop Pro</title>
+<link rel="icon" href="icon.png" />
+<meta name="robots" content="noindex" />
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; color: #0B1020; background: radial-gradient(ellipse at top, rgba(245,158,11,.18), transparent 60%), #F5F5F7; }
+  main { width: min(560px, 92vw); background: #fff; border-radius: 28px; padding: 36px; box-shadow: 0 30px 80px rgba(0,0,0,.12); text-align: center; }
+  .crown { width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 20px; display: grid; place-items: center; font-size: 32px; background: linear-gradient(135deg, #F59E0B, #F97316); }
+  h1 { margin: 6px 0; font-size: 28px; }
+  p { color: #4B5563; line-height: 1.6; }
+  .key { margin: 18px 0 10px; padding: 14px; border-radius: 14px; background: #F3F4F6; font-family: Consolas, monospace; font-size: 15px; word-break: break-all; }
+  button { height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: #0071E3; color: #fff; font-weight: 650; font-size: 15px; cursor: pointer; }
+  ol { text-align: left; color: #374151; line-height: 1.7; }
+  .muted { font-size: 13px; color: #6B7280; }
+</style>
+</head>
+<body>
+<main>
+  <div class="crown">👑</div>
+  <h1>Welcome to PinchDrop Pro</h1>
+  <p>Thank you for supporting PinchDrop.</p>
+  <div id="has-key" hidden>
+    <div class="key" id="key"></div>
+    <button id="copy" type="button">Copy key</button>
+  </div>
+  <p id="no-key" hidden>Your licence key is on its way to your email. It usually arrives within a minute (check spam too).</p>
+  <ol>
+    <li>Open PinchDrop on your PC → <b>Pro</b> (in the sidebar).</li>
+    <li>Paste the key and press <b>Activate</b>.</li>
+    <li>Done: every Pro feature is on. The key works on 2 PCs.</li>
+  </ol>
+  <p class="muted">We also emailed you the key. Keep that email.</p>
+</main>
+<script>
+  // Dodo Payments sends buyers here with ?license_key=… (several keys are comma-separated).
+  const keys = (new URLSearchParams(location.search).get('license_key') || '').split(',').map((k) => k.trim()).filter(Boolean);
+  if (keys.length) {
+    document.getElementById('has-key').hidden = false;
+    document.getElementById('key').textContent = keys.join('\n');
+    document.getElementById('copy').onclick = async () => {
+      await navigator.clipboard.writeText(keys[0]);
+      document.getElementById('copy').textContent = 'Copied ✓';
+    };
+  } else {
+    document.getElementById('no-key').hidden = false;
+  }
+</script>
+</body>
+</html>
