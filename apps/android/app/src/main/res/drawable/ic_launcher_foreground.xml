@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A simple pinch mark: two finger tips meeting over a drop. -->
+<!-- PinchDrop mark (same as the PC icon): thumb and finger opening, and the drop they let go of. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M54,62 C47,62 42,57 42,51 C42,45 54,33 54,33 C54,33 66,45 66,51 C66,57 61,62 54,62 Z" />
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="5" android:strokeLineCap="round"
-        android:pathData="M38,74 C44,68 50,68 54,72 C58,68 64,68 70,74" />
+    <group android:scaleX="0.074" android:scaleY="0.074"
+        android:translateX="16.1" android:translateY="16.8">
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="88" android:strokeLineCap="round"
+            android:pathData="M300,196 C330,300 390,372 466,404" />
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="88" android:strokeLineCap="round"
+            android:pathData="M724,196 C694,300 634,372 558,404" />
+        <path android:fillColor="#FFC53D"
+            android:pathData="M512,486 C512,486 382,630 382,724 A130,130 0 0,0 642,724 C642,630 512,486 512,486 Z" />
+        <path android:strokeColor="#BFFFFFFF" android:strokeWidth="22" android:strokeLineCap="round"
+            android:pathData="M466,700 A52,52 0 0,0 500,776" />
+    </group>
 </vector>
