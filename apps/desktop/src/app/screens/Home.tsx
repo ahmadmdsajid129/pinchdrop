@@ -2,6 +2,7 @@ import { CheckCircle2, Clock, File, Folder, Hand, Link2, PauseCircle, Smartphone
 import { formatBytes, useTransfers } from '../../shared/api';
 import type { TransferView } from '../../shared/types';
 import { useApp } from '../context';
+import { GetPhoneApp } from '../GetPhoneApp';
 import { Battery } from '../../shared/Battery';
 import { Button, Card, PageTitle, Toggle } from '../ui';
 import { pickFiles, pickFolder } from '../pickers';
@@ -78,6 +79,7 @@ export function Home() {
               <Button variant="primary" onClick={() => go('pair')}>Pair a phone</Button>
               <Button onClick={() => go('guide')}>How to use</Button>
             </div>
+            <GetPhoneApp compact />
           </div>
           <div className="flex-[1_1_340px] flex justify-center">
             <FlyHero compact />

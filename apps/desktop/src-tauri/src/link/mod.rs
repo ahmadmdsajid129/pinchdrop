@@ -164,7 +164,7 @@ pub fn lan_hosts() -> Vec<String> {
     v4.into_iter().map(|a| a.to_string()).collect()
 }
 
-fn qr_data_url(text: &str) -> String {
+pub(crate) fn qr_data_url(text: &str) -> String {
     match qrcode::QrCode::new(text.as_bytes()) {
         Ok(code) => {
             let svg = code

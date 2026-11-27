@@ -4,6 +4,7 @@ import { api, onEvent } from '../../shared/api';
 import type { PairInfo, PairRequest, PairResult } from '../../shared/types';
 import { useApp } from '../context';
 import { Button, Card, Toggle } from '../ui';
+import { GetPhoneApp } from '../GetPhoneApp';
 
 const RESULT_TEXT: Record<Exclude<PairResult['outcome'], 'paired'>, string> = {
   cancelled: 'Pairing cancelled.',
@@ -128,6 +129,7 @@ export function PairPanel({ compact = false, onPaired }: { compact?: boolean; on
       </Card>
 
       <div className="flex-[1_1_380px] flex flex-col gap-4">
+        <GetPhoneApp />
         <Card className="p-[22px] flex flex-col gap-3">
           <div className="text-[12px] font-bold text-accent tracking-wide">HOW TO PAIR</div>
           <ol className="m-0 pl-5 list-decimal text-[14px] text-soft leading-7">

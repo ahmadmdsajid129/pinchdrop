@@ -592,6 +592,26 @@ fn gesture_error(app: AppHandle, message: String, fatal: bool) {
     }
 }
 
+/// The page (on the PinchDrop website) that offers the right download for each device. The PC
+/// shows it as a QR code so a phone camera can open it.
+const GET_APP_URL: &str = "https://ahmadmdsajid129.github.io/pinchdrop/get.html";
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GetApp {
+    url: String,
+    qr_svg_data_url: String,
+}
+
+/// "Get the phone app": the download page and its QR code.
+#[tauri::command]
+fn get_app_link() -> GetApp {
+    GetApp {
+        url: GET_APP_URL.into(),
+        qr_svg_data_url: link::qr_data_url(GET_APP_URL),
+    }
+}
+
 /// v2 Pro · Gesture Studio: a gesture presses one of the listed keys (next slide, play/pause…).
 #[tauri::command]
 fn gesture_action(action: String) -> Result<(), String> {
@@ -1574,6 +1594,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             deeplink::take_pending_key,
+            get_app_link,
             gesture_action,
             deeplink::link_key_waiting,
             get_settings,
