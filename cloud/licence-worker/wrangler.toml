@@ -16,4 +16,4 @@ DODO_BASE = "https://live.dodopayments.com"
 
 # Secret (never here): PD_SIGNING_KEY = the contents of
 # %USERPROFILE%\.pinchdrop\license-signing-key.pem
-#   Get-Content "$env:USERPROFILE.pinchdropicense-signing-key.pem" -Raw | npx wrangler secret put PD_SIGNING_KEY
+#   Get-Content "$env:USERPROFILE\.pinchdrop\license-signing-key.pem" -Raw | npx wrangler secret put PD_SIGNING_KEY
