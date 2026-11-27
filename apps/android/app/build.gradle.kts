@@ -1,11 +1,23 @@
+import java.io.File
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// The built APK is named PinchDrop-<build type>.apk.
+// The built APK is named PinchDrop-<version>-<build type>.apk.
 base.archivesName.set("PinchDrop")
+
+// Release signing: keystore.properties next to this project (CI writes it), or in
+// %USERPROFILE%\.pinchdrop (your PC). Never in the repo. Without it, release builds are unsigned.
+val keystoreProps = Properties().apply {
+    val here = rootProject.file("keystore.properties")
+    val home = File(System.getProperty("user.home"), ".pinchdrop/keystore.properties")
+    val f = if (here.exists()) here else home
+    if (f.exists()) f.inputStream().use { load(it) }
+}
 
 android {
     namespace = "com.pinchdrop.companion"
@@ -19,12 +31,38 @@ android {
         versionName = "2.0.0"
     }
 
+    signingConfigs {
+        if (keystoreProps.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Signing is configured in Phase 7 (release). Until then release builds are unsigned.
+            // Not shrunk: MediaPipe, ML Kit and the link code use reflection; a smaller APK isn't
+            // worth a crash we can't see.
+            isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
+
+    // full = the website APK (everything). play = Google Play (no SMS, call log, all-files access,
+    // background location: Google only allows those for certain kinds of app).
+    flavorDimensions += "store"
+    productFlavors {
+        create("full") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY", "false")
+        }
+        create("play") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY", "true")
         }
     }
     compileOptions {
@@ -33,6 +71,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     androidResources {
         // MediaPipe memory-maps the model; it must be stored uncompressed in the APK.

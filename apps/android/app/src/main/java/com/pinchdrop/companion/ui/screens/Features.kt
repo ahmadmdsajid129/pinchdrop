@@ -183,13 +183,16 @@ private class Feature(
 )
 
 /** How many optional features are on (Home's "Make more of PinchDrop" card). */
+/** The Google Play version leaves out what Google only allows for certain kinds of app. */
+private val PLAY = com.pinchdrop.companion.BuildConfig.PLAY
+
 fun featuresOn(context: Context): Pair<Int, Int> {
-    val checks = listOf(
+    val checks = listOfNotNull(
         com.pinchdrop.companion.phone.NotifyListener.accessGranted(context),
-        context.granted(Manifest.permission.READ_SMS),
+        if (PLAY) null else context.granted(Manifest.permission.READ_SMS),
         context.granted(Manifest.permission.READ_PHONE_STATE),
         context.granted(if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE),
-        Build.VERSION.SDK_INT < 30 || com.pinchdrop.companion.phone.PhoneFiles.allowed(),
+        if (PLAY) null else (Build.VERSION.SDK_INT < 30 || com.pinchdrop.companion.phone.PhoneFiles.allowed()),
         context.granted(Manifest.permission.ACCESS_FINE_LOCATION),
         context.ignoringBatteryOptimizations(),
         AutoOpen.allowed(context),
@@ -227,9 +230,9 @@ fun FeaturesScreen(onboarding: Boolean, onDone: () -> Unit, onBack: () -> Unit) 
         resumeTick,
     )
     val (calls, askCalls) = rememberRuntimePermissions(
-        listOf(
+        listOfNotNull(
             Manifest.permission.READ_PHONE_STATE, Manifest.permission.ANSWER_PHONE_CALLS, Manifest.permission.CALL_PHONE,
-            Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_CONTACTS,
+            if (PLAY) null else Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_CONTACTS,
         ),
         resumeTick,
     )
@@ -244,7 +247,7 @@ fun FeaturesScreen(onboarding: Boolean, onDone: () -> Unit, onBack: () -> Unit) 
     val background = remember(resumeTick) { context.ignoringBatteryOptimizations() }
     val autoOpen = remember(resumeTick) { AutoOpen.allowed(context) }
 
-    val pcFeatures = listOf(
+    val pcFeatures = listOfNotNull(
         Feature(
             Icons.Filled.NotificationsActive, "Notifications on your PC",
             "See and reply to WhatsApp, Instagram and every app's alerts from your PC.",
@@ -252,10 +255,10 @@ fun FeaturesScreen(onboarding: Boolean, onDone: () -> Unit, onBack: () -> Unit) 
             { runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } },
             note = "Find PinchDrop in the list and switch it on.",
         ),
-        Feature(Icons.Filled.Sms, "Messages on your PC", "Read and reply to texts with your keyboard. Codes are copied for you.", sms == PermState.GRANTED, sms == PermState.BLOCKED, askSms),
+        if (PLAY) null else Feature(Icons.Filled.Sms, "Messages on your PC", "Read and reply to texts with your keyboard. Codes are copied for you.", sms == PermState.GRANTED, sms == PermState.BLOCKED, askSms),
         Feature(Icons.Filled.Call, "Calls on your PC", "See who's calling; answer with your palm or a click. Talk on the phone.", calls == PermState.GRANTED, calls == PermState.BLOCKED, askCalls),
         Feature(Icons.Filled.PhotoLibrary, "Recent photos on your PC", "Your latest photos on the PC; click one to bring it over.", photos == PermState.GRANTED, photos == PermState.BLOCKED, askPhotos),
-        Feature(
+        if (PLAY) null else Feature(
             Icons.Filled.Folder, "Browse phone files on your PC", "Open this phone's folders on the PC and drag files in and out.",
             allFiles, false,
             {
@@ -275,9 +278,11 @@ fun FeaturesScreen(onboarding: Boolean, onDone: () -> Unit, onBack: () -> Unit) 
             Icons.Filled.BatteryChargingFull, "Always connected", "Stays reachable with the screen off, so the PC shows your battery and calls. Uses very little battery.",
             background, false,
             {
+                // The Play version can't ask directly; it opens Android's battery settings instead.
                 runCatching {
+                    if (PLAY) error("settings")
                     context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
-                }.onFailure { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+                }.onFailure { runCatching { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } }
             },
         ),
         Feature(
@@ -315,7 +320,7 @@ fun FeaturesScreen(onboarding: Boolean, onDone: () -> Unit, onBack: () -> Unit) 
             }
             Text("Your phone on your PC", color = c.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
             pcFeatures.forEach { FeatureCard(it) }
-            if (location == PermState.GRANTED && bgLocPerm != null && bgLocation != PermState.GRANTED) {
+            if (!PLAY && location == PermState.GRANTED && bgLocPerm != null && bgLocation != PermState.GRANTED) {
                 FeatureCard(
                     Feature(
                         Icons.Filled.LocationOn, "Find my phone, even when closed", "Choose “Allow all the time” so the map stays up to date.",
