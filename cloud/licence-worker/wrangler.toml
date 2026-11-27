@@ -1,0 +1,15 @@
+# PinchDrop licence service: turns a Lemon Squeezy licence key into a signed PinchDrop key.
+# Free Cloudflare Workers plan. Deploy: see docs/launch.md.
+name = "pinchdrop-licence"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# From Lemon Squeezy (Settings → Stores, and each product's variant ids). See docs/launch.md.
+LS_STORE_ID = ""
+LS_VARIANT_LIFETIME = ""
+LS_VARIANT_YEARLY = ""
+LS_VARIANT_MONTHLY = ""
+
+# Secret (never here): PD_SIGNING_KEY = the base64 body of %USERPROFILE%\.pinchdrop\license-signing-key.pem
+#   npx wrangler secret put PD_SIGNING_KEY
