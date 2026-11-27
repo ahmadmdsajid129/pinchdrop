@@ -31,7 +31,7 @@ Lemon Squeezy no longer takes new sellers. Dodo Payments is the replacement: it'
 4. On each product, set the **return / redirect URL** to `https://ahmadmdsajid129.github.io/pinchdrop/thanks.html`. Buyers then see their key straight after paying.
 5. **Send me:** the 3 checkout or payment links and the 3 **product IDs** (`pdt_…`). I put the links on the Buy page and the IDs in the licence service.
 
-Buyers paste the emailed key in **PinchDrop → Pro → Activate**.
+After paying, buyers press **Open in PinchDrop** on the thank-you page: PinchDrop opens on its Pro page with the key filled in, and they press **Activate**. (Or they paste the emailed key in **PinchDrop → Pro**.)
 
 ## 3. Licence service (Cloudflare Workers, free)
 This turns a Dodo key into a PinchDrop key that works offline. The code is in `cloud/licence-worker`, and its flows are tested in `test-flows.mjs`.
