@@ -9,7 +9,12 @@ The laptops at one table, connected in one click. Teammates appear as faces (on 
 2. **Join:** teammates see it under *Huddles on this Wi-Fi* and click *Join*. The host's PinchDrop window opens with "<name> wants to join" and a 4-digit code; the teammate's screen shows the same code. The host clicks *Allow*.
 3. **Mesh:** the host's `welcome` carries the huddle key and the member list. The newcomer connects to every member directly and proves membership. The host tells existing members with `joined`.
 4. **Leave / end:** *Leave* (or *End huddle* for the host) sends `bye`, closes everything and wipes the shelf and inbox.
-5. **Reconnect:** a connection that drops without `bye` keeps the teammate (greyed out, "Reconnecting…"). The laptop that opened that connection redials every 2–15 s with a fresh key exchange and a `member` proof. After 2 minutes without them they're removed.
+5. **Reconnect:** a connection that drops without `bye` keeps the teammate (greyed out, "Reconnecting…").
+   - **Both sides redial** every 2–15 s, with a fresh key exchange and a `member` proof. The side that dialed before goes first.
+   - **New addresses:** a laptop that moved (new Wi-Fi, new address) reaches the others, and they take its new address and port from that connection.
+   - **Stale connections:** each connection has an id, so an old one closing late can't knock out a new one.
+   - **Timeout:** after 2 minutes without them, they're removed.
+6. **Host hand-over:** when the host leaves (`bye`) or is removed after 2 minutes, every laptop picks the same new host on its own: the lowest member id still in the huddle. The new host starts announcing the huddle and letting people in. If the old host was sharing a hotspot, teammates on it need a new way in (same Wi-Fi, or the new host's hotspot).
 
 ## Join codes and the hotspot fallback
 - Every huddle has an 8-character join code (`KX7Q-49MZ`; no 0/O/1/I/L), shown on the Huddle page and in its announcement (TXT `code`). The server prefers port **47700**.
@@ -50,7 +55,7 @@ Free huddles hold up to 4 laptops (`FREE_MAX_LAPTOPS`); more need PinchDrop Pro 
 - **Size:** up to 500 MB per drop.
 - **Shelf:** text that looks like a key or password is blurred until clicked.
 
+- **Faces on the pill:** click a face to send your clipboard, or drop files from Explorer onto it (the face grows under the pointer).
+
 ## Not yet
-- dropping files onto the faces on the pill (clicking a face sends your clipboard)
-- moving the host role when the host leaves
-- following a teammate whose address changed while they were away (they rejoin)
+- carrying a hotspot over to the new host when the host leaves
