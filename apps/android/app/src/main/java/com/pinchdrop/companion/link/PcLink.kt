@@ -204,7 +204,11 @@ object PcLink {
             Receiver.onConnected({ ws.send(it) }, pcName)
             com.pinchdrop.companion.transfer.Lifter.onConnected({ ws.send(it) }, { ws.sendBytes(it) })
             com.pinchdrop.companion.phone.PhoneData.onConnected { ws.send(it) }
-            return if (connectedLoop(ws)) SessionEnd.FORGOTTEN else SessionEnd.WAS_CONNECTED
+            // v2.0.1 battery: no network discovery (and no multicast lock, which wakes the Wi-Fi
+            // chip for every packet) while connected; it comes back the moment the link drops.
+            Discovery.release()
+            val forgotten = try { connectedLoop(ws) } finally { Discovery.acquire(app) }
+            return if (forgotten) SessionEnd.FORGOTTEN else SessionEnd.WAS_CONNECTED
         } finally {
             if (live === ws) {
                 live = null
