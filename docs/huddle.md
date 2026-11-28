@@ -59,3 +59,8 @@ Huddle is a **Pro** feature: starting or joining a huddle needs PinchDrop Pro or
 
 ## Not yet
 - carrying a hotspot over to the new host when the host leaves
+
+## Team clipboard (v2.0.1)
+- **Ctrl + Alt + C** shares what this laptop just copied with everyone in the huddle. Copying alone shares nothing, so the team isn't flooded.
+- Teammates see "Riya shared 3 lines · Ctrl + Alt + V to paste" on the pill. **Ctrl + Alt + V** pastes it where their cursor is, then puts their own clipboard back: their plain Ctrl + V is untouched.
+- The shortcuts are registered only while in a huddle; the shared clip is wiped when the huddle ends. Text only (up to 200,000 characters), sent over the huddle's encrypted channel (`tclip` message).
