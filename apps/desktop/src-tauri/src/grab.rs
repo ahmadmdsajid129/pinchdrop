@@ -668,11 +668,41 @@ pub fn set_overlay_visible(app: &AppHandle, visible: bool) {
             let _ = win.set_size(PhysicalSize::new(m.size().width, m.size().height));
         }
         let _ = win.set_ignore_cursor_events(true);
+        set_memory_low(&win, false);
         let _ = win.show();
         let _ = win.set_always_on_top(true);
     } else {
         let _ = win.hide();
+        set_memory_low(&win, true);
     }
+}
+
+/// v2.0.1 memory: a hidden overlay asks WebView2 to keep as little memory as it can (it trims
+/// caches, and the GPU process with them); back to normal the moment it's shown.
+fn set_memory_low(win: &tauri::WebviewWindow, low: bool) {
+    #[cfg(windows)]
+    let _ = win.with_webview(move |wv| {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+        };
+        use windows::core::Interface;
+        // SAFETY: COM calls on the webview's own controller, on its UI thread.
+        unsafe {
+            let Ok(core) = wv.controller().CoreWebView2() else {
+                return;
+            };
+            if let Ok(c19) = core.cast::<ICoreWebView2_19>() {
+                let _ = c19.SetMemoryUsageTargetLevel(if low {
+                    COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW
+                } else {
+                    COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL
+                });
+            }
+        }
+    });
+    #[cfg(not(windows))]
+    let _ = (win, low);
 }
 
 /// Shows the click-through overlay for a short send animation, then hides it again unless the
