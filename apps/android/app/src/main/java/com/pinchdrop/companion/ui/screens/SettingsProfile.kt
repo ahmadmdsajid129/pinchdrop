@@ -169,7 +169,7 @@ fun SettingsScreen(
             ToggleRow("Vibrate on catch & arrival", settings.vibrate, { v -> update { it.copy(vibrate = v) } })
             SettingRow("Theme", last = true) {
                 Segmented(
-                    listOf(ThemeMode.DARK to "Dark", ThemeMode.LIGHT to "Light", ThemeMode.SYSTEM to "Auto"),
+                    listOf(ThemeMode.DARK to "Night", ThemeMode.LIGHT to "Paper", ThemeMode.SYSTEM to "Auto"),
                     settings.theme, { v -> update { it.copy(theme = v) } },
                 )
             }

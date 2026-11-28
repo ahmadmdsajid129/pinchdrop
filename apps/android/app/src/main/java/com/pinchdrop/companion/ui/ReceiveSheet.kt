@@ -135,9 +135,9 @@ private fun ReceivingBody(p: Receiver.Progress, onHide: () -> Unit, onCancel: ()
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(
                 Modifier.size(52.dp).clip(RoundedCornerShape(16.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF5AC8FA), Color(0xFF007AFF)))),
+                    .background(Color(0xFFFFC53D)),
                 contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Filled.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp)) }
+            ) { Icon(Icons.Filled.Download, contentDescription = null, tint = Color(0xFF15130F), modifier = Modifier.size(28.dp)) }
             Column(Modifier.weight(1f)) {
                 Text("Receiving “${p.label}”", color = c.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(

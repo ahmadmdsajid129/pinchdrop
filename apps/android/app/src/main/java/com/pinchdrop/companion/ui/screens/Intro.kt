@@ -162,9 +162,9 @@ private fun Phone(modifier: Modifier = Modifier, content: @Composable () -> Unit
 private fun FileChip(icon: ImageVector = Icons.Filled.Folder, modifier: Modifier = Modifier) {
     val c = Pd.colors
     Box(
-        modifier.size(40.dp, 48.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(listOf(c.primary, c.accent))),
+        modifier.size(40.dp, 48.dp).clip(RoundedCornerShape(10.dp)).background(c.primary),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp)) }
+    ) { Icon(icon, contentDescription = null, tint = c.onPrimary, modifier = Modifier.size(22.dp)) }
 }
 
 /** A file lifts off the laptop, arcs across and drops into the phone. Loops. */

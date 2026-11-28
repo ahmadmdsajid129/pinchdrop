@@ -73,7 +73,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         enabled = enabled,
         modifier = modifier.heightIn(min = 52.dp),
         shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = Pd.colors.primary, contentColor = Color.White),
+        colors = ButtonDefaults.buttonColors(containerColor = Pd.colors.primary, contentColor = Pd.colors.onPrimary),
     ) { Text(text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold) }
 }
 

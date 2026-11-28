@@ -411,7 +411,7 @@ fun ExtrasCard(onOpen: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(Modifier.size(44.dp).clip(CircleShape).background(c.primary), contentAlignment = Alignment.Center) {
-            Text("$on/$total", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("$on/$total", color = c.onPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
         Column(Modifier.weight(1f)) {
             Text("Make more of PinchDrop", color = c.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() })

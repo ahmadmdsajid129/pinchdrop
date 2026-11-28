@@ -221,7 +221,7 @@ fun ReceivedScreen() {
                         label = { Text(f.label, maxLines = 1, softWrap = false) },
                         modifier = Modifier.heightIn(min = 40.dp),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = c.primary, selectedLabelColor = Color.White,
+                            selectedContainerColor = c.primary, selectedLabelColor = c.onPrimary,
                             containerColor = c.surface, labelColor = c.soft,
                         ),
                     )

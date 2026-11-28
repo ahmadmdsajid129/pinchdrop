@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Compose draws everything; this only sets the window colour shown before the first frame. -->
-    <style name="Theme.PinchDrop" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.PinchDrop" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/pd_bg</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/pd_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

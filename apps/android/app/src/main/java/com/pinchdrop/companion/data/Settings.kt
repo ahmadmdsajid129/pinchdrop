@@ -18,7 +18,7 @@ enum class NameClash { KEEP_BOTH, REPLACE }
 /** Everything the phone remembers. Lives only on this phone (DataStore). */
 data class AppSettings(
     val onboarded: Boolean = false,
-    val theme: ThemeMode = ThemeMode.LIGHT,
+    val theme: ThemeMode = ThemeMode.DARK,
     val phoneName: String = "",
     val demoPc: Boolean = false,
     val stayConnected: Boolean = true,
@@ -65,7 +65,8 @@ class SettingsStore(private val context: Context) {
     private fun decode(p: Preferences): AppSettings =
         AppSettings(
             onboarded = p[Keys.onboarded] ?: d.onboarded,
-            theme = if ((p[Keys.uiVersion] ?: 0) < 2) ThemeMode.LIGHT else enumOr(p[Keys.theme], d.theme),
+            // v3: Night (the website look) for everyone once; a later choice sticks.
+            theme = if ((p[Keys.uiVersion] ?: 0) < 3) ThemeMode.DARK else enumOr(p[Keys.theme], d.theme),
             phoneName = p[Keys.phoneName] ?: DeviceInfo.defaultName(context),
             demoPc = p[Keys.demoPc] ?: d.demoPc,
             stayConnected = p[Keys.stayConnected] ?: d.stayConnected,
@@ -96,7 +97,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.arrivalSound] = s.arrivalSound
             p[Keys.vibrate] = s.vibrate
             p[Keys.proximityCatch] = s.proximityCatch
-            p[Keys.uiVersion] = 2
+            p[Keys.uiVersion] = 3
         }
     }
 
