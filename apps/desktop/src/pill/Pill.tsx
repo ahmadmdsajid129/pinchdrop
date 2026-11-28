@@ -898,11 +898,17 @@ function PillButton({
     {!ringing && missedLive?.missed && (
       <button
         type="button"
-        aria-label={`Missed call from ${missedLive.missed}. Clear`}
+        aria-label={
+          (missedLive.missedCount ?? 1) > 1
+            ? `${missedLive.missedCount} missed calls, the last from ${missedLive.missed}. Clear`
+            : `Missed call from ${missedLive.missed}. Clear`
+        }
+        title={(missedLive.missedCount ?? 1) > 1 ? `${missedLive.missedCount} missed calls · last: ${missedLive.missed}` : `Missed call: ${missedLive.missed}`}
         onClick={() => void api.clearMissed(missedLive.deviceId)}
         className={`${badge} ${size.text} mr-1 text-[#FF6961] hover:bg-white/10`}
       >
         <PhoneMissed size={size.icon - 2} aria-hidden="true" />
+        {(missedLive.missedCount ?? 1) > 1 && <span className="tabular-nums font-semibold">{missedLive.missedCount}</span>}
       </button>
     )}
     {/* v2 Huddle: teammates' faces; click one to send them your clipboard */}

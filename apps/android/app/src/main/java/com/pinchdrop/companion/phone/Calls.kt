@@ -34,6 +34,8 @@ object Calls {
     @Volatile private var answered = false
     /** The dialer notification that said "incoming call", if that's how we noticed it. */
     @Volatile private var notifKey: String? = null
+    /** The app (or dialer) whose notification is ringing: its "ongoing call" notification means answered. */
+    @Volatile private var ringingPkg: String? = null
     /** v2: a call through an app (WhatsApp, Instagram, Messenger…): its name and notification. */
     @Volatile private var appName: String? = null
     @Volatile private var appCall: StatusBarNotification? = null
@@ -80,6 +82,7 @@ object Calls {
                 number = null
                 nameHint = null
                 notifKey = null
+                ringingPkg = null
                 appName = null
                 appCall = null
                 simCall = null
@@ -165,6 +168,7 @@ object Calls {
         val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()
         if (incoming) {
             notifKey = sbn.key
+            ringingPkg = sbn.packageName
             if (!fromApp) simCall = sbn
             if (fromApp) {
                 appCall = sbn
@@ -179,8 +183,10 @@ object Calls {
                 text?.replace(Regex("(?i)\\s*(is calling.*|incoming (video |audio |voice )?call.*|calling.*)$"), "")?.trim()?.ifBlank { null } ?: title
             } else title
             set(context, "ringing", name = who)
-        } else if (state == "ringing" && sbn.key == notifKey) {
-            // The same notification turned into an ongoing call: answered.
+        } else if (state == "ringing" && (sbn.key == notifKey || sbn.packageName == ringingPkg)) {
+            // The same notification turned into an ongoing call, or the app swapped it for a new
+            // "ongoing call" one (WhatsApp does): answered, on the phone or anywhere else.
+            notifKey = sbn.key
             set(context, "active")
         }
     }
@@ -191,7 +197,14 @@ object Calls {
         // App calls are only known through their notification; SIM calls only decide here
         // when Android's own call state isn't available.
         if (appCall != null || listening == null) {
-            if (state == "ringing" || state == "active") set(context, "idle")
+            when (state) {
+                "active" -> set(context, "idle")
+                // The ringing notification went away. If the call was picked up, the app posts its
+                // "ongoing call" notification a moment later; only if none comes is it missed.
+                "ringing" -> main.postDelayed({
+                    if (state == "ringing" && notifKey == null) set(context, "idle")
+                }, 2000)
+            }
         }
     }
 

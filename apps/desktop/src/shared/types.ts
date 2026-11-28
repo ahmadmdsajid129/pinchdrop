@@ -79,6 +79,8 @@ export interface PhoneLive {
   callApp: string | null;
   missed: string | null;
   missedApp: string | null;
+  /** Calls missed since last looked at. */
+  missedCount?: number;
   /** Now playing on the phone. */
   media?: { app: string; title: string; artist: string; art: string | null; playing: boolean } | null;
 }

@@ -23,6 +23,11 @@ pub struct PhoneLive {
     /// A call rang out unanswered and hasn't been looked at yet (who, and through which app).
     pub missed: Option<String>,
     pub missed_app: Option<String>,
+    /// How many calls were missed since they were last looked at.
+    pub missed_count: u32,
+    /// This call was picked up (anywhere): it can't end as "missed".
+    #[serde(skip)]
+    pub answered: bool,
     /// v2 · Now playing on the phone (music, YouTube, podcasts…).
     pub media: Option<MediaView>,
 }
@@ -113,13 +118,26 @@ impl Link {
                         if state == "ringing" && l.call != "ringing" {
                             l.caller_name = None;
                             l.caller_number = None;
+                            l.answered = false;
+                        }
+                        if state == "active" {
+                            l.answered = true;
                         }
                         l.call = state.clone();
                         l.caller_name = name.or(l.caller_name.take());
                         l.caller_number = number.or(l.caller_number.take());
                         l.call_app = app.clone().or(l.call_app.take());
                     }
+                    // Picked up on the phone (or the call went active at any point): not missed.
+                    "missed" if l.answered || l.call == "active" => {
+                        l.call = "idle".into();
+                        l.caller_name = None;
+                        l.caller_number = None;
+                        l.call_app = None;
+                        l.answered = false;
+                    }
                     "missed" => {
+                        l.missed_count = l.missed_count.saturating_add(1);
                         l.missed = name
                             .or(number)
                             .or(l.caller_name.take())
@@ -203,6 +221,7 @@ impl Link {
                 if dev.map_or(true, |d| d == id) {
                     x.missed = None;
                     x.missed_app = None;
+                    x.missed_count = 0;
                 }
             }
         }
