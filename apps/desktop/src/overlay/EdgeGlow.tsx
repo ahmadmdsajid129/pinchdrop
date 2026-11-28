@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { onEvent } from '../shared/api';
+import { markOverlayBusy } from './busy';
 
 /**
  * v2 Pro · Edge lighting: when a call or message comes in, the screen's edges glow in the
@@ -17,7 +18,10 @@ const COLORS: Record<Glow['kind'], string> = {
 export function EdgeGlow() {
   const [glow, setGlow] = useState<Glow | null>(null);
   useEffect(() => {
-    const off = onEvent<Glow>('edge-glow', (g) => setGlow(g));
+    const off = onEvent<Glow>('edge-glow', (g) => {
+      markOverlayBusy(2500);
+      setGlow(g);
+    });
     return () => void off.then((u) => u());
   }, []);
   useEffect(() => {

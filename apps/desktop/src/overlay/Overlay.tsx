@@ -24,6 +24,7 @@ import {
 import { formatBytes, inTauri, onEvent } from '../shared/api';
 import { SendFx } from './SendFx';
 import { EdgeGlow } from './EdgeGlow';
+import { markOverlayBusy, overlayBusy } from './busy';
 import type { SendFxEvent } from './SendFx';
 import { sound } from '../shared/sound';
 
@@ -168,8 +169,15 @@ function releaseLandmarkerSoon() {
   window.clearTimeout(releaseTimer);
   releaseTimer = window.setTimeout(() => {
     const p = landmarkerPromise;
+    if (!p) return; // nothing loaded: nothing to free (so this can't loop)
+    if (overlayBusy()) return releaseLandmarkerSoon();
     landmarkerPromise = null;
-    void p?.then((l) => l.close()).catch(() => undefined);
+    // Closing the model alone doesn't hand back the GPU memory; reloading this hidden,
+    // idle page does (WebGL context and WASM heap go with it). It's invisible right now.
+    void p
+      .then((l) => l.close())
+      .catch(() => undefined)
+      .finally(() => window.location.reload());
   }, 90_000);
 }
 
@@ -232,7 +240,10 @@ export function Overlay() {
   const [fx, setFx] = useState<SendFxEvent | null>(null);
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const off = onEvent<SendFxEvent>('send-fx', (e) => setFx({ ...e, reduced }));
+    const off = onEvent<SendFxEvent>('send-fx', (e) => {
+      markOverlayBusy(4000);
+      setFx({ ...e, reduced });
+    });
     return () => void off.then((u) => u());
   }, []);
   // Camera problems are reported to the Island (gesture_error); kept here only to stop retries.
