@@ -28,7 +28,15 @@ object MediaWatcher {
     private val sessionsChanged = MediaSessionManager.OnActiveSessionsChangedListener { list -> pick(list.orEmpty()) }
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) = schedule()
-        override fun onPlaybackStateChanged(state: PlaybackState?) = schedule()
+        override fun onPlaybackStateChanged(state: PlaybackState?) {
+            // v2.0.1: this app paused and another one is playing (Spotify after YouTube): follow
+            // the one that's playing, instead of staying stuck on the paused one.
+            if (state?.state != PlaybackState.STATE_PLAYING) {
+                val playing = currentSessions().firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+                if (playing != null && playing.sessionToken != controller?.sessionToken) return pick(listOf(playing))
+            }
+            schedule()
+        }
         override fun onSessionDestroyed() {
             main.post { pick(currentSessions()) }
         }

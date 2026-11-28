@@ -715,7 +715,8 @@ export function Pill() {
                     <>
                       {/* Pro: Now Playing and the photo strip */}
                       {pro.active && live.media ? <NowPlaying media={live.media} deviceId={live.deviceId} /> : null}
-                      {pro.active && phone?.state === 'connected' && live.deviceId ? <PhotoStrip deviceId={live.deviceId} /> : null}
+                      {/* The connected phone, not its "live" record: that only exists after a call / music / clipboard event. */}
+                      {pro.active && phone?.state === 'connected' && phone.deviceId ? <PhotoStrip deviceId={phone.deviceId} /> : null}
                     </>
                   }
                   settings={settings}

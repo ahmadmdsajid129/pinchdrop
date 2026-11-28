@@ -14,7 +14,7 @@ export function PhotoStrip({ deviceId }: { deviceId: string }) {
   const [sent, setSent] = useState<number | null>(null);
 
   useEffect(() => {
-    if (cache && cache.device === deviceId && Date.now() - cache.at < 60_000) return;
+    if (cache && cache.device === deviceId && Date.now() - cache.at < 15_000) return; // a photo just taken shows up
     let live = true;
     api
       .phonePhotos(deviceId)
