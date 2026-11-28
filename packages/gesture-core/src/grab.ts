@@ -61,16 +61,18 @@ export interface GrabConfig {
  */
 export function grabConfigFor(sensitivity: number): GrabConfig {
   const s = Math.min(100, Math.max(0, sensitivity)) / 100;
-  const enterRatio = 0.4 - 0.18 * s; // 0.40 … 0.22
+  // v2.0.1: a little more forgiving (real-use feedback): fingertips needn't fully touch, the
+  // hand may be farther away, and a slightly unsure tracker reading still counts.
+  const enterRatio = 0.44 - 0.18 * s; // 0.44 … 0.26
   return {
     enterRatio,
     exitRatio: enterRatio + 0.15,
-    dwellMs: 150,
-    releaseMs: 200,
-    lostMs: 1500,
+    dwellMs: 140,
+    releaseMs: 180,
+    lostMs: 1600,
     settleMs: 300,
-    minScale: 0.06,
-    minScore: 0.7,
+    minScale: 0.05,
+    minScore: 0.6,
     maxSpeed: 2.5,
     openFingers: 3,
   };

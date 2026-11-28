@@ -707,7 +707,8 @@ export function Overlay() {
           const g = poses.step(now, shapeNow);
           // While grabbing, only gestures that mean something on the Island (reply, dismiss,
           // take it) go through, silently; the Island shows the result.
-          if (g === 'peace_hold' || g === 'thumbs_up' || g === 'swipe_left' || g === 'swipe_right' || g === 'palm_hold') sendGesture(g, true);
+          // (Fist was missing here, so "fist" actions in Gesture Studio never fired.)
+          if (g) sendGesture(g, true);
         } else poses.reset();
         if (ev?.type === 'grab') void onGrab();
         else if (ev?.type === 'release') void onRelease();

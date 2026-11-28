@@ -112,6 +112,26 @@ describe('PoseMachine', () => {
     }
   });
 
+  it('v2.0.1: a fist with the thumb out to the side still counts', () => {
+    const m = new PoseMachine(cfg);
+    const thumbOut = { thumb: true, index: false, middle: false, ring: false, pinky: false };
+    const frames = Array.from({ length: 40 }, (_, i) => [i * 33, shape('fist', 0.5, 0.5, { fingers: thumbOut })] as [number, HandShape]);
+    expect(feed(m, frames)).toEqual(['fist_hold']);
+  });
+
+  it('v2.0.1: an open hand counts with the thumb tucked behind it', () => {
+    const m = new PoseMachine(cfg);
+    const tucked = { thumb: false, index: true, middle: true, ring: true, pinky: true };
+    const frames = Array.from({ length: 40 }, (_, i) => [i * 33, shape('open', 0.5, 0.5, { fingers: tucked, pinchRatio: 0.6 })] as [number, HandShape]);
+    expect(feed(m, frames)).toEqual(['palm_hold']);
+  });
+
+  it('v2.0.1: a held pose survives one misread frame', () => {
+    const m = new PoseMachine(cfg);
+    const frames = still('fist', 1300).map(([t, h], i) => [t, i === 8 ? shape('point') : h] as [number, HandShape]);
+    expect(feed(m, frames)).toEqual(['fist_hold']);
+  });
+
   it('a held pose fires again only after letting go', () => {
     const m = new PoseMachine(cfg);
     expect(feed(m, still('fist', 3000))).toEqual(['fist_hold']);

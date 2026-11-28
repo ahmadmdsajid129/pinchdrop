@@ -70,7 +70,7 @@ export function classifyPose(h: HandShape): Pose {
   if (four === 0 && h.thumbUp) return 'thumbs_up';
   // A fist has the thumb wrapped over the fingers, not touching the index tip (that's a pinch
   // on its way): fingers curling into a pinch must never read as a fist.
-  if (four === 0 && !f.thumb && h.pinchRatio >= 0.3) return 'fist';
+  if (four === 0 && !h.thumbUp && h.pinchRatio >= 0.3) return 'fist';
   if (f.index && f.middle && !f.ring && !f.pinky) return 'peace';
   if (f.index && !f.middle && !f.ring && !f.pinky) return f.thumb ? 'l_shape' : 'point';
   return 'other';
@@ -109,17 +109,23 @@ export interface PoseConfig {
 export function poseConfigFor(sensitivity: number): PoseConfig {
   const s = Math.min(100, Math.max(0, sensitivity)) / 100;
   const k = 1.15 - 0.3 * s; // 1.15 … 0.85
+  // v2.0.1: easier to hit (real-use feedback): shorter holds, farther hands, shaky hands and
+  // tracking flicker forgiven, an open hand counts with the thumb tucked, shorter swipes.
   return {
-    minScale: 0.07 - 0.02 * s,
-    minScore: 0.7 - 0.1 * s,
-    holdMs: { open: Math.round(900 * k), peace: Math.round(600 * k), thumbs_up: Math.round(500 * k), fist: Math.round(800 * k) },
-    stillSpeed: 0.6,
-    swipeDist: 0.3 - 0.06 * s,
-    swipeMs: 450,
+    minScale: 0.055 - 0.015 * s,
+    minScore: 0.6 - 0.1 * s,
+    holdMs: { open: Math.round(650 * k), peace: Math.round(480 * k), thumbs_up: Math.round(420 * k), fist: Math.round(600 * k) },
+    stillSpeed: 0.85,
+    swipeDist: 0.22 - 0.05 * s,
+    swipeMs: 550,
     waveTurns: 3,
     waveLeg: 0.06,
     waveMs: 1300,
     cooldownMs: 900,
+    lenientOpen: true,
+    graceMs: 250,
+    smoothSpeed: true,
+    settleMs: 200,
   };
 }
 
@@ -133,14 +139,14 @@ export function callPoseConfigFor(sensitivity: number): PoseConfig {
     ...base,
     minScale: base.minScale * 0.7,
     minScore: Math.min(base.minScore, 0.55),
-    holdMs: { ...base.holdMs, open: Math.round(base.holdMs.open * 0.7), fist: Math.round(base.holdMs.fist * 0.8) },
-    stillSpeed: 1.1,
+    holdMs: { ...base.holdMs, open: Math.round(base.holdMs.open * 0.75), fist: Math.round(base.holdMs.fist * 0.85) },
+    stillSpeed: 1.2,
     swipeMs: 550,
     settleMs: 450,
     cooldownMs: 1500,
     lenientOpen: true,
     noWave: true,
-    graceMs: 350,
+    graceMs: 400,
     smoothSpeed: true,
   };
 }
@@ -200,11 +206,14 @@ export class PoseMachine {
       const f = h.fingers;
       if (f.index && f.middle && f.ring && f.pinky && h.pinchRatio >= 0.35) pose = 'open';
     }
-    // A frame or two misread in the middle of a hold doesn't restart it.
+    // A frame or two misread in the middle of a hold doesn't restart it (but only for graceMs:
+    // a stand-in frame doesn't count as seeing the pose, so a real change still gets through).
+    let standIn = false;
     if (grace > 0 && pose !== this.pose && this.pose in HOLD_EVENT && (pose === 'other' || pose === 'point' || pose === 'pinch') && t - this.seenAt <= grace) {
       pose = this.pose;
+      standIn = true;
     }
-    if (pose === this.pose) this.seenAt = t;
+    if (pose === this.pose && !standIn) this.seenAt = t;
     if (pose !== this.pose) {
       this.pose = pose;
       this.poseSince = t;
