@@ -160,6 +160,20 @@ function loadLandmarker(): Promise<HandLandmarker> {
 }
 
 /**
+ * v2.0.1 memory: the hand model (and its GPU buffers, ~250 MB in the GPU process) is let go
+ * 90 s after the camera stops; a quick next gesture still finds it ready.
+ */
+let releaseTimer = 0;
+function releaseLandmarkerSoon() {
+  window.clearTimeout(releaseTimer);
+  releaseTimer = window.setTimeout(() => {
+    const p = landmarkerPromise;
+    landmarkerPromise = null;
+    void p?.then((l) => l.close()).catch(() => undefined);
+  }, 90_000);
+}
+
+/**
  * Full-screen, click-through overlay shown only while the camera is allowed to run.
  * Webcam frames go straight from the <video> element into MediaPipe in memory and are
  * dropped; nothing is drawn to a canvas, saved or sent.
@@ -322,7 +336,11 @@ export function Overlay() {
   }, []);
 
   useEffect(() => {
-    if (!armed || !arm || !inTauri) return;
+    if (!armed || !arm || !inTauri) {
+      releaseLandmarkerSoon();
+      return;
+    }
+    window.clearTimeout(releaseTimer);
     let stopped = false;
     let stream: MediaStream | null = null;
     let raf = 0;
