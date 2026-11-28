@@ -80,7 +80,7 @@ export function SettingsScreen() {
         </Row>
         <Row title="Theme">
           <Select label="Theme" value={settings.theme} onChange={(v) => void update({ theme: v })}
-            options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'system', label: 'Match Windows' }]} />
+            options={[{ value: 'dark', label: 'Night' }, { value: 'light', label: 'Paper' }, { value: 'system', label: 'Match Windows' }]} />
         </Row>
         <Row title="Animations" description="Reduced swaps springs and fly-ins for quick fades" last>
           <Select label="Animations" value={settings.motion} onChange={(v) => void update({ motion: v })}
