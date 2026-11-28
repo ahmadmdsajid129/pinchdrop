@@ -37,6 +37,9 @@ object Calls {
     /** v2: a call through an app (WhatsApp, Instagram, Messenger…): its name and notification. */
     @Volatile private var appName: String? = null
     @Volatile private var appCall: StatusBarNotification? = null
+    /** The phone's own incoming-call notification (SIM call): its Answer / Decline buttons are the
+     *  fallback on phones that ignore Android's accept/end-call (MIUI / HyperOS, some others). */
+    @Volatile private var simCall: StatusBarNotification? = null
 
     /** The phone's own call screen (a SIM call), not an app. */
     private val DIALERS = setOf(
@@ -79,6 +82,7 @@ object Calls {
                 notifKey = null
                 appName = null
                 appCall = null
+                simCall = null
                 return
             }
         }
@@ -161,6 +165,7 @@ object Calls {
         val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()
         if (incoming) {
             notifKey = sbn.key
+            if (!fromApp) simCall = sbn
             if (fromApp) {
                 appCall = sbn
                 appName = runCatching {
@@ -190,35 +195,50 @@ object Calls {
         }
     }
 
-    /** Presses a button on the app's call notification (Answer / Decline). */
-    private fun pressAppButton(context: Context, match: Regex): Boolean {
-        val sbn = appCall ?: return false
+    /** Presses a button on a call notification (Answer / Decline). */
+    private fun pressButton(context: Context, sbn: StatusBarNotification?, match: Regex): Boolean {
+        sbn ?: return false
         val a = sbn.notification.actions?.firstOrNull { match.containsMatchIn(it.title?.toString()?.lowercase().orEmpty()) } ?: return false
-        a.actionIntent.send(context, 0, Intent())
-        return true
+        return runCatching { a.actionIntent.send(context, 0, Intent()); true }.getOrDefault(false)
     }
 
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /**
+     * Answers the ringing call. App calls: their notification's Answer. SIM calls: Android's
+     * accept-call, and if the phone is still ringing a moment later (some phones ignore it), the
+     * call notification's own Answer button.
+     */
     @SuppressLint("MissingPermission")
     fun answer(context: Context) {
         check(state == "ringing")
         if (appCall != null) {
-            check(pressAppButton(context, ANSWER))
+            check(pressButton(context, appCall, ANSWER))
             return
         }
-        if (!context.has(Manifest.permission.ANSWER_PHONE_CALLS)) throw NoPermission()
-        context.getSystemService(TelecomManager::class.java).acceptRingingCall()
+        val tried = context.has(Manifest.permission.ANSWER_PHONE_CALLS) &&
+            runCatching { context.getSystemService(TelecomManager::class.java).acceptRingingCall(); true }.getOrDefault(false)
+        if (!tried) {
+            if (!pressButton(context, simCall, ANSWER)) throw NoPermission()
+            return
+        }
+        main.postDelayed({ if (state == "ringing") pressButton(context, simCall, ANSWER) }, 1200)
     }
 
     @SuppressLint("MissingPermission")
     fun reject(context: Context) {
         check(state == "ringing")
         if (appCall != null) {
-            check(pressAppButton(context, DECLINE))
+            check(pressButton(context, appCall, DECLINE))
             return
         }
-        if (!context.has(Manifest.permission.ANSWER_PHONE_CALLS)) throw NoPermission()
-        check(Build.VERSION.SDK_INT >= 28)
-        context.getSystemService(TelecomManager::class.java).endCall()
+        val tried = Build.VERSION.SDK_INT >= 28 && context.has(Manifest.permission.ANSWER_PHONE_CALLS) &&
+            runCatching { context.getSystemService(TelecomManager::class.java).endCall() }.getOrDefault(false)
+        if (!tried) {
+            if (!pressButton(context, simCall, DECLINE)) throw NoPermission()
+            return
+        }
+        main.postDelayed({ if (state == "ringing") pressButton(context, simCall, DECLINE) }, 1200)
     }
 
     /** Stops the ringing but leaves the call ringing silently (the caller hears nothing different). */
