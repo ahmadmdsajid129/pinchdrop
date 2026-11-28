@@ -887,6 +887,8 @@ impl Link {
                 bytes_done: 0,
                 moved: false,
                 direction: "in".into(),
+                file_total: None,
+                text_total: None,
             });
         }
         self.save_transfers();
@@ -1137,6 +1139,8 @@ impl Link {
                     bytes_done: 0,
                     moved: false,
                     direction: "out".into(),
+                    file_total: None,
+                    text_total: None,
                 });
             }
         }

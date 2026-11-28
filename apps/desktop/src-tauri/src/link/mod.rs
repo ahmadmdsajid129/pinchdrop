@@ -1165,6 +1165,9 @@ impl Link {
 
     fn save_transfers(&self) {
         if let Ok(mut ts) = self.transfers.lock() {
+            for t in ts.iter_mut() {
+                t.compact();
+            }
             // Keep every unfinished transfer plus the newest finished ones.
             let finished = ts.iter().filter(|t| !t.is_active()).count();
             if finished > HISTORY_MAX {
@@ -1428,6 +1431,8 @@ impl Link {
             bytes_done: 0,
             moved: false,
             direction: "out".into(),
+            file_total: None,
+            text_total: None,
         };
         let id = t.id.clone();
         let msg = offer_message(&t, &current_fx(&self.app));
@@ -1516,7 +1521,25 @@ impl Link {
                 }
             });
         }
-        self.save_transfers();
+        // Progress ("file.done") is saved at most every 2 s; a big folder used to rewrite the
+        // whole history once per file. Starts, ends and cancels are saved at once.
+        static LAST_PROGRESS_SAVE: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+        let due = kind != "file.done"
+            || LAST_PROGRESS_SAVE
+                .lock()
+                .map(|mut last| {
+                    let now = std::time::Instant::now();
+                    let due =
+                        !matches!(*last, Some(t) if now.duration_since(t) < Duration::from_secs(2));
+                    if due {
+                        *last = Some(now);
+                    }
+                    due
+                })
+                .unwrap_or(true);
+        if due {
+            self.save_transfers();
+        }
         self.emit_transfers(true);
     }
 

@@ -566,6 +566,8 @@ impl Link {
             bytes_done: 0,
             moved: false,
             direction: "in".into(),
+            file_total: None,
+            text_total: None,
         };
         if let Ok(mut ts) = self.transfers.lock() {
             ts.push(t);

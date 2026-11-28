@@ -55,6 +55,11 @@ pub struct Transfer {
     /// "out" (PC → phone, the default) or "in" (a lift from the phone, v2).
     #[serde(default)]
     pub direction: String,
+    /// A finished transfer keeps only its first file; these remember how many there were.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_total: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_total: Option<usize>,
 }
 
 impl Transfer {
@@ -65,6 +70,25 @@ impl Transfer {
     /// Bytes of all files before `index` — used for progress.
     pub fn bytes_before(&self, index: usize) -> u64 {
         self.files.iter().take(index).map(|f| f.size).sum()
+    }
+
+    /// v2.0.1 · History keeps only what the Transfers list shows: the count, the first file's
+    /// name, the number of texts. A finished folder of 5,000 files used to keep all 5,000 names
+    /// in memory and in transfers.json for good.
+    pub fn compact(&mut self) {
+        if self.is_active() {
+            return;
+        }
+        self.scrub();
+        if self.files.len() > 1 {
+            self.file_total = Some(self.file_total.unwrap_or(0).max(self.files.len()));
+            self.files.truncate(1);
+            self.files.shrink_to_fit();
+        }
+        if !self.texts.is_empty() {
+            self.text_total = Some(self.text_total.unwrap_or(0).max(self.texts.len()));
+            self.texts = Vec::new();
+        }
     }
 
     /// Forget local paths once a transfer is over (history keeps names and sizes only).
@@ -113,8 +137,8 @@ impl From<&Transfer> for TransferView {
             state: t.state.clone(),
             error: t.error.clone(),
             mode: t.mode.clone(),
-            file_count: t.files.len(),
-            text_count: t.texts.len(),
+            file_count: t.file_total.unwrap_or(t.files.len()),
+            text_count: t.text_total.unwrap_or(t.texts.len()),
             total_bytes: t.total_bytes,
             files_done: t.files_done,
             bytes_done: t.bytes_done,
@@ -289,11 +313,39 @@ mod tests {
             bytes_done: 0,
             moved: false,
             direction: String::new(),
+            file_total: None,
+            text_total: None,
         };
         assert_eq!(t.bytes_before(1), 10);
         assert!(t.is_active());
         t.scrub();
         assert!(t.files.iter().all(|f| f.source.is_empty()) && t.roots.is_empty());
         assert_eq!(TransferView::from(&t).first_name.as_deref(), Some("a"));
+
+        // v2.0.1: an active transfer is never compacted…
+        t.compact();
+        assert_eq!(t.files.len(), 2);
+        // …a finished one keeps one file but still reports them all.
+        t.files = (0..5000)
+            .map(|i| FileEntry {
+                path: format!("f{i}"),
+                source: String::new(),
+                size: 1,
+            })
+            .collect();
+        t.texts = vec!["hello".into(), "world".into()];
+        t.state = "done".into();
+        t.compact();
+        t.compact(); // twice is the same as once
+        assert_eq!(t.files.len(), 1);
+        assert!(t.texts.is_empty());
+        let v = TransferView::from(&t);
+        assert_eq!(
+            (v.file_count, v.text_count, v.first_name.as_deref()),
+            (5000, 2, Some("f0"))
+        );
+        // and survives a save / load
+        let back: Transfer = serde_json::from_str(&serde_json::to_string(&t).unwrap()).unwrap();
+        assert_eq!(TransferView::from(&back).file_count, 5000);
     }
 }
