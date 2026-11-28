@@ -57,7 +57,7 @@ export function FlyHero({ compact = false }: { compact?: boolean }) {
       </div>
       {/* The file in the air */}
       <div className="absolute left-[92px] top-[64px] pd-fly">
-        <div className="w-[46px] h-[56px] rounded-[12px] bg-gradient-to-br from-[#0071E3] to-[#22D3EE] text-white flex items-center justify-center shadow-[0_10px_24px_rgba(0,113,227,0.35)]">
+        <div className="w-[46px] h-[56px] rounded-[12px] bg-[#FFC53D] text-[#15130F] flex items-center justify-center shadow-[0_10px_24px_rgba(255,197,61,0.4)]">
           <ImageIcon size={22} />
         </div>
       </div>
@@ -75,7 +75,7 @@ function StepCard({ n, icon, title, children }: { n: number; icon: ReactNode; ti
     <li className="flex gap-3.5 p-4 rounded-2xl bg-surface border border-line">
       <span className="relative w-11 h-11 shrink-0 rounded-xl bg-primary/10 text-primary-ink flex items-center justify-center">
         {icon}
-        <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center">{n}</span>
+        <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center">{n}</span>
       </span>
       <div className="min-w-0">
         <div className="font-semibold text-[15px]">{title}</div>

@@ -877,7 +877,7 @@ function PillButton({
         type="button"
         aria-label={`${live.unread} unread messages. Open Messages`}
         onClick={() => void api.openMain('messages')}
-        className={`${badge} ${size.text} mr-1 bg-[#0A84FF]/20 text-[#64B5FF] hover:bg-[#0A84FF]/30`}
+        className={`${badge} ${size.text} mr-1 bg-[#FFC53D]/20 text-[#FFD36B] hover:bg-[#FFC53D]/30`}
       >
         <MessageSquare size={size.icon - 2} aria-hidden="true" /> {live.unread > 9 ? '9+' : live.unread}
       </button>
@@ -1025,7 +1025,7 @@ function Island({
           <button
             type="button"
             onClick={() => void api.openMain('pair')}
-            className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold hover:brightness-110 transition active:scale-[0.97]"
+            className="flex-1 h-10 rounded-full bg-primary text-on-primary text-[13px] font-semibold hover:brightness-110 transition active:scale-[0.97]"
           >
             Pair a phone
           </button>
@@ -1033,7 +1033,7 @@ function Island({
           <button
             type="button"
             onClick={() => void api.openMain('send')}
-            className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold hover:brightness-110 inline-flex items-center justify-center gap-1.5 transition active:scale-[0.97]"
+            className="flex-1 h-10 rounded-full bg-primary text-on-primary text-[13px] font-semibold hover:brightness-110 inline-flex items-center justify-center gap-1.5 transition active:scale-[0.97]"
           >
             <Upload size={15} aria-hidden="true" /> Send files…
           </button>

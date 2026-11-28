@@ -12,6 +12,7 @@ export default {
         surface2: v('surface2'),
         line: v('line'),
         primary: v('primary'),
+        'on-primary': v('on-primary'),
         'primary-ink': v('primary-ink'),
         accent: v('accent'),
         success: v('success'),

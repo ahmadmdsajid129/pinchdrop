@@ -761,7 +761,7 @@ export function Overlay() {
               <motion.div
                 key={devices[i].id}
                 className={`absolute flex items-center gap-2.5 px-4 rounded-full text-[14px] font-semibold shadow-[0_10px_30px_rgba(0,0,0,0.25)] ${
-                  picked ? 'bg-[#007AFF] text-white' : hot ? 'bg-white text-[#1D1D1F] ring-2 ring-[#007AFF]' : 'bg-white/90 text-[#1D1D1F]'
+                  picked ? 'bg-[#FFC53D] text-[#15130F]' : hot ? 'bg-white text-[#1D1D1F] ring-2 ring-[#FFC53D]' : 'bg-white/90 text-[#1D1D1F]'
                 }`}
                 style={{ left: r.x, top: r.y, width: r.w, height: r.h }}
                 initial={{ opacity: 0, y: -30, scale: 0.9 }}
@@ -823,7 +823,7 @@ export function Overlay() {
           animate={{
             opacity: 1,
             scale: hand.pinched ? 0.7 : 1,
-            borderColor: hand.pinched ? '#22D3EE' : 'rgba(232,236,255,0.85)',
+            borderColor: hand.pinched ? '#FFC53D' : 'rgba(232,236,255,0.85)',
             backgroundColor: hand.pinched ? 'rgba(34,211,238,0.25)' : 'rgba(124,92,255,0.12)',
           }}
           transition={{ type: 'spring', stiffness: 700, damping: 34 }}

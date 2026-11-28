@@ -150,7 +150,7 @@ function MiniIsland({ mood }: { mood: PillMood }) {
       )}
       {mood === 'idle' && (
         <div className="flex gap-2">
-          <span className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold inline-flex items-center justify-center gap-1.5">
+          <span className="flex-1 h-10 rounded-full bg-primary text-on-primary text-[13px] font-semibold inline-flex items-center justify-center gap-1.5">
             <Upload size={15} /> Send files…
           </span>
           <span className="flex-1 h-10 rounded-full bg-white/[0.08] text-[13px] font-semibold inline-flex items-center justify-center">Gestures: On</span>
@@ -289,7 +289,7 @@ export function StudioPage() {
                   {t.pro && <ProTag />}
                   <span className="flex-1" />
                   {on && (
-                    <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center">
                       <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </span>
                   )}
@@ -322,7 +322,7 @@ export function StudioPage() {
                   {f.pro && <ProTag />}
                   <span className="flex-1" />
                   {on && (
-                    <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center">
                       <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </span>
                   )}
@@ -576,7 +576,7 @@ function SoundPacks({ pro }: { pro: boolean }) {
                 {p.pro && !pro && <ProTag />}
                 <span className="flex-1" />
                 {on && (
-                  <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+                  <span className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center">
                     <Check size={14} strokeWidth={3} aria-hidden="true" />
                   </span>
                 )}

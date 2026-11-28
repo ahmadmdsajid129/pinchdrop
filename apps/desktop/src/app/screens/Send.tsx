@@ -183,7 +183,7 @@ export function Send() {
                     role="radio"
                     aria-checked={on}
                     onClick={() => setDeviceId(d.id)}
-                    className={`h-9 px-4 rounded-full text-[13px] font-semibold transition ${on ? 'bg-primary text-white' : 'bg-bg2 text-soft hover:text-text'}`}
+                    className={`h-9 px-4 rounded-full text-[13px] font-semibold transition ${on ? 'bg-primary text-on-primary' : 'bg-bg2 text-soft hover:text-text'}`}
                   >
                     {d.name}
                   </button>

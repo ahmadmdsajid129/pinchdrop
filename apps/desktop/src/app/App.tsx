@@ -202,7 +202,7 @@ function UpdateBanner() {
           <button type="button" className="h-8 px-3 rounded-full text-[13px] font-semibold text-soft hover:text-text" onClick={() => setHidden(u.info.version)}>
             Later
           </button>
-          <button type="button" className="h-8 px-4 rounded-full bg-primary text-white text-[13px] font-semibold" onClick={() => void installUpdate()}>
+          <button type="button" className="h-8 px-4 rounded-full bg-primary text-on-primary text-[13px] font-semibold" onClick={() => void installUpdate()}>
             Update now
           </button>
         </div>

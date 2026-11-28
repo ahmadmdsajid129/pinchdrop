@@ -17,7 +17,7 @@ export function InfoIsland({ info, width, showDevice }: { info: Info; width: num
   switch (info.kind) {
     case 'otp':
       icon = <KeyRound size={20} />;
-      tint = 'bg-[#0A84FF]';
+      tint = 'bg-[#FFC53D] !text-[#15130F]';
       title = `Code ${info.code} · copied`;
       sub = `Paste it anywhere (Ctrl+V)${info.from ? ` · from ${info.from}` : ''}${showDevice ? ` · ${info.deviceName}` : ''}`;
       break;

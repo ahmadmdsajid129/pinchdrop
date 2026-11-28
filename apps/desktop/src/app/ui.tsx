@@ -12,7 +12,7 @@ export function Card({ children, className = '', as: Tag = 'section', ...rest }:
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-primary text-white hover:brightness-110 shadow-[0_1px_2px_rgba(0,0,0,0.08)] disabled:opacity-50',
+  primary: 'bg-primary text-on-primary hover:brightness-110 shadow-[0_1px_2px_rgba(0,0,0,0.08)] disabled:opacity-50',
   secondary: 'bg-surface2 text-text hover:bg-line/70 disabled:opacity-50',
   ghost: 'bg-transparent text-soft hover:text-text hover:bg-surface2 disabled:opacity-50',
   danger: 'bg-transparent text-danger border border-danger/40 hover:bg-danger/10 disabled:opacity-50',
@@ -203,7 +203,7 @@ export function Segmented<T extends string>({
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`h-7 min-w-9 px-3 rounded-lg text-[13px] font-semibold ${value === o.value ? 'bg-primary text-white' : 'text-soft hover:text-text'}`}
+          className={`h-7 min-w-9 px-3 rounded-lg text-[13px] font-semibold ${value === o.value ? 'bg-primary text-on-primary' : 'text-soft hover:text-text'}`}
         >
           {o.label}
         </button>

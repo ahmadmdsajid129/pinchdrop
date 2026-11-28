@@ -221,7 +221,7 @@ pub struct Settings {
     pub onboarded: bool,
     pub keep_running_on_close: bool,
     pub theme: String, // "dark" | "light" | "system"
-    /// Bumped when a new default look ships; v2 = the white Apple-style palette.
+    /// Bumped when a new default look ships; v2 = white Apple-style, v3 = Night (the website look).
     /// Missing in older files → 0 (not the struct default), so the one-time switch runs.
     #[serde(default)]
     pub ui_version: u32,
@@ -245,8 +245,8 @@ impl Default for Settings {
         Self {
             onboarded: false,
             keep_running_on_close: true,
-            theme: "light".into(),
-            ui_version: 2,
+            theme: "dark".into(),
+            ui_version: 3,
             motion: "system".into(),
             pill: PillSettings::default(),
             gestures: GestureSettings::default(),
@@ -276,10 +276,10 @@ pub fn load(path: &Path) -> Settings {
 
 /// One-time look updates for existing installs.
 fn migrate(s: &mut Settings) {
-    if s.ui_version < 2 {
-        // v2: the fresh white palette replaces the old navy dark default.
-        s.theme = "light".into();
-        s.ui_version = 2;
+    if s.ui_version < 3 {
+        // v3: Night, the PinchDrop website's look (near-black, amber), is the new default.
+        s.theme = "dark".into();
+        s.ui_version = 3;
     }
 }
 
@@ -317,18 +317,18 @@ pub fn apply_patch(current: &Settings, patch: &Value) -> Result<Settings, String
 #[cfg(test)]
 mod tests {
     #[test]
-    fn old_files_switch_to_the_light_look_once() {
+    fn old_files_switch_to_the_night_look_once() {
         let mut old: Settings =
-            serde_json::from_str(r#"{"theme":"dark","onboarded":true}"#).unwrap();
-        assert_eq!(old.ui_version, 0);
+            serde_json::from_str(r#"{"theme":"light","uiVersion":2,"onboarded":true}"#).unwrap();
+        assert_eq!(old.ui_version, 2);
         migrate(&mut old);
-        assert_eq!(old.theme, "light");
+        assert_eq!(old.theme, "dark");
         assert!(old.onboarded);
-        // Choosing dark again afterwards sticks.
+        // Choosing light (Paper) again afterwards sticks.
         let mut later = old.clone();
-        later.theme = "dark".into();
+        later.theme = "light".into();
         migrate(&mut later);
-        assert_eq!(later.theme, "dark");
+        assert_eq!(later.theme, "light");
     }
 
     use super::*;

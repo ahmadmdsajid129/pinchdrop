@@ -86,7 +86,7 @@ export function HoldIsland({ hold, width }: { hold: HoldView; width: number }) {
           type="button"
           disabled={sending}
           onClick={() => void sendNow()}
-          className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold hover:brightness-110 disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
+          className="flex-1 h-10 rounded-full bg-primary text-on-primary text-[13px] font-semibold hover:brightness-110 disabled:opacity-60 inline-flex items-center justify-center gap-1.5"
         >
           <Upload size={15} aria-hidden="true" /> {sending ? 'Sending…' : 'Send now'}
         </button>

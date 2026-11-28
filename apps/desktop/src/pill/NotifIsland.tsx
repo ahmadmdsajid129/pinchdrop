@@ -126,7 +126,7 @@ export function NotifIsland({
             type="button"
             disabled={busy || !text.trim()}
             onClick={() => void send()}
-            className="h-9 px-4 rounded-full bg-primary text-white text-[13px] font-semibold disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="h-9 px-4 rounded-full bg-primary text-on-primary text-[13px] font-semibold disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             <CornerDownLeft size={14} /> {busy ? 'Sending…' : 'Send'}
           </button>

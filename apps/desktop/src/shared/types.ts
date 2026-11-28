@@ -318,8 +318,8 @@ export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartia
 export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   keepRunningOnClose: true,
-  theme: 'light',
-  uiVersion: 2,
+  theme: 'dark',
+  uiVersion: 3,
   motion: 'system',
   pill: {
     visible: true,

@@ -214,7 +214,7 @@ export function Messages() {
                           {t.outgoing ? 'You: ' : ''}
                           {t.snippet}
                         </span>
-                        {t.unread > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center">{t.unread}</span>}
+                        {t.unread > 0 && <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center">{t.unread}</span>}
                       </span>
                     </span>
                   </button>
@@ -244,7 +244,7 @@ export function Messages() {
                         {gap && <div className="self-center text-[11px] text-muted my-2">{new Date(m.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div>}
                         <div
                           className={`max-w-[72%] px-3.5 py-2 rounded-[18px] text-[14px] whitespace-pre-wrap break-words ${
-                            m.outgoing ? 'self-end bg-[#007AFF] text-white rounded-br-[6px]' : 'self-start bg-surface2 text-text rounded-bl-[6px]'
+                            m.outgoing ? 'self-end bg-primary text-on-primary rounded-br-[6px]' : 'self-start bg-surface2 text-text rounded-bl-[6px]'
                           } ${m.status === 'failed' ? 'opacity-60' : ''}`}
                           title={new Date(m.date).toLocaleString()}
                         >

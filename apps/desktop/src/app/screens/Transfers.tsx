@@ -146,7 +146,7 @@ export function Transfers() {
             role="radio"
             aria-checked={filter === f}
             onClick={() => setFilter(f)}
-            className={`h-[34px] px-3.5 rounded-full text-[13px] font-semibold ${filter === f ? 'bg-primary text-white' : 'border border-line text-soft hover:text-text'}`}
+            className={`h-[34px] px-3.5 rounded-full text-[13px] font-semibold ${filter === f ? 'bg-primary text-on-primary' : 'border border-line text-soft hover:text-text'}`}
           >
             {f}
           </button>

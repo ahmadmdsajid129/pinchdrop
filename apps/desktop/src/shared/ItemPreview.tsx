@@ -186,7 +186,7 @@ export function ItemPreview({
             <div className="text-[10px] text-[#6C6C70] truncate">{subtitle}</div>
           </div>
           {multi && (
-            <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#007AFF] text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white">
+            <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#FFC53D] text-[#15130F] text-[11px] font-bold flex items-center justify-center ring-2 ring-white">
               {p.childCount}
             </span>
           )}
@@ -210,10 +210,10 @@ export function ItemPreview({
         <div className="w-full max-w-[240px] px-1.5 pt-2 pb-0.5 text-center">
           <div className="text-[14px] font-semibold text-[#1D1D1F] truncate">{title}</div>
           <div className="text-[11.5px] text-[#6C6C70] truncate">{subtitle}</div>
-          {hint && <div className="text-[11.5px] font-medium text-[#007AFF] mt-0.5">{hint}</div>}
+          {hint && <div className="text-[11.5px] font-medium text-[#B07400] mt-0.5">{hint}</div>}
         </div>
         {multi && (
-          <span className="absolute -top-2 -right-2 min-w-7 h-7 px-2 rounded-full bg-[#007AFF] text-white text-[13px] font-bold flex items-center justify-center ring-[3px] ring-white">
+          <span className="absolute -top-2 -right-2 min-w-7 h-7 px-2 rounded-full bg-[#FFC53D] text-[#15130F] text-[13px] font-bold flex items-center justify-center ring-[3px] ring-white">
             {p.childCount}
           </span>
         )}

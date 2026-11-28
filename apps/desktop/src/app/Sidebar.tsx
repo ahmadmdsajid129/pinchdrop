@@ -64,7 +64,7 @@ export function Sidebar() {
           </span>
           {!pro.active && (n.route === 'files' || n.route === 'map' || n.route === 'huddle') && <ProTag className="max-[860px]:hidden" />}
           {n.route === 'send' && queue.length > 0 && (
-            <span className="min-w-5 h-5 px-1.5 rounded-full max-[860px]:absolute max-[860px]:-top-1 max-[860px]:-right-1 bg-primary text-white text-[11px] font-bold flex items-center justify-center">{queue.length}</span>
+            <span className="min-w-5 h-5 px-1.5 rounded-full max-[860px]:absolute max-[860px]:-top-1 max-[860px]:-right-1 bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center">{queue.length}</span>
           )}
         </button>
       ))}

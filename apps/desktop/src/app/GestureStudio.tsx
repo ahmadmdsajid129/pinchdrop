@@ -49,7 +49,7 @@ export function GestureStudioPage() {
                   <span className="font-semibold text-[15px]">{p.name}</span>
                   <span className="flex-1" />
                   {on && (
-                    <span className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center">
                       <Check size={14} strokeWidth={3} aria-hidden="true" />
                     </span>
                   )}

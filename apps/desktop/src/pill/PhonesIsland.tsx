@@ -36,7 +36,7 @@ export function PhonesIsland({
             animate={{ opacity: 1, y: 0, transition: { delay: 0.04 * i } }}
             className={`flex items-center gap-3 px-2.5 py-2.5 rounded-[16px] text-left transition-colors ${r.current ? 'bg-white/[0.08]' : 'hover:bg-white/[0.06]'}`}
           >
-            <span className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${r.current ? 'bg-[#0A84FF] text-white' : 'bg-white/[0.08] text-soft'}`}>
+            <span className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${r.current ? 'bg-[#FFC53D] text-[#15130F]' : 'bg-white/[0.08] text-soft'}`}>
               <Smartphone size={19} />
             </span>
             <span className="flex-1 min-w-0">

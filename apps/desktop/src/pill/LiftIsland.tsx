@@ -82,7 +82,7 @@ export function LiftIsland({ lift, width, cameraOn }: { lift: LiftView; width: n
           type="button"
           disabled={busy}
           onClick={() => void take()}
-          className="flex-1 h-10 rounded-full bg-primary text-white text-[13px] font-semibold hover:brightness-110 disabled:opacity-60 transition active:scale-[0.97]"
+          className="flex-1 h-10 rounded-full bg-primary text-on-primary text-[13px] font-semibold hover:brightness-110 disabled:opacity-60 transition active:scale-[0.97]"
         >
           {busy ? 'Taking…' : 'Take it'}
         </button>

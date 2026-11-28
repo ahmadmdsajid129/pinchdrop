@@ -118,7 +118,7 @@ function Pane({
       data-drop-device={deviceId}
       data-drop-name={deviceName}
       data-drop-path={path}
-      className={`flex-1 min-w-[320px] p-0 overflow-hidden flex flex-col transition-shadow ${dropHot ? 'ring-4 ring-primary/50 shadow-[0_20px_60px_rgba(0,113,227,0.25)]' : ''}`}
+      className={`flex-1 min-w-[320px] p-0 overflow-hidden flex flex-col transition-shadow ${dropHot ? 'ring-4 ring-primary/50 shadow-[0_20px_60px_rgba(255,197,61,0.22)]' : ''}`}
     >
       <div className="px-4 py-3 border-b border-line flex items-center gap-2">
         <Smartphone size={16} className="text-primary shrink-0" />

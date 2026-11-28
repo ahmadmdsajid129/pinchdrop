@@ -66,7 +66,7 @@ export function Onboarding() {
               <span
                 aria-current={i === step ? 'step' : undefined}
                 className={`h-7 px-3 rounded-full inline-flex items-center gap-1.5 text-[12px] font-semibold ${
-                  i < step ? 'bg-surface2 text-success' : i === step ? 'bg-primary text-white' : 'bg-surface border border-line text-muted'
+                  i < step ? 'bg-surface2 text-success' : i === step ? 'bg-primary text-on-primary' : 'bg-surface border border-line text-muted'
                 }`}
               >
                 {i < step && <Check size={13} aria-hidden="true" />} {i + 1} {s}
@@ -86,7 +86,7 @@ export function Onboarding() {
                 <h1 className="m-0 font-display text-[38px] font-semibold leading-[1.1]">
                   Pinch it on your PC.
                   <br />
-                  <span className="bg-gradient-to-r from-[#0071E3] to-[#22D3EE] bg-clip-text text-transparent">Drop it on your phone.</span>
+                  <span className="text-[#FFC53D]">Drop it on your phone.</span>
                 </h1>
                 <p className="m-0 text-[16px] text-muted max-w-[460px] leading-relaxed">
                   Files, photos and links fly between this PC and your phones with a gesture. And your phone's calls, messages and notifications show up right here.
@@ -140,7 +140,7 @@ export function Onboarding() {
                 ] as const
               ).map(([icon, t, d], i) => (
                 <li key={t} className="relative p-5 rounded-2xl bg-surface border border-line flex flex-col gap-2">
-                  <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0071E3] to-[#22D3EE] text-white flex items-center justify-center pd-float" style={{ animationDelay: `${i * 0.4}s` }}>
+                  <span className="w-12 h-12 rounded-2xl bg-[#FFC53D] text-[#15130F] flex items-center justify-center pd-float" style={{ animationDelay: `${i * 0.4}s` }}>
                     {icon}
                   </span>
                   <div className="text-[12px] font-semibold text-primary-ink mt-1">STEP {i + 1}</div>
