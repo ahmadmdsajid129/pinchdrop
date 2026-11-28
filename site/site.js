@@ -141,9 +141,8 @@
     hv.classList.add(`s${s}`);
     steps.forEach((li) => li.classList.toggle('on', Number(li.dataset.step) === s));
   };
-  const wide = window.matchMedia('(min-width: 981px)');
+  // Follows the scroll on every screen size (phones too: the section pins while you scroll).
   const howScroll = () => {
-    if (!wide.matches) return;
     const r = how.getBoundingClientRect();
     const p = Math.min(1, Math.max(0, -r.top / (r.height - window.innerHeight)));
     bar.style.width = `${p * 100}%`;
@@ -152,12 +151,6 @@
   window.addEventListener('scroll', howScroll, { passive: true });
   howScroll();
   setStep(0);
-  // Narrow screens: no sticky scroll, the steps play by themselves.
-  setInterval(() => {
-    if (wide.matches || reduced) return;
-    setStep((step + 1) % 3);
-    bar.style.width = `${((step + 1) / 3) * 100}%`;
-  }, 2600);
 
   // ---------------------------------------------------------------- hero: the live pinch and drop
   const stage = $('#stage');
