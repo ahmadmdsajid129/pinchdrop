@@ -391,7 +391,52 @@ h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -0.02em; }
 .use { padding: 24px; border-radius: var(--r); background: var(--night); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07); transition: transform 400ms var(--ease), box-shadow 400ms; }
 .use:hover { transform: translateY(-4px); box-shadow: inset 0 0 0 1px rgba(255, 197, 61, 0.35); }
 .use p { margin: 0; color: var(--mist); font-size: 14.5px; }
-.u-ico { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); font-size: 22px; margin-bottom: 16px; }
+.use h3 { font-size: 19px; margin: 4px 0 8px; }
+.use .u-num { margin: 0; font-family: Mono, Consolas, monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); }
+
+/* the little scenes on the student cards: line art, one amber accent */
+.scene { display: block; width: 100%; height: auto; margin: -4px 0 18px; border-radius: 14px; background: var(--night2); }
+.scene text { font-family: Mono, Consolas, monospace; }
+.sc-win { fill: var(--night3); stroke: rgba(255, 255, 255, 0.14); stroke-width: 1.2; }
+.sc-dot { fill: rgba(255, 255, 255, 0.18); }
+.sc-rule { stroke: rgba(255, 255, 255, 0.08); }
+.sc-mono { font-size: 9.5px; fill: var(--mist); letter-spacing: 0.04em; }
+.sc-dim { fill: var(--fog); font-size: 8px; }
+.sc-amber { fill: var(--amber); }
+.sc-code { fill: rgba(255, 255, 255, 0.16); }
+.sc-add { fill: rgba(48, 209, 88, 0.14); opacity: 0; animation: sc-add 6s var(--ease) infinite; }
+.sc-add.a2 { animation-delay: 0.25s; } .sc-add.a3 { animation-delay: 0.5s; }
+.sc-del { fill: rgba(255, 99, 99, 0.14); }
+.sc-sign { font-size: 11px; font-weight: 700; }
+.sc-green { fill: #30D158; } .sc-red { fill: #FF6363; }
+.sc-send rect { fill: var(--amber); }
+.sc-send text { font-size: 8.6px; font-weight: 700; fill: var(--ink); }
+.sc-send { animation: sc-pop 6s var(--ease) infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes sc-add { 0%, 8% { opacity: 0; } 18%, 100% { opacity: 1; } }
+@keyframes sc-pop { 0%, 30% { opacity: 0; transform: translateY(6px) scale(0.9); } 40%, 85% { opacity: 1; transform: none; } 95%, 100% { opacity: 0; transform: translateX(30px); } }
+.sc-stroke { fill: none; stroke: rgba(255, 255, 255, 0.22); stroke-width: 1.4; stroke-linecap: round; }
+.sc-usb rect { fill: none; stroke: rgba(255, 255, 255, 0.3); stroke-width: 1.2; }
+.sc-usb line { stroke: #FF6363; stroke-width: 2; stroke-linecap: round; }
+.sc-arc { fill: none; stroke: rgba(255, 197, 61, 0.5); stroke-width: 1.6; stroke-dasharray: 3 5; }
+.sc-traveller { fill: var(--amber); filter: drop-shadow(0 0 4px rgba(255, 197, 61, 0.8)); }
+.sc-ok { fill: rgba(48, 209, 88, 0.16); stroke: #30D158; stroke-width: 1.4; }
+.sc-tick { fill: none; stroke: #30D158; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sc-fan path { stroke: rgba(255, 197, 61, 0.55); stroke-width: 1.4; stroke-dasharray: 4 6; animation: sc-flow 1.4s linear infinite; }
+@keyframes sc-flow { to { stroke-dashoffset: -20; } }
+.sc-doc { fill: var(--paper); }
+.sc-doc + .sc-fold { fill: none; stroke: rgba(21, 19, 15, 0.3); }
+.sc-doc ~ .sc-code { fill: rgba(21, 19, 15, 0.25); }
+.sc-mate text { font-size: 12px; font-weight: 800; fill: #fff; text-anchor: middle; font-family: Inter, sans-serif; }
+.sc-mate { animation: sc-mate 3s var(--ease) infinite; transform-box: fill-box; transform-origin: center; }
+.sc-mate.m2 { animation-delay: 0.15s; } .sc-mate.m3 { animation-delay: 0.3s; } .sc-mate.m4 { animation-delay: 0.45s; }
+@keyframes sc-mate { 0%, 55% { transform: scale(1); } 65% { transform: scale(1.14); } 75%, 100% { transform: scale(1); } }
+.sc-url { fill: rgba(255, 255, 255, 0.06); }
+.sc-live { fill: #FF6363; animation: sc-blink 1.2s steps(2, start) infinite; }
+@keyframes sc-blink { to { visibility: hidden; } }
+.sc-bar { fill: rgba(255, 255, 255, 0.16); transform-box: fill-box; transform-origin: bottom; animation: sc-grow 4s var(--ease) infinite; }
+.sc-bar.b2 { animation-delay: 0.1s; } .sc-bar.b3 { animation-delay: 0.2s; } .sc-bar.b4 { animation-delay: 0.3s; }
+.sc-hot { fill: var(--amber); }
+@keyframes sc-grow { 0% { transform: scaleY(0.2); } 25%, 100% { transform: scaleY(1); } }
 .versus { margin-top: 26px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 18px; align-items: stretch; }
 .vs-col { padding: 26px 28px; border-radius: var(--r); }
 .vs-col ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15.5px; }

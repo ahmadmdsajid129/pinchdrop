@@ -13,7 +13,7 @@
 <meta property="og:image" content="icon.png" />
 <link rel="icon" href="icon.png" />
 <link rel="preload" href="fonts/inter-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="stylesheet" href="site.css?v=4" />
+<link rel="stylesheet" href="site.css?v=6" />
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -194,10 +194,77 @@
   </div>
 
   <div class="uses">
-    <article class="use reveal"><span class="u-ico">⚡</span><h3>Hackathons</h3><p>Send the files you changed, not a zip of everything. No push, pull or merge mess at 3 am: teammates see the changes and pick theirs or yours.</p></article>
-    <article class="use reveal"><span class="u-ico">🖥️</span><h3>College labs</h3><p>No pen drive, no emailing yourself, no logging into WhatsApp Web on a lab PC. Drop your work onto your own laptop and walk out.</p></article>
-    <article class="use reveal"><span class="u-ico">📚</span><h3>Group projects</h3><p>The report, the slides, the dataset: drop it on "Everyone" once and the whole group has it, full quality, in seconds.</p></article>
-    <article class="use reveal"><span class="u-ico">🎤</span><h3>Demo day</h3><p>Share your running app with the team or the judges' laptop: they open it on their screen while it runs on yours.</p></article>
+    <article class="use reveal">
+      <svg class="scene" viewBox="0 0 280 150" aria-hidden="true">
+        <rect class="sc-win" x="8" y="8" width="264" height="134" rx="12" />
+        <circle class="sc-dot" cx="24" cy="22" r="3" /><circle class="sc-dot" cx="34" cy="22" r="3" /><circle class="sc-dot" cx="44" cy="22" r="3" />
+        <text class="sc-mono" x="226" y="25" text-anchor="end">api.py</text>
+        <text class="sc-mono sc-amber" x="262" y="25" text-anchor="end">3:07</text>
+        <line class="sc-rule" x1="8" y1="34" x2="272" y2="34" />
+        <rect class="sc-code" x="34" y="46" width="120" height="6" rx="3" />
+        <rect class="sc-del" x="22" y="60" width="160" height="10" rx="3" /><rect class="sc-code" x="34" y="62" width="100" height="6" rx="3" />
+        <rect class="sc-add a1" x="22" y="76" width="200" height="10" rx="3" /><rect class="sc-code" x="34" y="78" width="140" height="6" rx="3" />
+        <rect class="sc-add a2" x="22" y="92" width="200" height="10" rx="3" /><rect class="sc-code" x="34" y="94" width="90" height="6" rx="3" />
+        <rect class="sc-add a3" x="22" y="108" width="200" height="10" rx="3" /><rect class="sc-code" x="34" y="110" width="120" height="6" rx="3" />
+        <text class="sc-sign sc-red" x="14" y="68">−</text><text class="sc-sign sc-green" x="14" y="84">+</text><text class="sc-sign sc-green" x="14" y="100">+</text><text class="sc-sign sc-green" x="14" y="116">+</text>
+        <g class="sc-send"><rect x="160" y="118" width="104" height="18" rx="9" /><text x="212" y="130" text-anchor="middle">3 changes → Riya</text></g>
+      </svg>
+      <p class="u-num">01 · Hackathons</p>
+      <h3>Ship the diff, not the zip.</h3>
+      <p>Send only the files you changed. Teammates see the changes and pick theirs or yours: no push, pull or merge mess at 3 am.</p>
+    </article>
+
+    <article class="use reveal">
+      <svg class="scene" viewBox="0 0 280 150" aria-hidden="true">
+        <rect class="sc-win" x="14" y="20" width="110" height="74" rx="8" />
+        <text class="sc-mono" x="69" y="50" text-anchor="middle">LAB-PC-14</text>
+        <text class="sc-mono sc-dim" x="69" y="64" text-anchor="middle">guest · logs out</text>
+        <path class="sc-stroke" d="M58 94 L52 112 H86 L80 94" /><line class="sc-stroke" x1="44" y1="112" x2="94" y2="112" />
+        <g class="sc-usb"><rect x="20" y="118" width="30" height="14" rx="3" /><rect x="50" y="122" width="8" height="6" rx="1" /><line x1="14" y1="138" x2="64" y2="114" /></g>
+        <path class="sc-arc" d="M124 52 C 170 6, 214 20, 228 70" />
+        <circle class="sc-traveller" r="5"><animateMotion dur="2.6s" repeatCount="indefinite" path="M124 52 C 170 6, 214 20, 228 70" /></circle>
+        <rect class="sc-win" x="178" y="74" width="92" height="56" rx="6" /><line class="sc-stroke" x1="168" y1="134" x2="280" y2="134" />
+        <circle class="sc-ok" cx="224" cy="102" r="12" /><path class="sc-tick" d="M218 102 l4 4 l8 -9" />
+      </svg>
+      <p class="u-num">02 · College labs</p>
+      <h3>Walk out with your work.</h3>
+      <p>No pen drive, no emailing yourself, no logging into WhatsApp Web on a lab PC. Drop it onto your own laptop and go.</p>
+    </article>
+
+    <article class="use reveal">
+      <svg class="scene" viewBox="0 0 280 150" aria-hidden="true">
+        <g class="sc-fan"><path d="M140 75 L44 30" /><path d="M140 75 L236 30" /><path d="M140 75 L44 122" /><path d="M140 75 L236 122" /></g>
+        <rect class="sc-doc" x="118" y="46" width="44" height="58" rx="6" />
+        <path class="sc-fold" d="M150 46 v12 h12" />
+        <rect class="sc-code" x="126" y="68" width="28" height="4" rx="2" /><rect class="sc-code" x="126" y="78" width="22" height="4" rx="2" /><rect class="sc-code" x="126" y="88" width="26" height="4" rx="2" />
+        <text class="sc-mono sc-amber" x="140" y="120" text-anchor="middle">report.pdf</text>
+        <g class="sc-mate m1"><circle cx="44" cy="30" r="15" fill="#0A84FF" /><text x="44" y="35">A</text></g>
+        <g class="sc-mate m2"><circle cx="236" cy="30" r="15" fill="#FF9F0A" /><text x="236" y="35">R</text></g>
+        <g class="sc-mate m3"><circle cx="44" cy="122" r="15" fill="#30D158" /><text x="44" y="127">S</text></g>
+        <g class="sc-mate m4"><circle cx="236" cy="122" r="15" fill="#BF5AF2" /><text x="236" y="127">K</text></g>
+      </svg>
+      <p class="u-num">03 · Group projects</p>
+      <h3>One drop. Whole group.</h3>
+      <p>The report, the slides, the dataset: drop it on "Everyone" once and every laptop has it, full quality, in seconds.</p>
+    </article>
+
+    <article class="use reveal">
+      <svg class="scene" viewBox="0 0 280 150" aria-hidden="true">
+        <rect class="sc-win" x="10" y="12" width="260" height="126" rx="12" />
+        <rect class="sc-url" x="22" y="22" width="170" height="16" rx="8" />
+        <circle class="sc-live" cx="34" cy="30" r="3.5" />
+        <text class="sc-mono" x="44" y="34">localhost:3000</text>
+        <text class="sc-mono sc-amber" x="262" y="34" text-anchor="end">LIVE</text>
+        <line class="sc-rule" x1="10" y1="48" x2="270" y2="48" />
+        <rect class="sc-bar b1" x="36" y="96" width="22" height="30" rx="3" /><rect class="sc-bar b2" x="66" y="80" width="22" height="46" rx="3" />
+        <rect class="sc-bar b3" x="96" y="66" width="22" height="60" rx="3" /><rect class="sc-bar b4 sc-hot" x="126" y="58" width="22" height="68" rx="3" />
+        <rect class="sc-code" x="172" y="62" width="80" height="6" rx="3" /><rect class="sc-code" x="172" y="76" width="60" height="6" rx="3" /><rect class="sc-code" x="172" y="90" width="70" height="6" rx="3" />
+        <g class="sc-send"><rect x="168" y="108" width="92" height="18" rx="9" /><text x="214" y="120" text-anchor="middle">on judges' laptop</text></g>
+      </svg>
+      <p class="u-num">04 · Demo day</p>
+      <h3>Your app, on their screen.</h3>
+      <p>Share your running app with the team or the judges' laptop: they open it on their screen while it runs on yours.</p>
+    </article>
   </div>
 
   <div class="versus reveal">
@@ -332,7 +399,7 @@
   <a href="https://github.com/ahmadmdsajid129/pinchdrop">Source</a>
 </footer>
 
-<script src="config.js?v=4"></script>
-<script src="site.js?v=4"></script>
+<script src="config.js?v=6"></script>
+<script src="site.js?v=6"></script>
 </body>
 </html>
