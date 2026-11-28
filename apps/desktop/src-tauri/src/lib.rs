@@ -337,18 +337,74 @@ fn open_main_at(app: &AppHandle, route: &str) {
     let _ = app.run_on_main_thread(move || open_main_now(&h, &route));
 }
 
-fn open_main_now(app: &AppHandle, route: &str) {
-    if let Some(win) = main_window(app) {
-        let _ = win.unminimize();
-        let _ = win.show();
-        // Once, after the first show (its real DPI size is known only then).
-        static FITTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-        if !FITTED.swap(true, std::sync::atomic::Ordering::Relaxed) {
-            fit_to_screen(&win);
+/// The screen a freshly created main window opens on, once its page has drawn.
+static MAIN_ROUTE: Mutex<Option<String>> = Mutex::new(None);
+/// The main window was just created: size it to the screen on its first show.
+static MAIN_FRESH: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// v2.0.1 · The main window exists only while it's open. Hidden in the tray, its page used to
+/// stay loaded all day (~60 MB, plus its animations running unseen: the windows share one
+/// WebView2 that must keep the pill and overlay animating while covered). Now it's built when
+/// opened and freed when closed to the tray. Must run on the UI thread.
+fn create_main(app: &AppHandle, route: &str) -> Option<WebviewWindow> {
+    let mut cfg = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == "main")?
+        .clone();
+    cfg.url = tauri::WebviewUrl::App(format!("index.html#{route}").into());
+    let win = tauri::WebviewWindowBuilder::from_config(app, &cfg)
+        .ok()?
+        .build()
+        .ok()?;
+    MAIN_FRESH.store(true, std::sync::atomic::Ordering::Relaxed);
+    allow_camera_in(app, "main");
+    let h = app.clone();
+    win.on_window_event(move |event| match event {
+        WindowEvent::CloseRequested { api, .. } => {
+            if !h.state::<AppState>().snapshot().keep_running_on_close {
+                api.prevent_close();
+                h.exit(0);
+            }
+            // Otherwise it closes for real: the page is freed and the pill comes back.
         }
-        let _ = win.set_focus();
-        let _ = win.emit("navigate", route);
+        WindowEvent::Destroyed => refresh_pill_visibility(&h),
+        // Minimised / restored / shown: the pill follows at once.
+        WindowEvent::Resized(_) | WindowEvent::Focused(_) => refresh_pill_visibility(&h),
+        _ => {}
+    });
+    Some(win)
+}
+
+fn open_main_now(app: &AppHandle, route: &str) {
+    let Some(win) = main_window(app) else {
+        // Build it; it appears once its page has drawn (main_ready), or after 3 s anyway.
+        if let Ok(mut r) = MAIN_ROUTE.lock() {
+            *r = Some(route.to_string());
+        }
+        if let Some(s) = app.try_state::<AppState>() {
+            s.show_main_when_ready
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+        if create_main(app, route).is_some() {
+            let h = app.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_secs(3));
+                main_ready(h);
+            });
+        }
+        return;
+    };
+    let _ = win.unminimize();
+    let _ = win.show();
+    // After its first show (its real DPI size is known only then).
+    if MAIN_FRESH.swap(false, std::sync::atomic::Ordering::Relaxed) {
+        fit_to_screen(&win);
     }
+    let _ = win.set_focus();
+    let _ = win.emit("navigate", route);
     refresh_pill_now(app);
 }
 
@@ -364,7 +420,12 @@ fn main_ready(app: AppHandle) {
         })
         .unwrap_or(false);
     if pending {
-        open_main_at(&app, "onboarding");
+        let route = MAIN_ROUTE
+            .lock()
+            .ok()
+            .and_then(|mut r| r.take())
+            .unwrap_or_else(|| "home".into());
+        open_main_at(&app, &route);
     }
 }
 
@@ -1351,11 +1412,11 @@ fn reset_app(app: AppHandle) -> Result<Settings, String> {
 /// WebView2 would otherwise ask about the camera inside our own windows (and the overlay is
 /// click-through, so a prompt there couldn't be answered). Only our bundled pages load in
 /// these windows, so camera access is granted to them; the user chose Air gestures in Settings.
-fn allow_camera_in_webviews(app: &AppHandle) {
+fn allow_camera_in(app: &AppHandle, label: &str) {
     #[cfg(windows)]
-    for label in ["main", "overlay"] {
+    {
         let Some(win) = app.get_webview_window(label) else {
-            continue;
+            return;
         };
         let _ = win.with_webview(|wv| {
             use webview2_com::Microsoft::Web::WebView2::Win32::{
@@ -1527,7 +1588,7 @@ pub fn run() {
                 open_with_key(&handle, key);
             }
             link::phone_live::spawn_clipboard_watch(handle.clone());
-            allow_camera_in_webviews(&handle);
+            allow_camera_in(&handle, "overlay");
             build_tray(&handle)?;
             // v2: the program is now PinchDrop.exe; re-register "start with Windows" so it
             // points at this exe and not an older file name.
@@ -1540,40 +1601,9 @@ pub fn run() {
             place_pill_initially(&handle);
             refresh_pill_visibility(&handle);
 
-            if let Some(main) = main_window(&handle) {
-                let h = handle.clone();
-                main.on_window_event(move |event| match event {
-                    WindowEvent::CloseRequested { api, .. } => {
-                        if h.state::<AppState>().snapshot().keep_running_on_close {
-                            api.prevent_close();
-                            if let Some(w) = main_window(&h) {
-                                let _ = w.hide();
-                            }
-                            // The pill comes back as the window goes.
-                            refresh_pill_visibility(&h);
-                        } else {
-                            h.exit(0);
-                        }
-                    }
-                    // Minimised / restored / shown: the pill follows at once.
-                    WindowEvent::Resized(_) | WindowEvent::Focused(_) => {
-                        refresh_pill_visibility(&h)
-                    }
-                    _ => {}
-                });
-            }
-
             if first_run {
-                // Show the setup screen as soon as its page has loaded (main_ready), or after 3 s anyway.
-                handle
-                    .state::<AppState>()
-                    .show_main_when_ready
-                    .store(true, std::sync::atomic::Ordering::Relaxed);
-                let h = handle.clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_secs(3));
-                    main_ready(h);
-                });
+                // The setup screen (the window is built now and shows once its page has drawn).
+                open_main_at(&handle, "onboarding");
             }
 
             // Re-check every 1.5 s whether the pill should hide for a full-screen app.

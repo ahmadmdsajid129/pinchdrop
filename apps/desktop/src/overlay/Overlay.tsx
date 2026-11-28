@@ -192,27 +192,6 @@ export function Overlay() {
     k.ty = y;
     k.t = now;
   };
-  useEffect(() => {
-    let raf = 0;
-    let last = performance.now();
-    const paint = (now: number) => {
-      raf = requestAnimationFrame(paint);
-      const k = track.current;
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      if (!k.live) return;
-      const ahead = Math.min(MAX_GLIDE_S, Math.max(0, (now - k.t) / 1000));
-      const gx = k.tx + k.vx * ahead;
-      const gy = k.ty + k.vy * ahead;
-      const a = 1 - Math.exp(-dt / FOLLOW_TAU_S);
-      k.x += (gx - k.x) * a;
-      k.y += (gy - k.y) * a;
-      hx.set(k.x);
-      hy.set(k.y);
-    };
-    raf = requestAnimationFrame(paint);
-    return () => cancelAnimationFrame(raf);
-  }, [hx, hy]);
   const ringX = useTransform(hx, (v) => v - 22);
   const catchRingX = useTransform(hx, (v) => v - 32);
   const catchRingY = useTransform(hy, (v) => v - 32);
@@ -276,6 +255,30 @@ export function Overlay() {
   }, []);
 
   const armed = !!arm?.armed;
+  // v2.0.1: the glide loop runs only while the camera is on. It used to run at 60 fps all day,
+  // even with nothing to draw (the overlay keeps animating while hidden, for the send effects).
+  useEffect(() => {
+    if (!armed) return;
+    let raf = 0;
+    let last = performance.now();
+    const paint = (now: number) => {
+      raf = requestAnimationFrame(paint);
+      const k = track.current;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (!k.live) return;
+      const ahead = Math.min(MAX_GLIDE_S, Math.max(0, (now - k.t) / 1000));
+      const gx = k.tx + k.vx * ahead;
+      const gy = k.ty + k.vy * ahead;
+      const a = 1 - Math.exp(-dt / FOLLOW_TAU_S);
+      k.x += (gx - k.x) * a;
+      k.y += (gy - k.y) * a;
+      hx.set(k.x);
+      hy.set(k.y);
+    };
+    raf = requestAnimationFrame(paint);
+    return () => cancelAnimationFrame(raf);
+  }, [hx, hy, armed]);
 
   // v2 · Several phones / tablets: chips to aim at while carrying.
   const [devices, setDevices] = useState<DeviceView[]>([]);
