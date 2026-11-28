@@ -315,6 +315,13 @@ function InHuddle({ say }: { say: (ok: boolean, t: string) => void }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold">Drop on a face</span>
           <span className="text-[12px] text-muted">Drag files, folders or a project folder from Explorer onto someone. Or copy code and press Paste on their face.</span>
+          <span className="basis-full text-[12.5px] text-soft flex items-center gap-1.5 flex-wrap">
+            <b className="text-text">Team clipboard:</b> copy anything, press
+            <kbd className="px-1.5 py-0.5 rounded-md bg-surface2 border border-line font-mono text-[11.5px]">Ctrl + Alt + C</kbd>
+            to share it; teammates paste it with
+            <kbd className="px-1.5 py-0.5 rounded-md bg-surface2 border border-line font-mono text-[11.5px]">Ctrl + Alt + V</kbd>
+            (their own Ctrl + V stays theirs).
+          </span>
           <span className="flex-1" />
           <span className="text-[12px] text-muted">
             {`${laptops} laptop${laptops === 1 ? '' : 's'}`}

@@ -739,12 +739,18 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
         .name("pinchdrop-hotkey".into())
         .spawn(move || {
             use windows::Win32::UI::Input::KeyboardAndMouse::{
-                RegisterHotKey, UnregisterHotKey, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, VK_SPACE,
+                RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT,
+                VK_SPACE,
             };
             use windows::Win32::UI::WindowsAndMessaging::{
                 PeekMessageW, MSG, PM_REMOVE, WM_HOTKEY,
             };
             const ID: i32 = 0x5044; // "PD"
+                                    // v2.0.1 · Huddle team clipboard: Ctrl + Alt + C shares, Ctrl + Alt + V pastes.
+                                    // Registered only while in a huddle, so the keys stay free for other apps otherwise.
+            const SHARE: i32 = 0x5045;
+            const PASTE: i32 = 0x5046;
+            let mut team_keys = false;
             let mut registered = false;
             loop {
                 let s = crate::current_settings(&app);
@@ -763,12 +769,31 @@ pub fn spawn_hotkey_thread(app: AppHandle) {
                         let _ = UnregisterHotKey(None, ID);
                         registered = false;
                     }
+                    let in_huddle = crate::huddle::active();
+                    if in_huddle && !team_keys {
+                        let mods = MOD_CONTROL | MOD_ALT | MOD_NOREPEAT;
+                        let _ = RegisterHotKey(None, SHARE, mods, 0x43); // C
+                        let _ = RegisterHotKey(None, PASTE, mods, 0x56); // V
+                        team_keys = true;
+                    } else if !in_huddle && team_keys {
+                        let _ = UnregisterHotKey(None, SHARE);
+                        let _ = UnregisterHotKey(None, PASTE);
+                        team_keys = false;
+                    }
                     let mut msg = MSG::default();
                     while PeekMessageW(&mut msg, None, WM_HOTKEY, WM_HOTKEY, PM_REMOVE).as_bool() {
-                        if msg.message == WM_HOTKEY && msg.wParam.0 as i32 == ID {
-                            // Bring the pill up even over a full-screen app, then open/close the Island.
-                            crate::summon_pill(&app);
-                            let _ = app.emit_to("pill", "island-toggle", ());
+                        if msg.message != WM_HOTKEY {
+                            continue;
+                        }
+                        match msg.wParam.0 as i32 {
+                            ID => {
+                                // Bring the pill up even over a full-screen app, then open/close the Island.
+                                crate::summon_pill(&app);
+                                let _ = app.emit_to("pill", "island-toggle", ());
+                            }
+                            SHARE => crate::huddle::share_clip(),
+                            PASTE => crate::huddle::paste_clip(),
+                            _ => {}
                         }
                     }
                 }

@@ -1277,6 +1277,10 @@ fn stop_server() {
 /// Leaves (or, for the host, ends) the huddle. The shelf and inbox are wiped.
 pub fn leave() {
     let h = STATE.lock().ok().and_then(|mut g| g.take());
+    // What the team shared goes with the huddle.
+    if let Ok(mut c) = TEAM_CLIP.lock() {
+        *c = None;
+    }
     if let Some(h) = h {
         for m in h.members.values() {
             if let Some(t) = &m.tx {
@@ -1541,7 +1545,159 @@ fn on_member_msg(from: &str, v: Value, tx: &mpsc::UnboundedSender<Vec<u8>>) {
             }
         }
         "note" => notify(&app, &from_name, v["text"].as_str().unwrap_or("")),
+        // v2.0.1 · Team clipboard: kept aside (never put in this PC's clipboard by itself).
+        "tclip" => {
+            let text: String = v["text"]
+                .as_str()
+                .unwrap_or("")
+                .chars()
+                .take(TEAM_CLIP_MAX)
+                .collect();
+            if text.trim().is_empty() {
+                return;
+            }
+            let lines = text.lines().count().max(1);
+            if let Ok(mut c) = TEAM_CLIP.lock() {
+                *c = Some(text);
+            }
+            notify(
+                &app,
+                &format!("{from_name} shared {}", plural(lines, "line")),
+                "Ctrl + Alt + V to paste it",
+            );
+        }
         _ => {}
+    }
+}
+
+// ---------------------------------------------------------------- team clipboard
+
+/// What a teammate shared last with Ctrl + Alt + C (pasted here with Ctrl + Alt + V).
+static TEAM_CLIP: Mutex<Option<String>> = Mutex::new(None);
+const TEAM_CLIP_MAX: usize = 200_000;
+
+fn plural(n: usize, word: &str) -> String {
+    format!("{n} {word}{}", if n == 1 { "" } else { "s" })
+}
+
+/// In a huddle right now (the team-clipboard shortcuts exist only then).
+pub fn active() -> bool {
+    STATE.lock().map(|g| g.is_some()).unwrap_or(false)
+}
+
+/// Ctrl + Alt + C: share what this laptop just copied with everyone in the huddle. Nothing is
+/// shared by copying alone, so the team isn't flooded with everything you copy all day.
+pub fn share_clip() {
+    let Some(app) = app().cloned() else { return };
+    let result = crate::clip::read()
+        .map(|(text, _)| text)
+        .filter(|t| !t.trim().is_empty())
+        .ok_or_else(|| "Your clipboard is empty. Copy something first.".to_string())
+        .and_then(|text| {
+            let text: String = text.chars().take(TEAM_CLIP_MAX).collect();
+            let t = targets(None);
+            if t.is_empty() {
+                return Err("Nobody's connected right now.".to_string());
+            }
+            for (_, tx) in &t {
+                send_json(tx, json!({ "t": "tclip", "text": text }));
+            }
+            Ok((text.lines().count().max(1), t.len()))
+        });
+    match result {
+        Ok((lines, n)) => notify(
+            &app,
+            &format!("Shared {} with the huddle", plural(lines, "line")),
+            &format!("{} can paste it with Ctrl + Alt + V", plural(n, "teammate")),
+        ),
+        Err(e) => notify(&app, "Team clipboard", &e),
+    }
+}
+
+/// Ctrl + Alt + V: pastes the team's clip where the cursor is, then puts this PC's own clipboard
+/// back, so plain Ctrl + V still pastes your own.
+pub fn paste_clip() {
+    let Some(text) = TEAM_CLIP.lock().ok().and_then(|c| c.clone()) else {
+        if let Some(app) = app() {
+            notify(
+                app,
+                "Team clipboard",
+                "Nothing shared yet. A teammate shares with Ctrl + Alt + C.",
+            );
+        }
+        return;
+    };
+    std::thread::spawn(move || {
+        wait_for_keys_up();
+        let mine = crate::clip::read().map(|(t, _)| t);
+        if !crate::clip::write(&text) {
+            return;
+        }
+        press_ctrl_v();
+        // Give the app a moment to read the clipboard, then hand yours back.
+        std::thread::sleep(Duration::from_millis(400));
+        if let Some(mine) = mine {
+            crate::clip::write(&mine);
+        }
+    });
+}
+
+/// The shortcut's Ctrl / Alt are still held: a Ctrl + V sent now would arrive as Ctrl + Alt + V.
+fn wait_for_keys_up() {
+    #[cfg(windows)]
+    {
+        use windows::Win32::UI::Input::KeyboardAndMouse::{
+            GetAsyncKeyState, VK_CONTROL, VK_MENU, VK_SHIFT,
+        };
+        for _ in 0..60 {
+            // SAFETY: plain key-state reads.
+            let held = unsafe {
+                [VK_MENU, VK_CONTROL, VK_SHIFT]
+                    .iter()
+                    .any(|k| (GetAsyncKeyState(k.0 as i32) as u16 & 0x8000) != 0)
+            };
+            if !held {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(25));
+        }
+    }
+}
+
+fn press_ctrl_v() {
+    #[cfg(windows)]
+    {
+        use windows::Win32::UI::Input::KeyboardAndMouse::{
+            SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
+            KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL,
+        };
+        let key = |vk: u16, up: bool| INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VIRTUAL_KEY(vk),
+                    wScan: 0,
+                    dwFlags: if up {
+                        KEYEVENTF_KEYUP
+                    } else {
+                        KEYBD_EVENT_FLAGS(0)
+                    },
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        let v = 0x56; // V
+        let inputs = [
+            key(VK_CONTROL.0, false),
+            key(v, false),
+            key(v, true),
+            key(VK_CONTROL.0, true),
+        ];
+        // SAFETY: sends four ordinary key events.
+        unsafe {
+            SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+        }
     }
 }
 
